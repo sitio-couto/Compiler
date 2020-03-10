@@ -9,16 +9,19 @@ import ply.lex as lex
 def tokenize(): 
     # List of token names.   This is always required
     tokens = [
-    'NUMBER',
-    'PLUS',
-    'MINUS',
-    'TIMES',
-    'DIVIDE',
-    'LPAREN',
-    'RPAREN'
+        'ID',
+        'NUMBER',
+        'FLOAT',
+        'PLUS',
+        'MINUS',
+        'TIMES',
+        'DIVIDE',
+        'LPAREN',
+        'RPAREN'
     ]
     
     # Regular expression rules for simple tokens
+    t_ID      = r'[a-zA-Z_][0-9a-zA-Z_]*'
     t_PLUS    = r'\+'
     t_MINUS   = r'-'
     t_TIMES   = r'\*'
@@ -27,11 +30,16 @@ def tokenize():
     t_RPAREN  = r'\)'
     
     # A regular expression rule with some action code
+    def t_FLOAT(t):
+        r'\d+\.\d*|\d*\.\d+'
+        t.value = float(t.value)    
+        return t
+
     def t_NUMBER(t):
         r'\d+'
         t.value = int(t.value)    
         return t
-    
+
     # Define a rule so we can track line numbers
     def t_newline(t):
         r'\n+'
