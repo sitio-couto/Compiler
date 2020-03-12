@@ -1,5 +1,8 @@
-import lexer
+from lexer import Lexer
 
-tokens = lexer.tokenize()
+tokenizer = Lexer()
 
-print(tokens)
+while True : 
+    tokenizer.test("")
+
+#asdfasdfasdfasdf
