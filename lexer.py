@@ -6,8 +6,15 @@
  # ------------------------------------------------------------
 import ply.lex as lex
 
-def tokenize(): 
-    # List of token names.   This is always required
+class Lexer:
+    '''A Lexer for the uC language.
+    ''' 
+
+    def __init__(self, filename):
+        self.filename = filename
+        self.last_token = None
+    
+        # List of token names.   This is always required
     tokens = [
         'ID',
         'NUMBER',
@@ -15,6 +22,7 @@ def tokenize():
         'PLUS',
         'MINUS',
         'TIMES',
+        'EQUAL',
         'DIVIDE',
         'LPAREN',
         'RPAREN'
@@ -25,9 +33,33 @@ def tokenize():
     t_PLUS    = r'\+'
     t_MINUS   = r'-'
     t_TIMES   = r'\*'
+    t_EQUAL   = r'='
     t_DIVIDE  = r'/'
     t_LPAREN  = r'\('
     t_RPAREN  = r'\)'
+
+    # Build the lexer
+    def build(self, **kwargs):
+        self.lexer = lex.lex(module=self, **kwargs)
+
+    def reset_line_num(self):
+        self.line_num = 1
+
+    def input(self, text):
+        self.lexer.input(text)
+
+    def token(self):
+        self.last_token = self.lexer.token()
+        return self.last_token
+
+    # Test it output
+    def test(self,data):
+        self.lexer.input(data)
+        while True:
+            tok = self.lexer.token()
+            if not tok: 
+                break
+            print(tok)
     
     # A regular expression rule with some action code
     def t_FLOAT(t):
@@ -53,11 +85,16 @@ def tokenize():
         print("Illegal character '%s'" % t.value[0])
         t.lexer.skip(1)
     
-    # Build the lexer
-    lexer = lex.lex()
-    
-    # Test it out
-    data = input("Write Function: ")
-    # Give the lexer some input
-    lexer.input(data)
-    return [t for t in lexer]
+# # Build the lexer
+# lexer = lex.lex()
+
+# # Test it out
+# data = input("Write Function: ")
+# data = '''
+#     a + b = c
+#     123.323 
+# '''
+
+# # Give the lexer some input
+# lexer.input(data)
+# return [t for t in lexer]
