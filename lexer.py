@@ -5,6 +5,8 @@
  # numbers and +,-,*,/
  # ------------------------------------------------------------
 import ply.lex as lex
+import os.path
+from os import path
 
 class Lexer():
     '''A Lexer for the uC language.
@@ -12,8 +14,7 @@ class Lexer():
     def __init__(self, filename=""):
         self.filename = filename
         self.last_token = None
-        self.lexer = lex.lex(module=self)
-    
+
     # Build the lexer
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
@@ -30,7 +31,13 @@ class Lexer():
 
     # Test the output
     def test(self, data):
-        if not data : data = input("Expression: ")
+        
+        if not path.exists(data) : 
+            data = input("Expression: ")
+        else : 
+            with open(data, 'r') as content_file :
+                data = content_file.read()
+            
         self.lexer.input(data)
         while True:
             tok = self.lexer.token()
@@ -54,12 +61,10 @@ class Lexer():
     tokens = keywords + (
         # Identifiers
         'COMMENT', 'LINECOMMENT', 'ID', 'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'LPAREN', 'RPAREN',
-        'NUMBER', 'ASSIGN', 'SEMI',
-
+        'NUMBER', 'ASSIGN', 'SEMI', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', 'COMMA',
 
         # constants
         'INT_CONST', 'FLOAT_CONST',
-
     )
 
     # Regular expression rules for simple tokens
@@ -73,13 +78,14 @@ class Lexer():
     t_LPAREN = r'\('
     t_RPAREN = r'\)'
     t_SEMI = r';'
+    t_LBRACKET = r'\['
+    t_RBRACKET = r'\]'
+    t_LBRACE = r'{'
+    t_RBRACE = r'}'
+    t_COMMA = r','
 
     # A string containing ignored characters (spaces and tabs)
     t_ignore  = ' \t'
-    
-    # Ignoring Comments
-    t_ignore_COMMENT = r'/\*(.|\n)*?\*/'
-    t_ignore_LINECOMMENT = r'//.*(\n|$)'
 
     # Define a rule so we can track line numbers
     def t_newline(self, t):
@@ -101,25 +107,35 @@ class Lexer():
         t.value = int(t.value)    
         return t
     
+    def t_COMMENT (self, t) :
+        r'/\*(.|\n)*?\*/'
+        t.lexer.lineno += t.value.count("\n")
+        return t
+
+    def t_LINECOMMENT (self, t) :
+        r'//.*(\n|$)'
+        t.lexer.lineno += t.value.count("\n")
+        return t
+
     # Error handling rule
     def t_error(self, t):
-        print("Illegal character '%s'" % t.value[0])
+        print(f"Illegal character '{t.value[0]}' at l:{t.lineno}")
         t.lexer.skip(1)
     
-# # Build the lexer
-m = Lexer()
-m.build()  # Build the lexer
+# # # Build the lexer
+# m = Lexer()
+# m.build()  # Build the lexer
 
 # # Test it out
 #data = input("Write Function: ")
-data = '''
-     a + b + d = c;
-     123.323 ;
-     // lol
-     lol;
-'''
+# data = '''
+#      a + b + d = c;
+#      123.323 ;
+#      // lol
+#      lol;
+# '''
 
-m.test(data)  # print tokens
+# m.test(data)  # print tokens
 
 # # Give the lexer some input
 # lexer.input(data)
