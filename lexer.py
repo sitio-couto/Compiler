@@ -6,7 +6,7 @@
  # ------------------------------------------------------------
 import ply.lex as lex
 
-class Lexer:
+class Lexer():
     '''A Lexer for the uC language.
     ''' 
     def __init__(self, filename=""):
@@ -54,7 +54,7 @@ class Lexer:
     tokens = keywords + (
         # Identifiers
         'COMMENT', 'LINECOMMENT', 'ID', 'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'LPAREN', 'RPAREN',
-        'NUMBER', 
+        'NUMBER', 'ASSIGN', 'SEMI',
 
 
         # constants
@@ -65,26 +65,21 @@ class Lexer:
     # Regular expression rules for simple tokens
     # t_UTERMINATED = r'/\\*(.|\\n)*$'
     # t_STRING      = r'\\\".*?\\\"'
-    t_PLUS        = r'\+'
-    t_MINUS       = r'-'
-    t_TIMES       = r'\*'
-    t_EQUAL       = r'='
-    t_DIVIDE      = r'/'
-    t_LPAREN      = r'\('
-    t_RPAREN      = r'\)'
+    t_PLUS = r'\+'
+    t_MINUS = r'-'
+    t_TIMES = r'\*'
+    t_ASSIGN = r'='
+    t_DIVIDE = r'/'
+    t_LPAREN = r'\('
+    t_RPAREN = r'\)'
+    t_SEMI = r';'
 
     # A string containing ignored characters (spaces and tabs)
     t_ignore  = ' \t'
-
-    # Closed comment
-    def t_COMMENT(self, t):
-        r'/\*(.|\n)*?\*/'
-        t.lexer.lineno += t.value.count('\n')
-
-    # Line Comment
-    def t_LINECOMMENT(self, t):
-        r'//.*(\n|$)'
-        t.lexer.lineno += t.value.count("\n")
+    
+    # Ignoring Comments
+    t_ignore_COMMENT = r'/\*(.|\n)*?\*/'
+    t_ignore_LINECOMMENT = r'//.*(\n|$)'
 
     # Define a rule so we can track line numbers
     def t_newline(self, t):
@@ -96,7 +91,6 @@ class Lexer:
         t.type = self.keyword_map.get(t.value, "ID")
         return t        
 
-    # A regular expression rule with some action code
     def t_FLOAT(self, t):
         r'\d+\.\d*|\d*\.\d+'
         t.value = float(t.value)    
@@ -113,14 +107,19 @@ class Lexer:
         t.lexer.skip(1)
     
 # # Build the lexer
-# lexer = lex.lex()
+m = Lexer()
+m.build()  # Build the lexer
 
 # # Test it out
-# data = input("Write Function: ")
-# data = '''
-#     a + b = c
-#     123.323 
-# '''
+#data = input("Write Function: ")
+data = '''
+     a + b + d = c;
+     123.323 ;
+     // lol
+     lol;
+'''
+
+m.test(data)  # print tokens
 
 # # Give the lexer some input
 # lexer.input(data)
