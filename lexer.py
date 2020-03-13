@@ -62,14 +62,14 @@ class Lexer():
         # Identifiers
         'COMMENT', 'LINECOMMENT', 'ID', 'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'LPAREN', 'RPAREN',
         'NUMBER', 'ASSIGN', 'SEMI', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', 'COMMA', 'LT',
-        'GT', 'PLUSPLUS', 'ADRESS',
+        'GT', 'PLUSPLUS', 'ADRESS', 'UTERMINATED',
 
         # constants
         'INT_CONST', 'FLOAT_CONST',
     )
 
     # Regular expression rules for simple tokens
-    # t_UTERMINATED = r'/\\*(.|\\n)*$'
+    # t_UTERMINATED = r'/\*(.|\\n)*$'
     # t_STRING      = r'\\\".*?\\\"'
     t_PLUS = r'\+'
     t_MINUS = r'-'
@@ -111,18 +111,23 @@ class Lexer():
         r'\d+'
         t.value = int(t.value)    
         return t
-    
-    def t_COMMENT (self, t) :
-        r'/\*(.|\n)*?\*/'
-        t.lexer.lineno += t.value.count("\n")
-        return t
 
     def t_LINECOMMENT (self, t) :
         r'//.*(\n|$)'
         t.lexer.lineno += t.value.count("\n")
         return t
 
-    # Error handling rule
+    #### ERROR HANDLING RULES ####
+    def t_UTERMINATED (self, t) :
+        r'/\*(.|\n)*$'
+        print(f"Unterminated comment at l:{t.lineno}")
+
+    def t_COMMENT (self, t) :
+        r'/\*(.|\n)*?\*/'
+        t.lexer.lineno += t.value.count("\n")
+        return t
+
+    # If an unmatched character is found
     def t_error(self, t):
         print(f"Illegal character '{t.value[0]}' at l:{t.lineno}")
         t.lexer.skip(1)
