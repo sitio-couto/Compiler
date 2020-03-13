@@ -3,7 +3,7 @@ from lexer import Lexer
 tokenizer = Lexer()
 tokenizer.build()
 
-tokenizer.test("test.txt")
+tokenizer.test("tests/test01.c")
 
 while True : 
     tokenizer.test("")

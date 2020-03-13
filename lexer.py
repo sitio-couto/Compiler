@@ -61,7 +61,8 @@ class Lexer():
     tokens = keywords + (
         # Identifiers
         'COMMENT', 'LINECOMMENT', 'ID', 'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'LPAREN', 'RPAREN',
-        'NUMBER', 'ASSIGN', 'SEMI', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', 'COMMA',
+        'NUMBER', 'ASSIGN', 'SEMI', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', 'COMMA', 'LT',
+        'GT', 'PLUSPLUS', 'ADRESS',
 
         # constants
         'INT_CONST', 'FLOAT_CONST',
@@ -83,6 +84,10 @@ class Lexer():
     t_LBRACE = r'{'
     t_RBRACE = r'}'
     t_COMMA = r','
+    t_LT = r'<'
+    t_GT = r'>'
+    t_PLUSPLUS = r'\+\+'
+    t_ADRESS = r'&'
 
     # A string containing ignored characters (spaces and tabs)
     t_ignore  = ' \t'
