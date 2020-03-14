@@ -8,6 +8,10 @@ import ply.lex as lex
 import os.path
 from os import path
 
+#### CONFLICTING TYPES ####
+# ID & KEYWORDS => Longest Match & Rule Order Using Dictionary
+# COMMENT & UNTCOMMENT => Rule Order (comment func comes first)
+# STRING & UNTSTRING => Rule Order (string func comes first)
 class Lexer():
     '''A Lexer for the uC language.
     ''' 
@@ -60,17 +64,18 @@ class Lexer():
     #
     tokens = keywords + (
         # Identifiers
-        'COMMENT', 'LINECOMMENT', 'ID', 'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'LPAREN', 'RPAREN',
-        'NUMBER', 'ASSIGN', 'SEMI', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', 'COMMA', 'LT',
-        'GT', 'PLUSPLUS', 'ADRESS', 'UTERMINATED',
-
-        # constants
-        'INT_CONST', 'FLOAT_CONST',
+        'ID', 'NUMBER', 'ASSIGN', 'SEMI', 'COMMA', 'ADRESS',
+        # Enclosings
+        'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
+        # Comparators
+        'LT', 'GT', 'EQ', 'NG',
+        # Operators
+        'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'PLUSPLUS',
+        # Comments
+        'LINECOMMENT', 'COMMENT', 'UNTCOMMENT',
     )
 
     # Regular expression rules for simple tokens
-    # t_UTERMINATED = r'/\*(.|\\n)*$'
-    # t_STRING      = r'\\\".*?\\\"'
     t_PLUS = r'\+'
     t_MINUS = r'-'
     t_TIMES = r'\*'
@@ -86,6 +91,8 @@ class Lexer():
     t_COMMA = r','
     t_LT = r'<'
     t_GT = r'>'
+    t_EQ = r'=='
+    t_NG = r'!'
     t_PLUSPLUS = r'\+\+'
     t_ADRESS = r'&'
 
@@ -117,15 +124,23 @@ class Lexer():
         t.lexer.lineno += t.value.count("\n")
         return t
 
-    #### ERROR HANDLING RULES ####
-    def t_UTERMINATED (self, t) :
-        r'/\*(.|\n)*$'
-        print(f"Unterminated comment at l:{t.lineno}")
-
     def t_COMMENT (self, t) :
         r'/\*(.|\n)*?\*/'
         t.lexer.lineno += t.value.count("\n")
         return t
+
+    def t_STRING (self, t) :
+        r'\".*?\"'
+        return t
+
+    #### ERROR HANDLING RULES ####
+    def t_UNTCOMMENT (self, t) :
+        r'/\*(.|\n)*$'
+        print(f"Unterminated comment at l:{t.lineno}")
+    
+    def t_UNTSTRING (self, t) :
+        r'\".*?$'
+        print(f"Unterminated quotes at l:{t.lineno}")
 
     # If an unmatched character is found
     def t_error(self, t):
