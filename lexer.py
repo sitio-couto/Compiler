@@ -1,12 +1,17 @@
- # ------------------------------------------------------------
- # calclex.py
- #
- # tokenizer for a simple expression evaluator for
- # numbers and +,-,*,/
- # ------------------------------------------------------------
+'''
+First Project: Lexer for the uC language.
+
+Subject:
+    MC921 - Construction of Compilers
+Authors:
+    Victor Ferreira Ferrari  - RA 187890
+    Vinicius Couto Espindola - RA 188115
+
+University of Campinas - UNICAMP - 2020
+'''
+
 import ply.lex as lex
-import os.path
-from os import path
+from os.path import exists
 
 #### CONFLICTING TYPES ####
 # ID & KEYWORDS => Longest Match & Rule Order Using Dictionary
@@ -15,8 +20,7 @@ from os import path
 class Lexer():
     '''A Lexer for the uC language.
     ''' 
-    def __init__(self, filename=""):
-        self.filename = filename
+    def __init__(self):
         self.last_token = None
 
     # Build the lexer
@@ -36,12 +40,10 @@ class Lexer():
     # Test the output
     def test(self, data):
         
-        if not path.exists(data) : 
-            data = input("Expression: ")
-        else : 
+        # If filename.
+        if exists(data): 
             with open(data, 'r') as content_file :
                 data = content_file.read()
-            
         self.lexer.input(data)
         while True:
             tok = self.lexer.token()
@@ -64,16 +66,19 @@ class Lexer():
     #
     tokens = keywords + (
         # Identifiers
-        'ID', 'NUMBER', 'ASSIGN', 'SEMI', 'COMMA', 'ADRESS',
+        'ID', 'NUMBER', 'ASSIGN', 'SEMI', 'COMMA', 'ADDRESS', 'STRING',
         # Enclosings
         'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
         # Comparators
         'LT', 'GT', 'EQ', 'NG',
         # Operators
-        'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'PLUSPLUS',
+        'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'PLUSPLUS', 'MOD',
         # Comments
         'LINECOMMENT', 'COMMENT', 'UNTCOMMENT',
     )
+
+    # A string containing ignored characters (spaces and tabs)
+    t_ignore  = ' \t'
 
     # Regular expression rules for simple tokens
     t_PLUS = r'\+'
@@ -81,6 +86,7 @@ class Lexer():
     t_TIMES = r'\*'
     t_ASSIGN = r'='
     t_DIVIDE = r'/'
+    t_MOD = r'%'
     t_LPAREN = r'\('
     t_RPAREN = r'\)'
     t_SEMI = r';'
@@ -94,10 +100,7 @@ class Lexer():
     t_EQ = r'=='
     t_NG = r'!'
     t_PLUSPLUS = r'\+\+'
-    t_ADRESS = r'&'
-
-    # A string containing ignored characters (spaces and tabs)
-    t_ignore  = ' \t'
+    t_ADDRESS = r'&'
 
     # Define a rule so we can track line numbers
     def t_newline(self, t):
@@ -134,32 +137,13 @@ class Lexer():
     #### ERROR HANDLING RULES ####
     def t_UNTCOMMENT (self, t) :
         r'/\*(.|\n)*$'
-        print(f"Unterminated comment at l:{t.lineno}")
+        print(f"{t.lineno}: Unterminated comment")
     
     def t_UNTSTRING (self, t) :
         r'\".*?$'
-        print(f"Unterminated quotes at l:{t.lineno}")
+        print(f"{t.lineno}: Unterminated string")
 
     # If an unmatched character is found
     def t_error(self, t):
         print(f"Illegal character '{t.value[0]}' at l:{t.lineno}")
         t.lexer.skip(1)
-    
-# # # Build the lexer
-# m = Lexer()
-# m.build()  # Build the lexer
-
-# # Test it out
-#data = input("Write Function: ")
-# data = '''
-#      a + b + d = c;
-#      123.323 ;
-#      // lol
-#      lol;
-# '''
-
-# m.test(data)  # print tokens
-
-# # Give the lexer some input
-# lexer.input(data)
-# return [t for t in lexer]
