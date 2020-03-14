@@ -122,12 +122,10 @@ class Lexer():
     def t_LINECOMMENT (self, t) :
         r'//.*(\n|$)'
         t.lexer.lineno += t.value.count("\n")
-        return t
 
     def t_COMMENT (self, t) :
         r'/\*(.|\n)*?\*/'
         t.lexer.lineno += t.value.count("\n")
-        return t
 
     def t_STRING (self, t) :
         r'\".*?\"'
