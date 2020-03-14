@@ -66,7 +66,7 @@ class Lexer():
     #
     tokens = keywords + (
         # Identifiers
-        'ID', 'NUMBER', 'STRING',
+        'ID', 'ICONST', 'FCONST', 'STRING',
         # Math Operators
         'PLUSPLUS', 'MINUSMINUS',
         # Logical Operators
@@ -107,12 +107,12 @@ class Lexer():
         t.type = self.keyword_map.get(t.value, "ID")
         return t        
 
-    def t_FLOAT(self, t):
+    def t_FCONST(self, t):
         r'\d+\.\d*|\d*\.\d+'
         t.value = float(t.value)    
         return t
 
-    def t_NUMBER(self, t):
+    def t_ICONST(self, t):
         r'\d+'
         t.value = int(t.value)    
         return t
