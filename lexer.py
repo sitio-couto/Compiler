@@ -100,7 +100,7 @@ class Lexer():
     t_EQ = r'=='
     t_NG = r'!'
     t_PLUSPLUS = r'\+\+'
-    t_ADDRESS = r'&'
+    t_ADDRESS = r'&[a-zA-Z_][0-9a-zA-Z_]*'
 
     # Define a rule so we can track line numbers
     def t_newline(self, t):
