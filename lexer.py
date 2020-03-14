@@ -66,41 +66,36 @@ class Lexer():
     #
     tokens = keywords + (
         # Identifiers
-        'ID', 'NUMBER', 'ASSIGN', 'SEMI', 'COMMA', 'ADDRESS', 'STRING',
-        # Enclosings
-        'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
-        # Comparators
-        'LT', 'GT', 'EQ', 'NG',
-        # Operators
-        'MINUS', 'PLUS', 'TIMES', 'DIVIDE', 'PLUSPLUS', 'MOD',
+        'ID', 'NUMBER', 'STRING',
+        # Math Operators
+        'PLUSPLUS', 'MINUSMINUS',
+        # Logical Operators
+        'EQ', 'OR', 'AND', 'UNEQ', 'GE', 'LE',
+        # Assignment Operators
+        'PLUSEQ', 'MINUSEQ', 'TIMESEQ', 'DIVEQ', 'MODEQ',
         # Comments
-        'LINECOMMENT', 'COMMENT', 'UNTCOMMENT',
+        'LINECOMMENT', 'COMMENT', 'UNTCOMMENT'
     )
-
+    
     # A string containing ignored characters (spaces and tabs)
     t_ignore  = ' \t'
-
+    
     # Regular expression rules for simple tokens
-    t_PLUS = r'\+'
-    t_MINUS = r'-'
-    t_TIMES = r'\*'
-    t_ASSIGN = r'='
-    t_DIVIDE = r'/'
-    t_MOD = r'%'
-    t_LPAREN = r'\('
-    t_RPAREN = r'\)'
-    t_SEMI = r';'
-    t_LBRACKET = r'\['
-    t_RBRACKET = r'\]'
-    t_LBRACE = r'{'
-    t_RBRACE = r'}'
-    t_COMMA = r','
-    t_LT = r'<'
-    t_GT = r'>'
     t_EQ = r'=='
-    t_NG = r'!'
+    t_OR = r'\|\|'
+    t_AND = r'&&'
+    t_UNEQ = r'!='
+    t_GE = r'>='
+    t_LE = r'<='
     t_PLUSPLUS = r'\+\+'
-    t_ADDRESS = r'&[a-zA-Z_][0-9a-zA-Z_]*'
+    t_MINUSMINUS = r'--'
+    t_PLUSEQ = r'\+='
+    t_MINUSEQ = r'-='
+    t_TIMESEQ = r'\*='
+    t_DIVEQ = r'/='
+    t_MODEQ = r'%='
+    
+    literals = ['+', '-', '/', '*', '%', '=', '&', '!', ',', ';', '(', ')', '{', '}', '[', ']', '<', '>']
 
     # Define a rule so we can track line numbers
     def t_newline(self, t):
