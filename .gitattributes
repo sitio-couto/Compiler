@@ -2,6 +2,6 @@
 * text=auto
 
 # Excluding tests from GitHub Linguist
-tests/* linguist-documentation
+*.uc linguist-language=uC
 
 
