@@ -151,13 +151,15 @@ class uCLexer():
     #### ERROR HANDLING RULES ####
     # Unterminated Comment
     def t_UNTCOMMENT (self, t) :
-        r'/\*(.|\n)*$'
+        r'/\*(.|\n)*?$'
+        t.lexer.lineno += t.value.count('\n')
         msg = "Unterminated comment"
         self._error(msg, t)
     
     # Unmatched Quotes (unterminated string)
     def t_UNTSTRING (self, t) :
-        r'\".*$'
+        r'\".*?($|\n)'
+        t.lexer.lineno += t.value.count('\n')
         msg = "Unterminated string"
         self._error(msg, t)
 
