@@ -1,0 +1,7 @@
+# New line normalization
+* text=auto
+
+# Excluding tests from GitHub Linguist
+tests/* linguist-documentation
+
+
