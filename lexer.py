@@ -17,16 +17,21 @@ from os.path import exists
 # ID & KEYWORDS => Longest Match & Rule Order Using Dictionary
 # COMMENT & UNTCOMMENT => Rule Order (comment func comes first)
 # STRING & UNTSTRING => Rule Order (string func comes first)
-class Lexer():
+class uCLexer():
     '''A Lexer for the uC language.
     ''' 
-    def __init__(self):
+    
+    # Creating a new Lexer.
+    # error_func: error function to be called with error message and position.
+    def __init__(self, error_func):
+        self.error_func = error_func
         self.last_token = None
 
-    # Build the lexer
+    # Build the lexer. Needs to be called after object is created.
     def build(self, **kwargs):
-        self.lexer = lex.lex(module=self, **kwargs)
+        self.lexer = lex.lex(object=self, **kwargs)
 
+    # Resets line counter.
     def reset_line_num(self):
         self.lexer.lineno = 1
 
@@ -36,6 +41,20 @@ class Lexer():
     def token(self):
         self.last_token = self.lexer.token()
         return self.last_token
+
+    def find_tok_column(self, token):
+        # Find the column of the token in its line.
+        last_cr = self.lexer.lexdata.rfind('\n', 0, token.lexpos)
+        return token.lexpos - last_cr
+
+    # Internal auxiliary methods
+    def _error(self, msg, token):
+        location = self._make_tok_location(token)
+        self.error_func(msg, location[0], location[1])
+        self.lexer.skip(1)
+
+    def _make_tok_location(self, token):
+        return (token.lineno, self.find_tok_column(token))
 
     # Test the output
     def test(self, data):
@@ -130,15 +149,19 @@ class Lexer():
         return t
 
     #### ERROR HANDLING RULES ####
+    # Unterminated Comment
     def t_UNTCOMMENT (self, t) :
         r'/\*(.|\n)*$'
-        print(f"{t.lineno}: Unterminated comment")
+        msg = "Unterminated comment"
+        self._error(msg, t)
     
+    # Unmatched Quotes (unterminated string)
     def t_UNTSTRING (self, t) :
-        r'\".*?$'
-        print(f"{t.lineno}: Unterminated string")
+        r'\".*$'
+        msg = "Unterminated string"
+        self._error(msg, t)
 
     # If an unmatched character is found
     def t_error(self, t):
-        print(f"Illegal character '{t.value[0]}' at l:{t.lineno}")
-        t.lexer.skip(1)
+        msg = f"Illegal character {t.value[0]}"
+        self._error(msg, t)

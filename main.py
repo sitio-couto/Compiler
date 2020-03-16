@@ -10,16 +10,19 @@ Authors:
 University of Campinas - UNICAMP - 2020
 '''
 
-from lexer import Lexer
+from lexer import uCLexer as Lexer
 
-tokenizer = Lexer()
-tokenizer.build()
+def print_error(msg, x, y):
+    print("Lexical error: %s at %d:%d" % (msg, x, y))
 
-while True: 
-    try:
-        tokenizer.test(input("Filename or expression: "))
-        tokenizer.reset_line_num()
-    except EOFError:
-        break
+if __name__ == '__main__':
+    tokenizer = Lexer(print_error)
+    tokenizer.build()
 
-#asdfasdfasdfasdf
+    while True: 
+        try:
+            tokenizer.test(input("Filename or expression: "))
+            tokenizer.reset_line_num()
+        except EOFError:
+            break
+
