@@ -85,7 +85,7 @@ class uCLexer():
     #
     tokens = keywords + (
         # Identifiers
-        'ID', 'ICONST', 'FCONST', 'STRING',
+        'ID', 'ICONST', 'FCONST', 'CCONST', 'STRING',
         # Math Operators
         'PLUSPLUS', 'MINUSMINUS',
         # Logical Operators
@@ -136,6 +136,10 @@ class uCLexer():
         t.value = int(t.value)    
         return t
 
+    def t_CCONST(self, t):
+        r'\'([^"\'\\\n]|\\["\'\\]|\\[avfntber0])\''
+        return t
+
     def t_LINECOMMENT (self, t) :
         r'//.*(\n|$)'
         t.lexer.lineno += t.value.count("\n")
@@ -161,6 +165,12 @@ class uCLexer():
         r'\".*?($|\n)'
         t.lexer.lineno += t.value.count('\n')
         msg = "Unterminated string"
+        self._error(msg, t)
+
+    def t_UNTCCHAR (self, t) :
+        r'\'.*?($|\n|\')'
+        t.lexer.lineno += t.value.count('\n')
+        msg = "Invalid char constant"
         self._error(msg, t)
 
     # If an unmatched character is found
