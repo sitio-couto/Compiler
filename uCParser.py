@@ -30,7 +30,7 @@ class uCParser():
     def build(self, **kwargs):
         self.parser = yacc(
             module=self,
-            start='statement_list',
+            start='declaration',
             write_tables=False,
             **kwargs)
     
@@ -47,16 +47,22 @@ class uCParser():
         else:
             p[0] = p[1]
 
+    ### RENAMED TO p_assignment_statement
+    # def p_assign_statement (self, p):
+    #     ''' statement : ID '=' expr
+    #                   | ID TIMESEQ expr
+    #                   | ID DIVEQ expr 
+    #                   | ID MODEQ expr 
+    #                   | ID PLUSEQ expr 
+    #                   | ID MINUSEQ expr
+    #     '''
+    #     p[0] = ('assign', p[1], p[2], p[3])
     def p_assign_statement (self, p):
-        ''' statement : ID '=' expr
-                      | ID TIMESEQ expr
-                      | ID DIVEQ expr 
-                      | ID MODEQ expr 
-                      | ID PLUSEQ expr 
-                      | ID MINUSEQ expr
+        ''' statement : assignment_statement
         '''
-        p[0] = ('assign', p[1], p[2], p[3])
-        
+        p[0] = p[1]
+    #####################################
+
     def p_print_statement (self, p):
         ''' statement : PRINT '(' expr ')'
         '''
@@ -85,7 +91,61 @@ class uCParser():
         ''' expr : '(' expr ')'
         '''
         p[0] = p[2]
-    
+
+    #### IMPLEMENTING VARIABLE DECLARATIONS ####
+
+    def p_declaration (self, p):
+        ''' declaration : type_specifier init_declarator_list ';'
+        '''
+        p[0] = ('declaration', p[1], p[2])
+
+    def p_init_declarator_list (self, p) :
+        ''' init_declarator_list : init_declarator_list declarator
+                                 | init_declarator_list declarator '=' initializer
+                                 | empty
+        '''
+        if len(p) == 3 :
+            p[0] = p[1] + (p[2])
+        elif len(p) == 5 :
+            p[0] = p
+
+    def p_type_specifier (self, p):
+        ''' type_specifier : VOID
+                           | CHAR
+                           | INT
+                           | FLOAT
+        '''
+        p[0] = p[1]
+
+    # INCOMPLETE
+    def p_initializer (self, p):
+        ''' initializer : assignment_statement
+        '''
+        p[0] = p[1]
+
+    # INCOMPLETE
+    def p_declarator (self, p):
+        ''' declarator : ID
+        '''
+        if len(p) == 2 :
+            p[0] = ('id',p[1])
+
+    def p_assignment_statement (self, p):
+        ''' assignment_statement : ID '=' expr
+                                 | ID TIMESEQ expr
+                                 | ID DIVEQ expr 
+                                 | ID MODEQ expr 
+                                 | ID PLUSEQ expr 
+                                 | ID MINUSEQ expr
+        '''
+        p[0] = ('assign', p[1], p[2], p[3])
+
+
+    #### EMPTY PRODUCTION ####
+    def p_empty (self, p):
+        pass
+
+    #### ERROR HANDLING ####
     def p_error (self, p):
         if p:
             print("Error near the symbol %s" % p.value)

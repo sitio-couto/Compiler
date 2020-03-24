@@ -6,15 +6,12 @@ Unused terminals:
     ASSERT
     BREAK
     CCONST
-    CHAR
     COMMENT
     ELSE
     EQ
-    FLOAT
     FOR
     GE
     IF
-    INT
     LE
     LINECOMMENT
     MINUSMINUS
@@ -25,659 +22,95 @@ Unused terminals:
     STRING
     UNEQ
     UNTCOMMENT
-    VOID
     WHILE
 
 Grammar
 
-Rule 0     S' -> statement_list
-Rule 1     statement_list -> statement_list statement ;
-Rule 2     statement_list -> statement ;
-Rule 3     statement -> ID = expr
-Rule 4     statement -> ID TIMESEQ expr
-Rule 5     statement -> ID DIVEQ expr
-Rule 6     statement -> ID MODEQ expr
-Rule 7     statement -> ID PLUSEQ expr
-Rule 8     statement -> ID MINUSEQ expr
-Rule 9     statement -> PRINT ( expr )
-Rule 10    expr -> expr + expr
-Rule 11    expr -> expr - expr
-Rule 12    expr -> expr * expr
-Rule 13    expr -> expr / expr
-Rule 14    expr -> ICONST
-Rule 15    expr -> FCONST
-Rule 16    expr -> ID
-Rule 17    expr -> ( expr )
+Rule 0     S' -> declaration
+Rule 1     statement_list -> statement_list statement
+Rule 2     statement_list -> statement
+Rule 3     statement -> PRINT ( expr )
+Rule 4     expr -> expr + expr
+Rule 5     expr -> expr - expr
+Rule 6     expr -> expr * expr
+Rule 7     expr -> expr / expr
+Rule 8     expr -> ICONST
+Rule 9     expr -> FCONST
+Rule 10    expr -> ID
+Rule 11    expr -> ( expr )
+Rule 12    declaration -> type_specifier init_declarator_list ;
+Rule 13    init_declarator_list -> init_declarator_list declarator
+Rule 14    init_declarator_list -> init_declarator_list declarator = initializer
+Rule 15    init_declarator_list -> empty
+Rule 16    type_specifier -> VOID
+Rule 17    type_specifier -> CHAR
+Rule 18    type_specifier -> INT
+Rule 19    type_specifier -> FLOAT
+Rule 20    initializer -> assignment_statement
+Rule 21    declarator -> ID
+Rule 22    assignment_statement -> ID = expr
+Rule 23    assignment_statement -> ID TIMESEQ expr
+Rule 24    assignment_statement -> ID DIVEQ expr
+Rule 25    assignment_statement -> ID MODEQ expr
+Rule 26    assignment_statement -> ID PLUSEQ expr
+Rule 27    assignment_statement -> ID MINUSEQ expr
 
 Terminals, with rules where they appear
 
-(                    : 9 17
-)                    : 9 17
-*                    : 12
-+                    : 10
--                    : 11
-/                    : 13
-;                    : 1 2
-=                    : 3
+(                    : 3 11
+)                    : 3 11
+*                    : 6
++                    : 4
+-                    : 5
+/                    : 7
+;                    : 12
+=                    : 14 22
 AND                  : 
 ASSERT               : 
 BREAK                : 
 CCONST               : 
-CHAR                 : 
+CHAR                 : 17
 COMMENT              : 
-DIVEQ                : 5
+DIVEQ                : 24
 ELSE                 : 
 EQ                   : 
-FCONST               : 15
-FLOAT                : 
+FCONST               : 9
+FLOAT                : 19
 FOR                  : 
 GE                   : 
-ICONST               : 14
-ID                   : 3 4 5 6 7 8 16
+ICONST               : 8
+ID                   : 10 21 22 23 24 25 26 27
 IF                   : 
-INT                  : 
+INT                  : 18
 LE                   : 
 LINECOMMENT          : 
-MINUSEQ              : 8
+MINUSEQ              : 27
 MINUSMINUS           : 
-MODEQ                : 6
+MODEQ                : 25
 OR                   : 
-PLUSEQ               : 7
+PLUSEQ               : 26
 PLUSPLUS             : 
-PRINT                : 9
+PRINT                : 3
 READ                 : 
 RETURN               : 
 STRING               : 
-TIMESEQ              : 4
+TIMESEQ              : 23
 UNEQ                 : 
 UNTCOMMENT           : 
-VOID                 : 
+VOID                 : 16
 WHILE                : 
 error                : 
 
 Nonterminals, with rules where they appear
 
-expr                 : 3 4 5 6 7 8 9 10 10 11 11 12 12 13 13 17
+assignment_statement : 20
+declaration          : 0
+declarator           : 13 14
+empty                : 15
+expr                 : 3 4 4 5 5 6 6 7 7 11 22 23 24 25 26 27
+init_declarator_list : 12 13 14
+initializer          : 14
 statement            : 1 2
-statement_list       : 1 0
-
-Parsing method: LALR
-
-state 0
-
-    (0) S' -> . statement_list
-    (1) statement_list -> . statement_list statement ;
-    (2) statement_list -> . statement ;
-    (3) statement -> . ID = expr
-    (4) statement -> . ID TIMESEQ expr
-    (5) statement -> . ID DIVEQ expr
-    (6) statement -> . ID MODEQ expr
-    (7) statement -> . ID PLUSEQ expr
-    (8) statement -> . ID MINUSEQ expr
-    (9) statement -> . PRINT ( expr )
-
-    ID              shift and go to state 3
-    PRINT           shift and go to state 4
-
-    statement_list                 shift and go to state 1
-    statement                      shift and go to state 2
-
-state 1
-
-    (0) S' -> statement_list .
-    (1) statement_list -> statement_list . statement ;
-    (3) statement -> . ID = expr
-    (4) statement -> . ID TIMESEQ expr
-    (5) statement -> . ID DIVEQ expr
-    (6) statement -> . ID MODEQ expr
-    (7) statement -> . ID PLUSEQ expr
-    (8) statement -> . ID MINUSEQ expr
-    (9) statement -> . PRINT ( expr )
-
-    ID              shift and go to state 3
-    PRINT           shift and go to state 4
-
-    statement                      shift and go to state 5
-
-state 2
-
-    (2) statement_list -> statement . ;
-
-    ;               shift and go to state 6
-
-
-state 3
-
-    (3) statement -> ID . = expr
-    (4) statement -> ID . TIMESEQ expr
-    (5) statement -> ID . DIVEQ expr
-    (6) statement -> ID . MODEQ expr
-    (7) statement -> ID . PLUSEQ expr
-    (8) statement -> ID . MINUSEQ expr
-
-    =               shift and go to state 7
-    TIMESEQ         shift and go to state 8
-    DIVEQ           shift and go to state 9
-    MODEQ           shift and go to state 10
-    PLUSEQ          shift and go to state 11
-    MINUSEQ         shift and go to state 12
-
-
-state 4
-
-    (9) statement -> PRINT . ( expr )
-
-    (               shift and go to state 13
-
-
-state 5
-
-    (1) statement_list -> statement_list statement . ;
-
-    ;               shift and go to state 14
-
-
-state 6
-
-    (2) statement_list -> statement ; .
-
-    ID              reduce using rule 2 (statement_list -> statement ; .)
-    PRINT           reduce using rule 2 (statement_list -> statement ; .)
-    $end            reduce using rule 2 (statement_list -> statement ; .)
-
-
-state 7
-
-    (3) statement -> ID = . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 16
-
-state 8
-
-    (4) statement -> ID TIMESEQ . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 20
-
-state 9
-
-    (5) statement -> ID DIVEQ . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 21
-
-state 10
-
-    (6) statement -> ID MODEQ . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 22
-
-state 11
-
-    (7) statement -> ID PLUSEQ . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 23
-
-state 12
-
-    (8) statement -> ID MINUSEQ . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 24
-
-state 13
-
-    (9) statement -> PRINT ( . expr )
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 25
-
-state 14
-
-    (1) statement_list -> statement_list statement ; .
-
-    ID              reduce using rule 1 (statement_list -> statement_list statement ; .)
-    PRINT           reduce using rule 1 (statement_list -> statement_list statement ; .)
-    $end            reduce using rule 1 (statement_list -> statement_list statement ; .)
-
-
-state 15
-
-    (16) expr -> ID .
-
-    +               reduce using rule 16 (expr -> ID .)
-    -               reduce using rule 16 (expr -> ID .)
-    *               reduce using rule 16 (expr -> ID .)
-    /               reduce using rule 16 (expr -> ID .)
-    ;               reduce using rule 16 (expr -> ID .)
-    )               reduce using rule 16 (expr -> ID .)
-
-
-state 16
-
-    (3) statement -> ID = expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    ;               reduce using rule 3 (statement -> ID = expr .)
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 17
-
-    (14) expr -> ICONST .
-
-    +               reduce using rule 14 (expr -> ICONST .)
-    -               reduce using rule 14 (expr -> ICONST .)
-    *               reduce using rule 14 (expr -> ICONST .)
-    /               reduce using rule 14 (expr -> ICONST .)
-    ;               reduce using rule 14 (expr -> ICONST .)
-    )               reduce using rule 14 (expr -> ICONST .)
-
-
-state 18
-
-    (15) expr -> FCONST .
-
-    +               reduce using rule 15 (expr -> FCONST .)
-    -               reduce using rule 15 (expr -> FCONST .)
-    *               reduce using rule 15 (expr -> FCONST .)
-    /               reduce using rule 15 (expr -> FCONST .)
-    ;               reduce using rule 15 (expr -> FCONST .)
-    )               reduce using rule 15 (expr -> FCONST .)
-
-
-state 19
-
-    (17) expr -> ( . expr )
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 30
-
-state 20
-
-    (4) statement -> ID TIMESEQ expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    ;               reduce using rule 4 (statement -> ID TIMESEQ expr .)
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 21
-
-    (5) statement -> ID DIVEQ expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    ;               reduce using rule 5 (statement -> ID DIVEQ expr .)
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 22
-
-    (6) statement -> ID MODEQ expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    ;               reduce using rule 6 (statement -> ID MODEQ expr .)
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 23
-
-    (7) statement -> ID PLUSEQ expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    ;               reduce using rule 7 (statement -> ID PLUSEQ expr .)
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 24
-
-    (8) statement -> ID MINUSEQ expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    ;               reduce using rule 8 (statement -> ID MINUSEQ expr .)
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 25
-
-    (9) statement -> PRINT ( expr . )
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    )               shift and go to state 31
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 26
-
-    (10) expr -> expr + . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 32
-
-state 27
-
-    (11) expr -> expr - . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 33
-
-state 28
-
-    (12) expr -> expr * . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 34
-
-state 29
-
-    (13) expr -> expr / . expr
-    (10) expr -> . expr + expr
-    (11) expr -> . expr - expr
-    (12) expr -> . expr * expr
-    (13) expr -> . expr / expr
-    (14) expr -> . ICONST
-    (15) expr -> . FCONST
-    (16) expr -> . ID
-    (17) expr -> . ( expr )
-
-    ICONST          shift and go to state 17
-    FCONST          shift and go to state 18
-    ID              shift and go to state 15
-    (               shift and go to state 19
-
-    expr                           shift and go to state 35
-
-state 30
-
-    (17) expr -> ( expr . )
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    )               shift and go to state 36
-    +               shift and go to state 26
-    -               shift and go to state 27
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-
-state 31
-
-    (9) statement -> PRINT ( expr ) .
-
-    ;               reduce using rule 9 (statement -> PRINT ( expr ) .)
-
-
-state 32
-
-    (10) expr -> expr + expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    +               reduce using rule 10 (expr -> expr + expr .)
-    -               reduce using rule 10 (expr -> expr + expr .)
-    ;               reduce using rule 10 (expr -> expr + expr .)
-    )               reduce using rule 10 (expr -> expr + expr .)
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-  ! *               [ reduce using rule 10 (expr -> expr + expr .) ]
-  ! /               [ reduce using rule 10 (expr -> expr + expr .) ]
-  ! +               [ shift and go to state 26 ]
-  ! -               [ shift and go to state 27 ]
-
-
-state 33
-
-    (11) expr -> expr - expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    +               reduce using rule 11 (expr -> expr - expr .)
-    -               reduce using rule 11 (expr -> expr - expr .)
-    ;               reduce using rule 11 (expr -> expr - expr .)
-    )               reduce using rule 11 (expr -> expr - expr .)
-    *               shift and go to state 28
-    /               shift and go to state 29
-
-  ! *               [ reduce using rule 11 (expr -> expr - expr .) ]
-  ! /               [ reduce using rule 11 (expr -> expr - expr .) ]
-  ! +               [ shift and go to state 26 ]
-  ! -               [ shift and go to state 27 ]
-
-
-state 34
-
-    (12) expr -> expr * expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    +               reduce using rule 12 (expr -> expr * expr .)
-    -               reduce using rule 12 (expr -> expr * expr .)
-    *               reduce using rule 12 (expr -> expr * expr .)
-    /               reduce using rule 12 (expr -> expr * expr .)
-    ;               reduce using rule 12 (expr -> expr * expr .)
-    )               reduce using rule 12 (expr -> expr * expr .)
-
-  ! +               [ shift and go to state 26 ]
-  ! -               [ shift and go to state 27 ]
-  ! *               [ shift and go to state 28 ]
-  ! /               [ shift and go to state 29 ]
-
-
-state 35
-
-    (13) expr -> expr / expr .
-    (10) expr -> expr . + expr
-    (11) expr -> expr . - expr
-    (12) expr -> expr . * expr
-    (13) expr -> expr . / expr
-
-    +               reduce using rule 13 (expr -> expr / expr .)
-    -               reduce using rule 13 (expr -> expr / expr .)
-    *               reduce using rule 13 (expr -> expr / expr .)
-    /               reduce using rule 13 (expr -> expr / expr .)
-    ;               reduce using rule 13 (expr -> expr / expr .)
-    )               reduce using rule 13 (expr -> expr / expr .)
-
-  ! +               [ shift and go to state 26 ]
-  ! -               [ shift and go to state 27 ]
-  ! *               [ shift and go to state 28 ]
-  ! /               [ shift and go to state 29 ]
-
-
-state 36
-
-    (17) expr -> ( expr ) .
-
-    +               reduce using rule 17 (expr -> ( expr ) .)
-    -               reduce using rule 17 (expr -> ( expr ) .)
-    *               reduce using rule 17 (expr -> ( expr ) .)
-    /               reduce using rule 17 (expr -> ( expr ) .)
-    ;               reduce using rule 17 (expr -> ( expr ) .)
-    )               reduce using rule 17 (expr -> ( expr ) .)
+statement_list       : 1
+type_specifier       : 12
 
