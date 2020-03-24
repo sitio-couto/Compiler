@@ -8,6 +8,8 @@ Authors:
     Vinicius Couto Espindola - RA 188115
 
 University of Campinas - UNICAMP - 2020
+
+Last Modified: 24/03/2020.
 '''
 
 import ply.lex as lex
