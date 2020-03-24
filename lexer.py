@@ -19,6 +19,7 @@ from os.path import exists
 # ID & KEYWORDS => Longest Match & Rule Order Using Dictionary
 # COMMENT & UNTCOMMENT => Rule Order (comment func comes first)
 # STRING & UNTSTRING => Rule Order (string func comes first)
+# CCONST & UNTCCHAR => Rule Order (cconst func comes first)
 class uCLexer():
     '''A Lexer for the uC language.
     ''' 

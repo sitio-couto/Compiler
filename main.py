@@ -11,6 +11,7 @@ University of Campinas - UNICAMP - 2020
 '''
 
 from lexer import uCLexer as Lexer
+from parser import uCParser as Parser
 
 def print_error(msg, x, y):
     print("Lexical error: %s at %d:%d" % (msg, x, y))
