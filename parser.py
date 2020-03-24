@@ -23,7 +23,7 @@ class uCParser():
     
     # Builds the parser.
     def build(self, **kwargs):
-        self.parser = yacc(module=self, write_tables=False)
+        self.parser = yacc(module=self, write_tables=False, **kwargs)
     
     # Parses an expression.
     def parse(self, data):
@@ -47,7 +47,6 @@ class uCParser():
         ''' statement : PRINT '(' expr ')'
         '''
         p[0] = ('print', p[3])
-        print('print')
         
     def p_binop_expr (self, p):
         ''' expr : expr '+' expr
