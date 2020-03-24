@@ -16,6 +16,11 @@ from ply.yacc import yacc
 
 class uCParser():
     
+    precedence = (
+        ('left', '+', '-'),
+        ('left', '*', '/')
+        )
+
     # Initializes the class with the lexer object and tokens list.
     def __init__(self, lexer):
         self.lexer = lexer
@@ -23,25 +28,34 @@ class uCParser():
     
     # Builds the parser.
     def build(self, **kwargs):
-        self.parser = yacc(module=self, write_tables=False, **kwargs)
+        self.parser = yacc(
+            module=self,
+            start='statement_list',
+            write_tables=False,
+            **kwargs)
     
     # Parses an expression.
     def parse(self, data):
-        self.parser.parse(data)
+        print(self.parser.parse(data))
     
     def p_statement_list(self, p):
-        ''' statements : statements statement
-                       | statement
+        ''' statement_list : statement_list statement
+                           | statement
         '''
-        if len(p) == 2:
-            p[0] = p[1]
+        if len(p) == 3:
+            p[0] = p[1] + (p[2])
         else:
-            p[0] = p[1] + (p[2]) 
+            p[0] = p[1]
 
     def p_assign_statement (self, p):
         ''' statement : ID '=' expr
+                      | ID TIMESEQ expr
+                      | ID DIVEQ expr 
+                      | ID MODEQ expr 
+                      | ID PLUSEQ expr 
+                      | ID MINUSEQ expr
         '''
-        p[0] = ('assign', p[1], p[3])
+        p[0] = ('assign', p[1], p[2], p[3])
         
     def p_print_statement (self, p):
         ''' statement : PRINT '(' expr ')'
@@ -50,7 +64,9 @@ class uCParser():
         
     def p_binop_expr (self, p):
         ''' expr : expr '+' expr
+                 | expr '-' expr
                  | expr '*' expr
+                 | expr '/' expr
         '''
         p[0] = (p[2], p[1], p[3])
         
@@ -75,8 +91,3 @@ class uCParser():
             print("Error near the symbol %s" % p.value)
         else:
             print("Error at the end of input")
-
-    precedence = (
-        ('left', '+'),
-        ('left', '*')
-        )

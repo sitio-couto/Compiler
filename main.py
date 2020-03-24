@@ -11,7 +11,7 @@ University of Campinas - UNICAMP - 2020
 '''
 
 from lexer import uCLexer as Lexer
-from parser import uCParser as Parser
+from uCParser import uCParser as Parser
 from os.path import exists
 
 def print_error(msg, x, y):
