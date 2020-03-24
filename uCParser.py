@@ -36,7 +36,7 @@ class uCParser():
     
     # Parses an expression.
     def parse(self, data):
-        print(self.parser.parse(data))
+        return self.parser.parse(data)
     
     def p_statement_list(self, p):
         ''' statement_list : statement_list statement
@@ -101,7 +101,7 @@ class uCParser():
 
     def p_init_declarator_list (self, p) :
         ''' init_declarator_list : init_declarator_list declarator
-                                 | init_declarator_list declarator '=' initializer
+                                 | init_declarator_list '=' expr
                                  | empty
         '''
         if len(p) == 3 :
@@ -143,6 +143,8 @@ class uCParser():
 
     #### EMPTY PRODUCTION ####
     def p_empty (self, p):
+        '''empty :
+        '''
         pass
 
     #### ERROR HANDLING ####
