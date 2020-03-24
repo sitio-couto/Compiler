@@ -10,7 +10,7 @@ Authors:
 University of Campinas - UNICAMP - 2020
 '''
 
-from lexer import uCLexer as Lexer
+from uCLexer import uCLexer as Lexer
 from uCParser import uCParser as Parser
 from os.path import exists
 
