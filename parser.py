@@ -25,23 +25,24 @@ class uCParser():
             p[0] = p[1] + (p[2]) 
 
     def p_assign_statement (p):
-        ''' statement : ID = expr
+        ''' statement : ID '=' expr
         '''
         p[0] = ('assign', p[1], p[3])
         
     def p_print_statement (p):
-        ''' statement : PRINT ( expr )
+        ''' statement : PRINT '(' expr ')'
         '''
         p[0] = ('print', p[3])
         
     def p_binop_expr (p):
-        ''' expr : expr + expr
-                 | expr * expr
+        ''' expr : expr '+' expr
+                 | expr '*' expr
         '''
         p[0] = (p[2], p[1], p[3])
         
     def p_num_expr (p):
-        ''' expr : NUM
+        ''' expr : ICONST
+                 | FCONST
         '''
         p[0] = ('num', p[1])
         
@@ -51,7 +52,7 @@ class uCParser():
         p[0] = ('id', p[1])
         
     def p_compound_expr (p):
-        ''' expr : ( expr )
+        ''' expr : '(' expr ')'
         '''
         p[0] = p[2]
     
@@ -65,7 +66,3 @@ class uCParser():
         ('left', '+'),
         ('left', '*')
         )
-
-parser = yacc(write_tables=False)
-
-parser.parse('a = 3*4')
