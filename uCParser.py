@@ -13,6 +13,7 @@ Last Modified: 24/03/2020.
 '''
 
 from ply.yacc import yacc
+from os.path import exists
 
 class uCParser():
     
@@ -40,6 +41,9 @@ class uCParser():
     
     # Parses an expression.
     def parse(self, data):
+        if exists(data): 
+            with open(data, 'r') as content_file :
+                data = content_file.read()
         return self.parser.parse(data)
     
     #### ROOT ####
