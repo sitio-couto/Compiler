@@ -16,10 +16,14 @@ from ply.yacc import yacc
 
 class uCParser():
     
-    # precedence = (
-    #     ('left', '+', '-'),
-    #     ('left', '*', '/')
-    #     )
+    precedence = (
+        ('left', 'OR'),
+        ('left', 'AND'),
+        ('left', 'EQ', 'UNEQ'),
+        ('left', '<', '>', 'LE', 'GE'),
+        ('left', '+', '-'),
+        ('left', '*', '/', '%')
+    )
 
     # Initializes the class with the lexer object and tokens list.
     def __init__(self, lexer):
