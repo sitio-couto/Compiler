@@ -83,9 +83,9 @@ class uCParser():
         '''
         p[0] = ('declaration', p[1], p[2])
 
-    def p_declarator_list(self, p):
+    def p_declarator_list (self, p):
         ''' declarator_list : declarator_list declarator
-                            | declarator_list
+                            | declarator
         '''
         if len(p) == 3 :
             p[0] = p[1] + (p[2])
@@ -376,8 +376,9 @@ class uCParser():
         p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
-        ''' read_statement : READ '(' declarator_list ')' ':'
+        ''' read_statement : READ '(' declarator_list ')' ';'
         '''
+        p[0] = ('read', p[3])
 
     #### MISCELANEOUS ####
     
