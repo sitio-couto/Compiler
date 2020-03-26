@@ -18,7 +18,8 @@ from os.path import exists
 class uCParser():
     
     precedence = (
-        ('left', 'OR', 'AND'),
+        ('left', 'OR'),
+        ('left', 'AND'),
         ('left', 'EQ', 'UNEQ'),
         ('left', '<', '>', 'LE', 'GE'),
         ('left', '+', '-'),

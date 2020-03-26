@@ -34,8 +34,8 @@ if __name__ == '__main__':
         if mode == 'l':
             while True: 
                 try:
-                    tokenizer.test(input("Filename or expression: "))
                     tokenizer.reset_line_num()
+                    tokenizer.test(input("Filename or expression: "))
                 except EOFError:
                     break
         elif mode == 'p':
