@@ -215,7 +215,7 @@ class uCParser():
             p[0] = (p[1], p[3])
 
     def p_assign_expr_list (self, p):
-        ''' assign_expr_list : assign_expr_list assign_expr
+        ''' assign_expr_list : assign_expr_list ',' assign_expr
                              | assign_expr
         '''
         p[0] = p[1]
@@ -371,6 +371,7 @@ class uCParser():
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list statement_list '}'
                                | '{' declaration_list '}'
+                               | '{' statement_list '}'
         '''
         if len(p) == 5:
             p[0] = ('{', p[2], p[3],'}')
@@ -391,7 +392,7 @@ class uCParser():
                                 | FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement
                                 | FOR '(' declaration expr_opt ';' expr_opt ')' statement
         '''
-        if p[1] == 'WHILE':
+        if p[1] == 'while':
             p[0] = ('while', p[3], p[5])
         else:
             if len(p) == 10:
@@ -403,7 +404,7 @@ class uCParser():
         ''' jump_statement : BREAK ';'
                            | RETURN expr_opt ';'
         '''
-        if p[1] == 'BREAK':
+        if p[1] == 'break':
             p[0] = ('break')
         else:
             p[0] = ('return', p[2])
