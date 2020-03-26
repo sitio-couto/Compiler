@@ -76,18 +76,23 @@ class uCParser():
         p[0] = p[1]
 
     def p_function_definition (self, p):
-        ''' function_definition : type_specifier declarator declaration_list compound_statement
-                                | declarator declaration_list compound_statement
+        ''' function_definition : type_specifier declarator declaration_list_opt compound_statement
+                                | declarator declaration_list_opt compound_statement
         '''
         if len(p) == 5:
             p[0] = ('func', p[1], p[2], p[3], p[4])
         else:
             p[0] = ('func', 'void', p[1], p[2], p[3])
 
+    def p_declaration_list_opt (self, p):
+        ''' declaration_list_opt : declaration_list
+                                 | empty
+        '''
+        p[0] = p[1]
+
     def p_declaration_list (self, p):
         ''' declaration_list : declaration_list declaration
                              | declaration
-                             | empty
         '''
         if len(p) == 3 :
             if p[1] is None : p[0] = (p[2])
