@@ -59,13 +59,13 @@ class uCParser():
         p[0] = p[1]
 
     def p_global_declaration_list (self, p) :
-            ''' global_declaration_list : global_declaration_list global_declaration
-                                        | global_declaration
-            '''
-            if len(p) == 3 :
-                p[0] = p[1] + (p[2])
-            else :
-                p[0] = p[1]
+        ''' global_declaration_list : global_declaration_list global_declaration
+                                    | global_declaration
+        '''
+        if len(p) == 3 :
+            p[0] = p[1] + (p[2])
+        else :
+            p[0] = p[1]
 
     #### FIRST SPLIT ####
 
@@ -184,9 +184,15 @@ class uCParser():
 
     #### EXPRESSIONS ####
 
+    def p_expr_list_opt (self, p):
+        ''' expr_list_opt : expr_list
+                          | empty
+        '''
+        p[0] = p[1]
+
     def p_expr_list(self, p):
         ''' expr_list : expr_list expr
-                      | expr_opt
+                      | expr
         '''
         if len(p) == 3 :
             p[0] = p[1] + (p[2])
@@ -408,7 +414,7 @@ class uCParser():
         p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
-        ''' print_statement : PRINT '(' expr_list ')' ';'
+        ''' print_statement : PRINT '(' expr_list_opt ')' ';'
         '''
         p[0] = ('print', p[3])
 
