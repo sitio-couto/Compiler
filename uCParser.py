@@ -328,7 +328,6 @@ class uCParser():
     def p_statement_list(self, p):
         ''' statement_list : statement_list statement
                            | statement
-                           | empty
         '''
         if len(p) == 3 :
             if p[1] is None: p[0] = p[2]
@@ -355,8 +354,12 @@ class uCParser():
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list statement_list '}'
+                               | '{' declaration_list '}'
         '''
-        p[0] = ('{', p[2], p[3],'}')
+        if len(p) == 5:
+            p[0] = ('{', p[2], p[3],'}')
+        else:
+            p[0] = ('{', p[2], '}')
 
     def p_selection_statement(self, p):
         ''' selection_statement : IF '(' expr ')' statement
