@@ -160,11 +160,16 @@ class uCParser():
             p[0] = ('{', p[2], ',', '}')
 
     def p_declarator (self, p):
-        ''' declarator : ID
-                       | '(' declarator ')'
-                       | declarator '[' const_expr_opt ']'
-                       | declarator '(' parameter_list ')'
-                       | declarator '(' id_list ')'
+        ''' declarator : direct_declarator
+        '''
+        p[0] = p[1]
+        
+    def p_direct_declarator (self, p):
+        ''' direct_declarator : ID
+                              | '(' declarator ')'
+                              | direct_declarator '[' const_expr_opt ']'
+                              | direct_declarator '(' parameter_list ')'
+                              | direct_declarator '(' id_list ')'
         '''
         if len(p) == 2 :
             p[0] = ('id', p[1])
