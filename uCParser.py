@@ -202,9 +202,9 @@ class uCParser():
         else:
             p[0] = (p[1], p[3])
 
-    def p_assign_expr_opt (self, p):
-        ''' assign_expr_opt : assign_expr
-                            | empty
+    def p_assign_expr_list (self, p):
+        ''' assign_expr_list : assign_expr_list assign_expr
+                             | assign_expr
         '''
         p[0] = p[1]
 
@@ -285,7 +285,8 @@ class uCParser():
     def p_postfix_expr (self, p):
         '''postfix_expr : primary_expr
                         | postfix_expr '[' expr ']'
-                        | postfix_expr '(' assign_expr_opt ')'
+                        | postfix_expr '(' assign_expr_list ')'
+                        | postfix_expr '(' ')'
                         | postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
         '''
@@ -294,7 +295,10 @@ class uCParser():
         elif p[2] == '[':
             p[0] = (p[1], ('[', p[3],']'))
         elif p[2] == '(':
-            p[0] = (p[1], ('(', p[3],')'))
+            if p[3] == ')':
+                p[0] = (p[1], ('(',')'))
+            else:
+                p[0] = (p[1], ('(', p[3],')'))
         elif p[2] == '--': 
             p[0] = (p[1], '--')
         elif p[2] == '++':
