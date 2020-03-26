@@ -75,9 +75,13 @@ class uCParser():
         p[0] = p[1]
 
     def p_function_definition (self, p):
-        ''' function_definition : type_specifier_opt declarator declaration_list compound_statement
+        ''' function_definition : type_specifier declarator declaration_list compound_statement
+                                | declarator declaration_list compound_statement
         '''
-        p[0] = ('func', p[1], p[2], p[3], p[4])
+        if len(p) == 5:
+            p[0] = ('func', p[1], p[2], p[3], p[4])
+        else:
+            p[0] = ('func', 'void', p[1], p[2], p[3])
 
     def p_declaration_list (self, p):
         ''' declaration_list : declaration_list declaration
@@ -124,12 +128,6 @@ class uCParser():
         else:
             p[0] = (p[1], p[2], p[3])
 
-    def p_type_specifier_opt (self, p):
-        ''' type_specifier_opt : type_specifier
-                               | empty
-        '''
-        p[0] = p[1]
-
     def p_type_specifier (self, p):
         ''' type_specifier : VOID
                            | CHAR
@@ -165,14 +163,14 @@ class uCParser():
         p[0] = p[1]
         
     def p_direct_declarator (self, p):
-        ''' direct_declarator : ID
+        ''' direct_declarator : identifier
                               | '(' declarator ')'
                               | direct_declarator '[' const_expr_opt ']'
                               | direct_declarator '(' parameter_list ')'
                               | direct_declarator '(' id_list ')'
         '''
         if len(p) == 2 :
-            p[0] = ('id', p[1])
+            p[0] = p[1]
         elif len(p) == 4 :
             p[0] = p[2]
         else:
@@ -303,7 +301,7 @@ class uCParser():
             p[0] = (p[1], '++')
 
     def p_primary_expr (self, p): # TODO: Might need to rethink these symbols
-        ''' primary_expr : ID
+        ''' primary_expr : identifier
                          | constant
                          | STRING
                          | '(' expr ')'
@@ -313,6 +311,11 @@ class uCParser():
         else:
             p[0] = p[2]
 
+    def p_identifier (self, p):
+        ''' identifier : ID
+        '''
+        p[0] = ('id', p[1])
+        
     def p_constant (self, p):
         ''' constant : CCONST
                      | ICONST
@@ -400,8 +403,8 @@ class uCParser():
     #### MISCELANEOUS ####
     
     def p_id_list(self, p):
-        ''' id_list : id_list ',' ID
-                    | ID
+        ''' id_list : id_list ',' identifier
+                    | identifier
         '''
         if len(p) == 4 :
             p[0] = p[1] + (p[3])
