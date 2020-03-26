@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 24/03/2020.
+Last Modified: 26/03/2020.
 '''
 
 from ply.yacc import yacc
@@ -200,7 +200,7 @@ class uCParser():
 
     def p_assign_expr_opt (self, p):
         ''' assign_expr_opt : assign_expr
-			                | empty
+                            | empty
         '''
         p[0] = p[1]
 
@@ -431,6 +431,6 @@ class uCParser():
     #### ERROR HANDLING ####
     def p_error (self, p):
         if p:
-            print("Error near the symbol %s" % p.value)
+            print("Error near the symbol %s at (%s, %s)." % (p.value, p.lineno, p.lexpos))
         else:
             print("Error at the end of input")

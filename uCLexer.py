@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 24/03/2020.
+Last Modified: 26/03/2020.
 '''
 
 import ply.lex as lex
@@ -94,9 +94,7 @@ class uCLexer():
         # Logical Operators
         'EQ', 'OR', 'AND', 'UNEQ', 'GE', 'LE',
         # Assignment Operators
-        'PLUSEQ', 'MINUSEQ', 'TIMESEQ', 'DIVEQ', 'MODEQ',
-        # Comments
-        'LINECOMMENT', 'COMMENT', 'UNTCOMMENT'
+        'PLUSEQ', 'MINUSEQ', 'TIMESEQ', 'DIVEQ', 'MODEQ'
     )
     
     # A string containing ignored characters (spaces and tabs)
@@ -143,17 +141,19 @@ class uCLexer():
         r'\'([^"\'\\\n]|\\["\'\\]|\\[avfntber0])\''
         return t
 
+    def t_STRING (self, t) :
+        r'\".*?\"'
+        return t
+        
     def t_LINECOMMENT (self, t) :
         r'//.*(\n|$)'
         t.lexer.lineno += t.value.count("\n")
+        pass
 
     def t_COMMENT (self, t) :
         r'/\*(.|\n)*?\*/'
         t.lexer.lineno += t.value.count("\n")
-
-    def t_STRING (self, t) :
-        r'\".*?\"'
-        return t
+        pass
 
     #### ERROR HANDLING RULES ####
     # Unterminated Comment
@@ -170,6 +170,7 @@ class uCLexer():
         msg = "Unterminated string"
         self._error(msg, t)
 
+    # Unmatched quotes (unterminated character)
     def t_UNTCCHAR (self, t) :
         r'\'.*?($|\n|\')'
         t.lexer.lineno += t.value.count('\n')
