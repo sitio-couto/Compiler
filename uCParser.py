@@ -106,7 +106,7 @@ class uCParser():
         p[0] = ('declaration', p[1], p[2])
 
     def p_declarator_list (self, p):
-        ''' declarator_list : declarator_list declarator
+        ''' declarator_list : declarator_list ',' declarator
                             | declarator
         '''
         if len(p) == 3 :
@@ -346,8 +346,7 @@ class uCParser():
                            | statement
         '''
         if len(p) == 3 :
-            if p[1] is None: p[0] = p[2]
-            else: p[0] = p[1] + (p[2])
+            p[0] = (p[1], p[2])
         else:
             p[0] = p[1]
 
