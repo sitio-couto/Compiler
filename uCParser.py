@@ -45,6 +45,7 @@ class uCParser():
     
     # Tests an expression and prints the result
     def test(self, data):
+        self.lexer.reset_line_num()
         if exists(data): 
             with open(data, 'r') as content_file :
                 data = content_file.read()
@@ -109,7 +110,7 @@ class uCParser():
             p[0] = p[1]
 
     def p_init_declarator_list (self, p):
-        ''' init_declarator_list : init_declarator_list init_declarator
+        ''' init_declarator_list : init_declarator_list ',' init_declarator
                                  | init_declarator 
                                  | empty
         '''
@@ -182,7 +183,7 @@ class uCParser():
         ''' expr_list : expr_list expr
                       | expr_opt
         '''
-        if len(p) == 2 :
+        if len(p) == 3 :
             p[0] = p[1] + (p[2])
         else:
             p[0] = p[1]
@@ -377,11 +378,15 @@ class uCParser():
     def p_iteration_statement(self, p):
         ''' iteration_statement : WHILE '(' expr ')' statement
                                 | FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement
+                                | FOR '(' declaration expr_opt ';' expr_opt ')' statement
         '''
         if p[1] == 'WHILE':
             p[0] = ('while', p[3], p[5])
         else:
-            p[0] = ('for', p[3], p[5], p[7], p[9])
+            if len(p) == 10:
+                p[0] = ('for', p[3], p[5], p[7], p[9])                
+            else:
+                p[0] = ('for', p[3], p[4], p[6], p[8])
 
     def p_jump_statement(self, p):
         ''' jump_statement : BREAK ';'
@@ -412,6 +417,7 @@ class uCParser():
     def p_id_list(self, p):
         ''' id_list : id_list ',' identifier
                     | identifier
+                    | empty
         '''
         if len(p) == 4 :
             p[0] = p[1] + (p[3])
