@@ -41,7 +41,7 @@ if __name__ == '__main__':
         elif mode == 'p':
             while True:
                 try:
-                    print(parser.parse(input("Filename or expression for Parser: ")))
+                    parser.test(input("Filename or expression for Parser: "))
                 except EOFError:
                     break
         elif mode == 'q':

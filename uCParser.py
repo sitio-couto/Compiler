@@ -18,8 +18,7 @@ from os.path import exists
 class uCParser():
     
     precedence = (
-        ('left', 'OR'),
-        ('left', 'AND'),
+        ('left', 'OR', 'AND'),
         ('left', 'EQ', 'UNEQ'),
         ('left', '<', '>', 'LE', 'GE'),
         ('left', '+', '-'),
@@ -41,10 +40,14 @@ class uCParser():
     
     # Parses an expression.
     def parse(self, data):
+        return self.parser.parse(data)
+    
+    # Tests an expression and prints the result
+    def test(self, data):
         if exists(data): 
             with open(data, 'r') as content_file :
                 data = content_file.read()
-        return self.parser.parse(data)
+        print(self.parse(data))
     
     #### ROOT ####
     
