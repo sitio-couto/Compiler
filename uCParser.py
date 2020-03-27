@@ -275,6 +275,8 @@ class uCParser():
 
     #### CONFLICTS #####
     # | '+'
+    # | '*'
+    # | '-'
     def p_un_op(self, p):
         ''' un_op : '&'
                   | '+'
