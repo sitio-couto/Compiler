@@ -105,15 +105,6 @@ class uCParser():
         '''
         p[0] = ('declaration', p[1], p[2])
 
-    def p_declarator_list (self, p):
-        ''' declarator_list : declarator_list ',' declarator
-                            | declarator
-        '''
-        if len(p) == 3 :
-            p[0] = p[1] + (p[2])
-        else :
-            p[0] = p[1]
-
     def p_init_declarator_list (self, p):
         ''' init_declarator_list : init_declarator_list ',' init_declarator
                                  | init_declarator 
@@ -214,13 +205,6 @@ class uCParser():
         else:
             p[0] = (p[1], p[3])
 
-    def p_assign_expr_list (self, p):
-        ''' assign_expr_list : assign_expr_list ',' assign_expr
-                             | assign_expr
-        '''
-        p[0] = p[1]
-
-
     def p_assign_expr(self, p):
         ''' assign_expr : bin_expr
                         | un_expr assign_op assign_expr
@@ -297,7 +281,7 @@ class uCParser():
     def p_postfix_expr (self, p):
         '''postfix_expr : primary_expr
                         | postfix_expr '[' expr ']'
-                        | postfix_expr '(' assign_expr_list ')'
+                        | postfix_expr '(' arg_expr ')'
                         | postfix_expr '(' ')'
                         | postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
@@ -326,6 +310,15 @@ class uCParser():
             p[0] = p[1] # TODO: Not sure if there should be a tuple here (pe (ID,val))
         else:
             p[0] = p[2]
+
+    def p_arg_expr(self, p):
+        ''' arg_expr : assign_expr
+                     | arg_expr ',' assign_expr
+        '''
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            p[0] = (p[1], p[3])
 
     def p_identifier (self, p):
         ''' identifier : ID
@@ -419,7 +412,7 @@ class uCParser():
         p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
-        ''' read_statement : READ '(' declarator_list ')' ';'
+        ''' read_statement : READ '(' arg_expr ')' ';'
         '''
         p[0] = ('read', p[3])
 
