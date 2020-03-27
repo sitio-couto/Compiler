@@ -224,13 +224,17 @@ class uCParser():
         '''
         p[0] = p[1]
 
+    ##### CONFLICTS #####
+    # | bin_expr '+' bin_expr
+    # | bin_expr '-' bin_expr
+    # | bin_expr '*' bin_expr
     def p_bin_expr(self, p):
         ''' bin_expr : cast_expr
+                     | bin_expr '-' bin_expr
                      | bin_expr '*' bin_expr
+                     | bin_expr '+' bin_expr
                      | bin_expr '/' bin_expr
                      | bin_expr '%' bin_expr
-                     | bin_expr '+' bin_expr
-                     | bin_expr '-' bin_expr
                      | bin_expr '<' bin_expr
                      | bin_expr LE bin_expr
                      | bin_expr '>' bin_expr
@@ -269,22 +273,29 @@ class uCParser():
         else:
             p[0] = (p[1], p[2])
 
+    #### CONFLICTS #####
+    # | '+'
     def p_un_op(self, p):
         ''' un_op : '&'
-                  | '*'
                   | '+'
+                  | '*'
                   | '-'
                   | '!'
         '''
         p[0] = p[1]    
 
+    ##### CONFLICTS #####
+    # | postfix_expr '(' arg_expr ')'
+    # | postfix_expr '(' ')'
+    # | postfix_expr PLUSPLUS
+    # | postfix_expr MINUSMINUS
     def p_postfix_expr (self, p):
         '''postfix_expr : primary_expr
-                        | postfix_expr '[' expr ']'
                         | postfix_expr '(' arg_expr ')'
                         | postfix_expr '(' ')'
                         | postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
+                        | postfix_expr '[' expr ']'
         '''
         if len(p) == 2 :
             p[0] = p[1]
@@ -360,16 +371,17 @@ class uCParser():
         '''
         p[0] = p[1]
 
-    def p_compound_statement(self, p):
-        ''' compound_statement : '{' declaration_list statement_list '}'
-                               | '{' declaration_list '}'
-                               | '{' statement_list '}'
+    def p_statement_list_opt(self, p):
+        ''' statement_list_opt : statement_list
+                               | empty
         '''
-        if len(p) == 5:
-            p[0] = ('{', p[2], p[3],'}')
-        else:
-            p[0] = ('{', p[2], '}')
+        p[0] = p[1]
 
+    def p_compound_statement(self, p):
+        ''' compound_statement : '{' declaration_list_opt statement_list_opt '}'
+        '''
+        p[0] = ('{', p[2], p[3],'}')
+        
     def p_selection_statement(self, p):
         ''' selection_statement : IF '(' expr ')' statement
                                 | IF '(' expr ')' statement ELSE statement
