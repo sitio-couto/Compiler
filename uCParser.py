@@ -175,21 +175,6 @@ class uCParser():
 
     #### EXPRESSIONS ####
 
-    def p_expr_list_opt (self, p):
-        ''' expr_list_opt : expr_list
-                          | empty
-        '''
-        p[0] = p[1]
-
-    def p_expr_list(self, p):
-        ''' expr_list : expr_list expr
-                      | expr
-        '''
-        if len(p) == 3 :
-            p[0] = p[1] + (p[2])
-        else:
-            p[0] = p[1]
-
     def p_expr_opt(self, p):
         ''' expr_opt : expr
                      | empty
@@ -324,6 +309,12 @@ class uCParser():
         else:
             p[0] = p[2]
 
+    def p_arg_expr_opt(self, p):
+        ''' arg_expr_opt : arg_expr
+                         | empty
+        '''
+        p[0] = p[1]
+
     def p_arg_expr(self, p):
         ''' arg_expr : assign_expr
                      | arg_expr ',' assign_expr
@@ -421,7 +412,7 @@ class uCParser():
         p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
-        ''' print_statement : PRINT '(' expr_list_opt ')' ';'
+        ''' print_statement : PRINT '(' arg_expr_opt ')' ';'
         '''
         p[0] = ('print', p[3])
 
