@@ -214,7 +214,7 @@ class uCParser():
 
     def p_postfix_expr(self, p):
         '''postfix_expr : primary_expr
-                        | postfix_expr '(' arg_expr ')'
+                        | postfix_expr '(' expr ')'
                         | postfix_expr '(' ')'
                         | postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
@@ -244,15 +244,6 @@ class uCParser():
             p[0] = p[1] # TODO: Not sure if there should be a tuple here (pe (ID,val))
         else:
             p[0] = p[2]
-
-    def p_arg_expr(self, p):
-        ''' arg_expr : assign_expr
-                     | arg_expr ',' assign_expr
-        '''
-        if len(p) == 2:
-            p[0] = p[1]
-        else:
-            p[0] = (p[1], p[3])
 
     def p_identifier(self, p):
         ''' identifier : ID
@@ -327,12 +318,12 @@ class uCParser():
         p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
-        ''' print_statement : PRINT '(' arg_expr_opt ')' ';'
+        ''' print_statement : PRINT '(' expr_opt ')' ';'
         '''
         p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
-        ''' read_statement : READ '(' arg_expr ')' ';'
+        ''' read_statement : READ '(' expr ')' ';'
         '''
         p[0] = ('read', p[3])
 
@@ -432,12 +423,6 @@ class uCParser():
     def p_statement_list_opt(self, p):
         ''' statement_list_opt : statement_list
                                | empty
-        '''
-        p[0] = p[1]
-
-    def p_arg_expr_opt(self, p):
-        ''' arg_expr_opt : arg_expr
-                         | empty
         '''
         p[0] = p[1]
 
