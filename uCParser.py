@@ -53,29 +53,20 @@ class uCParser():
     
     #### ROOT ####
     
-    def p_program (self, p) :
+    def p_program(self, p) :
         ''' program : global_declaration_list
         '''
         p[0] = p[1]
 
-    def p_global_declaration_list (self, p) :
-        ''' global_declaration_list : global_declaration_list global_declaration
-                                    | global_declaration
-        '''
-        if len(p) == 3 :
-            p[0] = p[1] + (p[2])
-        else :
-            p[0] = p[1]
-
     #### FIRST SPLIT ####
 
-    def p_global_declaration (self, p) :
+    def p_global_declaration(self, p) :
         ''' global_declaration : function_definition
                                | declaration
         '''
         p[0] = p[1]
 
-    def p_function_definition (self, p):
+    def p_function_definition(self, p):
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement
                                 | declarator declaration_list_opt compound_statement
         '''
@@ -84,44 +75,12 @@ class uCParser():
         else:
             p[0] = ('func', 'void', p[1], p[2], p[3])
 
-    def p_declaration_list_opt (self, p):
-        ''' declaration_list_opt : declaration_list
-                                 | empty
-        '''
-        p[0] = p[1]
-
-    def p_declaration_list (self, p):
-        ''' declaration_list : declaration_list declaration
-                             | declaration
-        '''
-        if len(p) == 3 :
-            if p[1] is None : p[0] = (p[2])
-            else : p[0] = p[1] + (p[2])
-        elif len(p) == 2 :
-            p[0] = p[1]
-
-    def p_declaration (self, p):
+    def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';'
         '''
         p[0] = ('declaration', p[1], p[2])
 
-    def p_init_declarator_list_opt(self,p):
-        ''' init_declarator_list_opt : init_declarator_list
-                                     | empty
-        '''
-        p[0] = p[1]
-    
-    def p_init_declarator_list (self, p):
-        ''' init_declarator_list : init_declarator_list ',' init_declarator
-                                 | init_declarator 
-        '''
-        if len(p) == 3 :
-            if p[1] is None : p[0] = (p[2])
-            else : p[0] = p[1] + (p[2])
-        elif len(p) == 2 :
-            p[0] = p[1]
-
-    def p_init_declarator (self, p):
+    def p_init_declarator(self, p):
         ''' init_declarator : declarator
                             | declarator '=' initializer
         '''
@@ -130,7 +89,7 @@ class uCParser():
         else:
             p[0] = (p[1], p[2], p[3])
 
-    def p_type_specifier (self, p):
+    def p_type_specifier(self, p):
         ''' type_specifier : VOID
                            | CHAR
                            | INT
@@ -138,16 +97,7 @@ class uCParser():
         '''
         p[0] = p[1]
 
-    def p_initializer_list (self, p):
-        ''' initializer_list : initializer
-                             | initializer_list ',' initializer 
-        '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        else:
-            p[0] = p[1] + (p[2], p[3])
-
-    def p_initializer (self, p):
+    def p_initializer(self, p):
         ''' initializer : assign_expr
                         | '{' initializer_list '}'
                         | '{' initializer_list ',' '}'
@@ -159,12 +109,12 @@ class uCParser():
         else:
             p[0] = ('{', p[2], ',', '}')
 
-    def p_declarator (self, p):
+    def p_declarator(self, p):
         ''' declarator : direct_declarator
         '''
         p[0] = p[1]
         
-    def p_direct_declarator (self, p):
+    def p_direct_declarator(self, p):
         ''' direct_declarator : identifier
                               | '(' declarator ')'
                               | direct_declarator '[' const_expr_opt ']'
@@ -179,12 +129,6 @@ class uCParser():
             p[0] = (p[1], p[3]) 
 
     #### EXPRESSIONS ####
-
-    def p_expr_opt(self, p):
-        ''' expr_opt : expr
-                     | empty
-        '''    
-        p[0] = p[1]
 
     def p_expr(self, p):
         ''' expr : assign_expr
@@ -235,7 +179,7 @@ class uCParser():
         else:
             p[0] = (p[1], p[2], p[3])
 
-    def p_cast_expr (self, p):
+    def p_cast_expr(self, p):
         ''' cast_expr : un_expr
                       | '(' type_specifier ')' cast_expr
         '''
@@ -244,7 +188,7 @@ class uCParser():
         else :
             p[0] = ('cast', p[2], p[4])
 
-    def p_un_expr (self, p):
+    def p_un_expr(self, p):
         ''' un_expr : postfix_expr
                     | PLUSPLUS un_expr
                     | MINUSMINUS un_expr
@@ -268,7 +212,7 @@ class uCParser():
         '''
         p[0] = p[1]    
 
-    def p_postfix_expr (self, p):
+    def p_postfix_expr(self, p):
         '''postfix_expr : primary_expr
                         | postfix_expr '(' arg_expr ')'
                         | postfix_expr '(' ')'
@@ -290,7 +234,7 @@ class uCParser():
         elif p[2] == '++':
             p[0] = (p[1], '++')
 
-    def p_primary_expr (self, p):
+    def p_primary_expr(self, p):
         ''' primary_expr : identifier
                          | constant
                          | STRING
@@ -301,12 +245,6 @@ class uCParser():
         else:
             p[0] = p[2]
 
-    def p_arg_expr_opt(self, p):
-        ''' arg_expr_opt : arg_expr
-                         | empty
-        '''
-        p[0] = p[1]
-
     def p_arg_expr(self, p):
         ''' arg_expr : assign_expr
                      | arg_expr ',' assign_expr
@@ -316,12 +254,12 @@ class uCParser():
         else:
             p[0] = (p[1], p[3])
 
-    def p_identifier (self, p):
+    def p_identifier(self, p):
         ''' identifier : ID
         '''
         p[0] = ('id', p[1])
         
-    def p_constant (self, p):
+    def p_constant(self, p):
         ''' constant : CCONST
                      | ICONST
                      | FCONST
@@ -330,16 +268,7 @@ class uCParser():
 
     #### STATEMENTS ####
 
-    def p_statement_list(self, p):
-        ''' statement_list : statement_list statement
-                           | statement
-        '''
-        if len(p) == 3 :
-            p[0] = (p[1], p[2])
-        else:
-            p[0] = p[1]
-
-    def p_statement (self, p):
+    def p_statement(self, p):
         ''' statement : expr_statement
                       | compound_statement
                       | selection_statement
@@ -353,12 +282,6 @@ class uCParser():
 
     def p_expr_statement(self, p):
         ''' expr_statement : expr_opt ';'
-        '''
-        p[0] = p[1]
-
-    def p_statement_list_opt(self, p):
-        ''' statement_list_opt : statement_list
-                               | empty
         '''
         p[0] = p[1]
 
@@ -415,12 +338,6 @@ class uCParser():
 
     #### MISCELANEOUS ####
     
-    def p_id_list_opt(self, p):
-        ''' id_list_opt : id_list
-                        | empty
-        '''
-        p[0] = p[1]
-    
     def p_id_list(self, p):
         ''' id_list : id_list ',' identifier
                     | identifier
@@ -444,6 +361,92 @@ class uCParser():
         '''
         p[0] = (p[1], p[2])
     
+
+    #### LISTABLE PRODUCTIONS ####
+
+    def p_global_declaration_list(self, p) :
+        ''' global_declaration_list : global_declaration_list global_declaration
+                                    | global_declaration
+        '''
+        if len(p) == 3 :
+            p[0] = p[1] + (p[2])
+        else :
+            p[0] = p[1]
+
+    def p_declaration_list(self, p):
+        ''' declaration_list : declaration_list declaration
+                             | declaration
+        '''
+        if len(p) == 3 :
+            p[0] = p[1] + (p[2])
+        elif len(p) == 2 :
+            p[0] = p[1]
+    
+    def p_init_declarator_list(self, p):
+        ''' init_declarator_list : init_declarator_list ',' init_declarator
+                                 | init_declarator 
+        '''
+        if len(p) == 3 :
+            p[0] = p[1] + (p[2])
+        elif len(p) == 2 :
+            p[0] = p[1]
+
+    def p_initializer_list(self, p):
+        ''' initializer_list : initializer
+                             | initializer_list ',' initializer 
+        '''
+        if len(p) == 2 :
+            p[0] = p[1]
+        else:
+            p[0] = p[1] + (p[2], p[3])
+
+    def p_statement_list(self, p):
+        ''' statement_list : statement_list statement
+                           | statement
+        '''
+        if len(p) == 3 :
+            p[0] = (p[1], p[2])
+        else:
+            p[0] = p[1]
+
+    #### OPTIONAL PRODUCTIONS ####
+
+    def p_declaration_list_opt(self, p):
+        ''' declaration_list_opt : declaration_list
+                                 | empty
+        '''
+        p[0] = p[1]
+
+    def p_init_declarator_list_opt(self,p):
+        ''' init_declarator_list_opt : init_declarator_list
+                                     | empty
+        '''
+        p[0] = p[1]
+
+    def p_expr_opt(self, p):
+        ''' expr_opt : expr
+                     | empty
+        '''    
+        p[0] = p[1]
+
+    def p_statement_list_opt(self, p):
+        ''' statement_list_opt : statement_list
+                               | empty
+        '''
+        p[0] = p[1]
+
+    def p_arg_expr_opt(self, p):
+        ''' arg_expr_opt : arg_expr
+                         | empty
+        '''
+        p[0] = p[1]
+
+    def p_id_list_opt(self, p):
+        ''' id_list_opt : id_list
+                        | empty
+        '''
+        p[0] = p[1]
+
     def p_const_expr_opt(self, p):
         ''' const_expr_opt : bin_expr
                            | empty
@@ -451,13 +454,13 @@ class uCParser():
         p[0] = p[1]
 
     #### EMPTY PRODUCTION ####
-    def p_empty (self, p):
+    def p_empty(self, p):
         '''empty :
         '''
         pass
 
     #### ERROR HANDLING ####
-    def p_error (self, p):
+    def p_error(self, p):
         if p:
             print("Error near the symbol %s at (%s, %s)." % (p.value, p.lineno, p.lexpos))
         else:
