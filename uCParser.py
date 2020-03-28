@@ -21,7 +21,7 @@ class uCParser():
         ('left', 'OR'),
         ('left', 'AND'),
         ('left', 'EQ', 'UNEQ'),
-        ('left', '<', '>', 'LE', 'GE'),
+        ('nonassoc', '<', '>', 'LE', 'GE'),
         ('left', '+', '-'),
         ('left', '*', '/', '%')
     )
@@ -101,14 +101,19 @@ class uCParser():
             p[0] = p[1]
 
     def p_declaration (self, p):
-        ''' declaration : type_specifier init_declarator_list ';'
+        ''' declaration : type_specifier init_declarator_list_opt ';'
         '''
         p[0] = ('declaration', p[1], p[2])
 
+    def p_init_declarator_list_opt(self,p):
+        ''' init_declarator_list_opt : init_declarator_list
+                                     | empty
+        '''
+        p[0] = p[1]
+    
     def p_init_declarator_list (self, p):
         ''' init_declarator_list : init_declarator_list ',' init_declarator
                                  | init_declarator 
-                                 | empty
         '''
         if len(p) == 3 :
             if p[1] is None : p[0] = (p[2])
@@ -164,7 +169,7 @@ class uCParser():
                               | '(' declarator ')'
                               | direct_declarator '[' const_expr_opt ']'
                               | direct_declarator '(' parameter_list ')'
-                              | direct_declarator '(' id_list ')'
+                              | direct_declarator '(' id_list_opt ')'
         '''
         if len(p) == 2 :
             p[0] = p[1]
@@ -209,10 +214,6 @@ class uCParser():
         '''
         p[0] = p[1]
 
-    ##### CONFLICTS #####
-    # | bin_expr '+' bin_expr
-    # | bin_expr '-' bin_expr
-    # | bin_expr '*' bin_expr
     def p_bin_expr(self, p):
         ''' bin_expr : cast_expr
                      | bin_expr '-' bin_expr
@@ -258,10 +259,6 @@ class uCParser():
         else:
             p[0] = (p[1], p[2])
 
-    #### CONFLICTS #####
-    # | '+'
-    # | '*'
-    # | '-'
     def p_un_op(self, p):
         ''' un_op : '&'
                   | '+'
@@ -271,11 +268,6 @@ class uCParser():
         '''
         p[0] = p[1]    
 
-    ##### CONFLICTS #####
-    # | postfix_expr '(' arg_expr ')'
-    # | postfix_expr '(' ')'
-    # | postfix_expr PLUSPLUS
-    # | postfix_expr MINUSMINUS
     def p_postfix_expr (self, p):
         '''postfix_expr : primary_expr
                         | postfix_expr '(' arg_expr ')'
@@ -298,7 +290,7 @@ class uCParser():
         elif p[2] == '++':
             p[0] = (p[1], '++')
 
-    def p_primary_expr (self, p): # TODO: Might need to rethink these symbols
+    def p_primary_expr (self, p):
         ''' primary_expr : identifier
                          | constant
                          | STRING
@@ -423,10 +415,15 @@ class uCParser():
 
     #### MISCELANEOUS ####
     
+    def p_id_list_opt(self, p):
+        ''' id_list_opt : id_list
+                        | empty
+        '''
+        p[0] = p[1]
+    
     def p_id_list(self, p):
         ''' id_list : id_list ',' identifier
                     | identifier
-                    | empty
         '''
         if len(p) == 4 :
             p[0] = p[1] + (p[3])
