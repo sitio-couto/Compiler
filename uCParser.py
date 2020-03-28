@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 27/03/2020.
+Last Modified: 28/03/2020.
 '''
 
 from ply.yacc import yacc
@@ -20,7 +20,7 @@ class uCParser():
     precedence = (
         ('left', 'OR'),
         ('left', 'AND'),
-        ('left', 'EQ', 'UNEQ'),
+        ('nonassoc', 'EQ', 'UNEQ'),
         ('nonassoc', '<', '>', 'LE', 'GE'),
         ('left', '+', '-'),
         ('left', '*', '/', '%')

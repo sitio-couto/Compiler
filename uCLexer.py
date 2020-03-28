@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 26/03/2020.
+Last Modified: 28/03/2020.
 '''
 
 import ply.lex as lex
@@ -61,6 +61,7 @@ class uCLexer():
 
     # Test the output
     def test(self, data):
+        self.reset_line_num()
         
         # If filename.
         if exists(data): 
