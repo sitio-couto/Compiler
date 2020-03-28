@@ -130,23 +130,19 @@ class uCParser():
 
     #### EXPRESSIONS ####
 
-    def p_expr(self, p):
-        ''' expr : assign_expr
-                 | expr ',' assign_expr
-        '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        else:
-            p[0] = (p[1], p[3])
+    def p_expr_1(self, p):
+        ''' expr : assign_expr '''
+        p[0] = p[1]
+    def p_expr_2(self, p):
+        ''' expr : expr ',' assign_expr '''
+        p[0] = (p[1], p[3])
 
-    def p_assign_expr(self, p):
-        ''' assign_expr : bin_expr
-                        | un_expr assign_op assign_expr
-        '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        else:
-            p[0] = (p[1], p[2], p[3])
+    def p_assign_expr_1(self, p):
+        ''' assign_expr : bin_expr '''
+        p[0] = p[1]
+    def p_assign_expr_2(self, p):
+        ''' assign_expr : un_expr assign_op assign_expr '''
+        p[0] = (p[1], p[2], p[3])
 
     def p_assign_op(self, p):
         ''' assign_op : '='
@@ -158,9 +154,14 @@ class uCParser():
         '''
         p[0] = p[1]
 
-    def p_bin_expr(self, p):
-        ''' bin_expr : cast_expr
-                     | bin_expr '-' bin_expr
+    # Binary Expressions #
+    # (123*4) '+' 800
+
+    def p_bin_expr_1(self, p):
+        ''' bin_expr : cast_expr '''
+        p[0] = p[1]
+    def p_bin_expr_2(self, p):
+        ''' bin_expr : bin_expr '-' bin_expr
                      | bin_expr '*' bin_expr
                      | bin_expr '+' bin_expr
                      | bin_expr '/' bin_expr
@@ -174,80 +175,78 @@ class uCParser():
                      | bin_expr AND bin_expr
                      | bin_expr OR bin_expr
         '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        else:
-            p[0] = (p[1], p[2], p[3])
+        p[0] = (p[1], p[2], p[3])
 
-    def p_cast_expr(self, p):
-        ''' cast_expr : un_expr
-                      | '(' type_specifier ')' cast_expr
-        '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        else :
-            p[0] = ('cast', p[2], p[4])
+    # Cast Expressions # 
+    # (float) 123;
 
-    def p_un_expr(self, p):
-        ''' un_expr : postfix_expr
-                    | PLUSPLUS un_expr
+    def p_cast_expr_1(self, p):
+        ''' cast_expr : un_expr '''
+        p[0] = p[1]
+    def p_cast_expr_2(self, p):
+        ''' cast_expr : '(' type_specifier ')' cast_expr '''
+        p[0] = ('cast', p[2], p[4])
+
+    # Unary Expressions #
+    # ++i; 
+    # -10;
+
+    def p_un_expr_1(self, p):
+        ''' un_expr : postfix_expr '''
+        p[0] = p[1]
+    def p_un_expr_2(self, p):
+        ''' un_expr : PLUSPLUS un_expr
                     | MINUSMINUS un_expr
                     | un_op cast_expr
         '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        elif p[1] == '++':
-            p[0] = ('++', p[2])
-        elif p[1] == '--':
-            p[0] = ('--', p[2])
-        else:
-            p[0] = (p[1], p[2])
+        p[0] = (p[1], p[2])
 
+    # Unary Operators #
+    # '-' NUM | '*' PTR | '&' ADDR 
+
+    # TODO: the '*' is only used if pointer are considered
     def p_un_op(self, p):
         ''' un_op : '&'
                   | '+'
-                  | '*'
+                  | '*' 
                   | '-'
                   | '!'
         '''
         p[0] = p[1]    
 
-    def p_postfix_expr(self, p):
-        '''postfix_expr : primary_expr
-                        | postfix_expr '(' expr ')'
-                        | postfix_expr '(' ')'
-                        | postfix_expr PLUSPLUS
-                        | postfix_expr MINUSMINUS
-                        | postfix_expr '[' expr ']'
-        '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        elif p[2] == '[':
-            p[0] = (p[1], ('[', p[3],']'))
-        elif p[2] == '(':
-            if p[3] == ')':
-                p[0] = (p[1], ('(',')'))
-            else:
-                p[0] = (p[1], ('(', p[3],')'))
-        elif p[2] == '--': 
-            p[0] = (p[1], '--')
-        elif p[2] == '++':
-            p[0] = (p[1], '++')
+    # Postfix Expressions #
 
-    def p_primary_expr(self, p):
+    def p_postfix_expr_1(self, p):
+        '''postfix_expr : primary_expr '''
+        p[0] = p[1]
+    def p_postfix_expr_2(self, p):
+        '''postfix_expr : postfix_expr '[' expr ']'
+                        | postfix_expr '(' expr_opt ')'
+        '''
+        p[0] = ( p[1], (p[2], p[3], p[4]) )
+    def p_postfix_expr_3(self, p):
+        '''postfix_expr : postfix_expr PLUSPLUS
+                        | postfix_expr MINUSMINUS
+        '''
+        p[0] = (p[1], p[2]) 
+
+    # Primary Expressios #
+    # ( ... ) | var | 12.5 | "hello"
+
+    def p_primary_expr_1(self, p):
+        ''' primary_expr : '(' expr ')' '''
+        p[0] = p[2]
+    def p_primary_expr_2(self, p):
         ''' primary_expr : identifier
                          | constant
                          | STRING
-                         | '(' expr ')'
         '''
-        if len(p) == 2 :
-            p[0] = p[1] # TODO: Not sure if there should be a tuple here (pe (ID,val))
-        else:
-            p[0] = p[2]
+        p[0] = p[1] # TODO: Not sure if there should be a tuple here (pe (ID,val))
+
+    # Terminal Expressions #
 
     def p_identifier(self, p):
-        ''' identifier : ID
-        '''
+        ''' identifier : ID '''
         p[0] = ('id', p[1])
         
     def p_constant(self, p):
@@ -272,135 +271,123 @@ class uCParser():
         p[0] = p[1]
 
     def p_expr_statement(self, p):
-        ''' expr_statement : expr_opt ';'
-        '''
+        ''' expr_statement : expr_opt ';' '''
         p[0] = p[1]
 
     def p_compound_statement(self, p):
-        ''' compound_statement : '{' declaration_list_opt statement_list_opt '}'
-        '''
-        p[0] = ('{', p[2], p[3],'}')
-        
-    def p_selection_statement(self, p):
-        ''' selection_statement : IF '(' expr ')' statement
-                                | IF '(' expr ')' statement ELSE statement
-        '''
-        if len(p) == 6 :
-            p[0] = ('if', p[3], p[5], None)
-        else:
-            p[0] = ('if', p[3], p[5], p[7]) # TODO: Might not be the best nesting option for ELSE 
+        ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
+        p[0] = ('{', p[2], p[3], '}')
 
-    def p_iteration_statement(self, p):
-        ''' iteration_statement : WHILE '(' expr ')' statement
-                                | FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement
-                                | FOR '(' declaration expr_opt ';' expr_opt ')' statement
-        '''
-        if p[1] == 'while':
-            p[0] = ('while', p[3], p[5])
-        else:
-            if len(p) == 10:
-                p[0] = ('for', p[3], p[5], p[7], p[9])                
-            else:
-                p[0] = ('for', p[3], p[4], p[6], p[8])
+    # Selection Staments #    
+    # if () {} | if () {} else {}
 
-    def p_jump_statement(self, p):
-        ''' jump_statement : BREAK ';'
-                           | RETURN expr_opt ';'
-        '''
-        if p[1] == 'break':
-            p[0] = ('break')
-        else:
-            p[0] = ('return', p[2])
+    def p_selection_statement_1(self, p): # If block only
+        ''' selection_statement : IF '(' expr ')' statement '''
+        p[0] = ('if', p[3], p[5], None)
+    def p_selection_statement_2(self, p): # If-Else block
+        ''' selection_statement : IF '(' expr ')' statement ELSE statement '''
+        p[0] = ('if', p[3], p[5], p[7]) # TODO: Might not be the best nesting option for ELSE 
+
+
+    # Iteration Statements #
+    # for () {} | while () {}
+
+    def p_iteration_statement_1(self, p):
+        ''' iteration_statement : WHILE '(' expr ')' statement '''
+        p[0] = (p[1], p[3], p[5])
+    def p_iteration_statement_2(self, p):
+        ''' iteration_statement : FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement '''
+        p[0] = (p[1], p[3], p[5], p[7], p[9])
+    def p_iteration_statement_3(self, p): # TODO: This might need to be revised (declaration can be a list: int a, b=0, c;)
+        ''' iteration_statement : FOR '(' declaration expr_opt ';' expr_opt ')' statement '''
+        p[0] = (p[1], p[3], p[4], p[6], p[8])                
+
+    # Jump Statements #
+    # break; return; 
+
+    def p_jump_statement_1(self, p):
+        ''' jump_statement : BREAK '''
+        p[0] = ('break')
+    def p_jump_statement_2(self, p):
+        ''' jump_statement : RETURN expr_opt ';' '''
+        p[0] = ('return', p[2])
+
+    # Functions Statemens #
 
     def p_assert_statement(self, p):
-        ''' assert_statement : ASSERT expr ';'
-        '''
+        ''' assert_statement : ASSERT expr ';' '''
         p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
-        ''' print_statement : PRINT '(' expr_opt ')' ';'
-        '''
+        ''' print_statement : PRINT '(' expr_opt ')' ';'  '''
         p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
-        ''' read_statement : READ '(' expr ')' ';'
-        '''
+        ''' read_statement : READ '(' expr ')' ';' '''
         p[0] = ('read', p[3])
 
     #### MISCELANEOUS ####
-    
-    def p_id_list(self, p):
-        ''' id_list : id_list ',' identifier
-                    | identifier
-        '''
-        if len(p) == 4 :
-            p[0] = p[1] + (p[3])
-        else:
-            p[0] = p[1]
-
-    def p_parameter_list(self, p):
-        ''' parameter_list : parameter_list ',' parameter_declaration
-                           | parameter_declaration
-        '''
-        if len(p) == 4 :
-            p[0] = p[1] + (p[3])
-        else:
-            p[0] = p[1]
 
     def p_parameter_declaration(self, p):
-        ''' parameter_declaration : type_specifier declarator
-        '''
+        ''' parameter_declaration : type_specifier declarator '''
         p[0] = (p[1], p[2])
     
 
-    #### LISTABLE PRODUCTIONS ####
+    # Listable Productions #
 
-    def p_global_declaration_list(self, p) :
-        ''' global_declaration_list : global_declaration_list global_declaration
-                                    | global_declaration
-        '''
-        if len(p) == 3 :
-            p[0] = p[1] + (p[2])
-        else :
-            p[0] = p[1]
+    def p_global_declaration_list_1(self, p) :
+        ''' global_declaration_list : global_declaration_list global_declaration '''
+        p[0] = p[1] + (p[2])
+    def p_global_declaration_list_2(self, p) :
+        ''' global_declaration_list : global_declaration '''
+        p[0] = p[1]
 
-    def p_declaration_list(self, p):
-        ''' declaration_list : declaration_list declaration
-                             | declaration
-        '''
-        if len(p) == 3 :
-            p[0] = p[1] + (p[2])
-        elif len(p) == 2 :
-            p[0] = p[1]
-    
-    def p_init_declarator_list(self, p):
-        ''' init_declarator_list : init_declarator_list ',' init_declarator
-                                 | init_declarator 
-        '''
-        if len(p) == 3 :
-            p[0] = p[1] + (p[2])
-        elif len(p) == 2 :
-            p[0] = p[1]
+    def p_declaration_list_1(self, p) :
+        ''' declaration_list : declaration_list declaration '''
+        p[0] = p[1] + (p[2])
+    def p_declaration_list_2(self, p) :
+        ''' declaration_list : declaration '''
+        p[0] = p[1]
 
-    def p_initializer_list(self, p):
-        ''' initializer_list : initializer
-                             | initializer_list ',' initializer 
-        '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        else:
-            p[0] = p[1] + (p[2], p[3])
+    def p_statement_list_1(self, p) :
+        ''' statement_list : statement_list statement '''
+        p[0] = (p[1], p[2]) # TODO: Double check if this is the proper tree association
+    def p_statement_list_2(self, p) :
+        ''' statement_list : statement '''
+        p[0] = p[1]
 
-    def p_statement_list(self, p):
-        ''' statement_list : statement_list statement
-                           | statement
-        '''
-        if len(p) == 3 :
-            p[0] = (p[1], p[2])
-        else:
-            p[0] = p[1]
+    # Listable Productions Separated By Tokens #
+    # TODO: Not sure if the comma token should be in the tree
 
-    #### OPTIONAL PRODUCTIONS ####
+    def p_init_declarator_list_1(self, p):
+        ''' init_declarator_list : init_declarator_list ',' init_declarator '''
+        p[0] = p[1] + (',',p[3]) 
+    def p_init_declarator_list_2(self, p):
+        ''' init_declarator_list : init_declarator '''
+        p[0] = p[1]
+
+    def p_initializer_list_1(self, p):
+        ''' initializer_list : initializer_list ',' initializer '''
+        p[0] = p[1] + (',', p[3]) 
+    def p_initializer_list_2(self, p):
+        ''' initializer_list : initializer '''
+        p[0] = p[1]
+
+    def p_id_list_1(self, p):
+        ''' id_list : id_list ',' identifier '''
+        p[0] = p[1] + (',', p[3]) 
+    def p_id_list_2(self, p):
+        ''' id_list : identifier '''
+        p[0] = p[1]
+
+    def p_parameter_list_1(self, p):
+        ''' parameter_list : parameter_list ',' parameter_declaration '''
+        p[0] = p[1] + (',', p[3]) 
+    def p_parameter_list_2(self, p):
+        ''' parameter_list : parameter_declaration '''
+        p[0] = p[1]
+
+    # Optional Productions #
 
     def p_declaration_list_opt(self, p):
         ''' declaration_list_opt : declaration_list
@@ -409,8 +396,8 @@ class uCParser():
         p[0] = p[1]
 
     def p_init_declarator_list_opt(self,p):
-        ''' init_declarator_list_opt : init_declarator_list
-                                     | empty
+        ''' init_declarator_list_opt : init_declarator_list 
+            	                     | empty
         '''
         p[0] = p[1]
 
