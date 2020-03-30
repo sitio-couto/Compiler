@@ -13,9 +13,9 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 30/03/2020.
 '''
 # ============================================================
-# uc.py -- uC (a.k.a. micro C) language compiler
+# uCCompiler.py -- uC (a.k.a. micro C) language compiler
 #
-# This is the main program for the uc compiler, which just
+# This is the main program for the uC compiler, which just
 # parses command-line options, figures out which source files
 # to read and write to, and invokes the different stages of
 # the compiler proper.
@@ -24,7 +24,7 @@ Last Modified: 30/03/2020.
 import sys
 import logging
 from functools import partial
-from uc_parser import UCParser
+from uCParser import UCParser
 from contextlib import contextmanager
 
 _subscribers = []
@@ -107,7 +107,7 @@ def run_compiler():
     """ Runs the command-line compiler. """
 
     if len(sys.argv) < 2:
-        print("Usage: ./uc.py <source-file> [-no-ast] [-debug]")
+        print("Usage: ./uCCompiler.py <source-file> [-no-ast] [-debug]")
         sys.exit(1)
 
     emit_ast = True
