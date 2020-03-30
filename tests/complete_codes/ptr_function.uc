@@ -1,3 +1,4 @@
+////// POINTERS WONT BE IMPLEMENTED //////
 // The following program shows use of a function pointer
 // for selecting between addition and subtraction:
     

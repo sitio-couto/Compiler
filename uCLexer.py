@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 24/03/2020.
+Last Modified: 28/03/2020.
 '''
 
 import ply.lex as lex
@@ -19,6 +19,7 @@ from os.path import exists
 # ID & KEYWORDS => Longest Match & Rule Order Using Dictionary
 # COMMENT & UNTCOMMENT => Rule Order (comment func comes first)
 # STRING & UNTSTRING => Rule Order (string func comes first)
+# CCONST & UNTCCHAR => Rule Order (cconst func comes first)
 class uCLexer():
     '''A Lexer for the uC language.
     ''' 
@@ -60,6 +61,7 @@ class uCLexer():
 
     # Test the output
     def test(self, data):
+        self.reset_line_num()
         
         # If filename.
         if exists(data): 
@@ -93,9 +95,7 @@ class uCLexer():
         # Logical Operators
         'EQ', 'OR', 'AND', 'UNEQ', 'GE', 'LE',
         # Assignment Operators
-        'PLUSEQ', 'MINUSEQ', 'TIMESEQ', 'DIVEQ', 'MODEQ',
-        # Comments
-        'LINECOMMENT', 'COMMENT', 'UNTCOMMENT'
+        'PLUSEQ', 'MINUSEQ', 'TIMESEQ', 'DIVEQ', 'MODEQ'
     )
     
     # A string containing ignored characters (spaces and tabs)
@@ -142,17 +142,19 @@ class uCLexer():
         r'\'([^"\'\\\n]|\\["\'\\]|\\[avfntber0])\''
         return t
 
+    def t_STRING (self, t) :
+        r'\".*?\"'
+        return t
+        
     def t_LINECOMMENT (self, t) :
         r'//.*(\n|$)'
         t.lexer.lineno += t.value.count("\n")
+        pass
 
     def t_COMMENT (self, t) :
         r'/\*(.|\n)*?\*/'
         t.lexer.lineno += t.value.count("\n")
-
-    def t_STRING (self, t) :
-        r'\".*?\"'
-        return t
+        pass
 
     #### ERROR HANDLING RULES ####
     # Unterminated Comment
@@ -169,6 +171,7 @@ class uCLexer():
         msg = "Unterminated string"
         self._error(msg, t)
 
+    # Unmatched quotes (unterminated character)
     def t_UNTCCHAR (self, t) :
         r'\'.*?($|\n|\')'
         t.lexer.lineno += t.value.count('\n')
