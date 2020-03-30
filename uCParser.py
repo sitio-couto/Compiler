@@ -14,6 +14,7 @@ Last Modified: 28/03/2020.
 
 from ply.yacc import yacc
 from os.path import exists
+import uCAST as ast
 
 class uCParser():
     
@@ -66,28 +67,25 @@ class uCParser():
         '''
         p[0] = p[1]
 
-    def p_function_definition(self, p):
-        ''' function_definition : type_specifier declarator declaration_list_opt compound_statement
-                                | declarator declaration_list_opt compound_statement
-        '''
-        if len(p) == 5:
-            p[0] = ('func', p[1], p[2], p[3], p[4])
-        else:
-            p[0] = ('func', 'void', p[1], p[2], p[3])
+    def p_function_definition_1(self, p):
+        ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
+        p[0] = ('func', p[1], p[2], p[3], p[4])
+    def p_function_definition_2(self, p):
+        ''' function_definition : declarator declaration_list_opt compound_statement '''
+        p[0] = ('func', 'void', p[1], p[2], p[3]) # TODO: This 'void' might be wrong
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';'
         '''
         p[0] = ('declaration', p[1], p[2])
 
-    def p_init_declarator(self, p):
-        ''' init_declarator : declarator
-                            | declarator '=' initializer
-        '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        else:
-            p[0] = (p[1], p[2], p[3])
+    def p_init_declarator_1(self, p):
+        ''' init_declarator : declarator '''
+        p[0] = p[1]
+    def p_init_declarator_2(self, p):
+        ''' init_declarator : declarator '=' initializer '''
+        p[0] = (p[1], p[2], p[3])
+
 
     def p_type_specifier(self, p):
         ''' type_specifier : VOID
@@ -97,36 +95,32 @@ class uCParser():
         '''
         p[0] = p[1]
 
-    def p_initializer(self, p):
-        ''' initializer : assign_expr
-                        | '{' initializer_list '}'
+    def p_initializer_1(self, p):
+        ''' initializer : assign_expr '''
+        p[0] = ('assign', p[1])
+    def p_initializer_2(self, p):
+        ''' initializer : '{' initializer_list '}'
                         | '{' initializer_list ',' '}'
         '''
-        if len(p) == 2 :
-            p[0] = ('assign', p[1])
-        elif len(p) == 4 :
-            p[0] = ('{', p[2], '}')
-        else:
-            p[0] = ('{', p[2], ',', '}')
+        p[0] = ('{', p[2], '}')
 
     def p_declarator(self, p):
         ''' declarator : direct_declarator
         '''
         p[0] = p[1]
         
-    def p_direct_declarator(self, p):
-        ''' direct_declarator : identifier
-                              | '(' declarator ')'
-                              | direct_declarator '[' const_expr_opt ']'
+    def p_direct_declarator_1(self, p):
+        ''' direct_declarator : identifier '''
+        p[0] = p[1]
+    def p_direct_declarator_2(self, p):
+        ''' direct_declarator : '(' declarator ')' '''
+        p[0] = p[2] 
+    def p_direct_declarator_3(self, p):
+        ''' direct_declarator : direct_declarator '[' const_expr_opt ']'
                               | direct_declarator '(' parameter_list ')'
                               | direct_declarator '(' id_list_opt ')'
         '''
-        if len(p) == 2 :
-            p[0] = p[1]
-        elif len(p) == 4 :
-            p[0] = p[2]
-        else:
-            p[0] = (p[1], p[3]) 
+        p[0] = (p[1], p[3]) 
 
     #### EXPRESSIONS ####
 
@@ -142,6 +136,8 @@ class uCParser():
         p[0] = p[1]
     def p_assign_expr_2(self, p):
         ''' assign_expr : un_expr assign_op assign_expr '''
+        #  __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
+        # p[0] = ast.Assignment(p[2], p[1], p[3])
         p[0] = (p[1], p[2], p[3])
 
     def p_assign_op(self, p):
@@ -175,6 +171,8 @@ class uCParser():
                      | bin_expr AND bin_expr
                      | bin_expr OR bin_expr
         '''
+        # __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
+        # p[0] = ast.BinaryOp(p[2], p[1], p[3])
         p[0] = (p[1], p[2], p[3])
 
     # Cast Expressions # 
@@ -312,7 +310,7 @@ class uCParser():
         ''' jump_statement : RETURN expr_opt ';' '''
         p[0] = ('return', p[2])
 
-    # Functions Statemens #
+    # Functions Statements #
 
     def p_assert_statement(self, p):
         ''' assert_statement : ASSERT expr ';' '''
