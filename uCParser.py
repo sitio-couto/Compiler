@@ -75,8 +75,7 @@ class uCParser():
         p[0] = ('func', 'void', p[1], p[2], p[3]) # TODO: This 'void' might be wrong
 
     def p_declaration(self, p):
-        ''' declaration : type_specifier init_declarator_list_opt ';'
-        '''
+        ''' declaration : type_specifier init_declarator_list_opt ';' '''
         p[0] = ('declaration', p[1], p[2])
 
     def p_init_declarator_1(self, p):
@@ -97,7 +96,7 @@ class uCParser():
 
     def p_initializer_1(self, p):
         ''' initializer : assign_expr '''
-        p[0] = ('assign', p[1])
+        p[0] = p[1]
     def p_initializer_2(self, p):
         ''' initializer : '{' initializer_list '}'
                         | '{' initializer_list ',' '}'
@@ -137,8 +136,8 @@ class uCParser():
     def p_assign_expr_2(self, p):
         ''' assign_expr : un_expr assign_op assign_expr '''
         #  __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
-        # p[0] = ast.Assignment(p[2], p[1], p[3])
-        p[0] = (p[1], p[2], p[3])
+        p[0] = ast.Assignment(p[2], p[1], p[3])
+        # p[0] = (p[1], p[2], p[3])
 
     def p_assign_op(self, p):
         ''' assign_op : '='
@@ -172,8 +171,8 @@ class uCParser():
                      | bin_expr OR bin_expr
         '''
         # __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
-        # p[0] = ast.BinaryOp(p[2], p[1], p[3])
-        p[0] = (p[1], p[2], p[3])
+        p[0] = ast.BinaryOp(p[2], p[1], p[3])
+        # p[0] = (p[1], p[2], p[3])
 
     # Cast Expressions # 
     # (float) 123;
@@ -359,7 +358,7 @@ class uCParser():
 
     def p_init_declarator_list_1(self, p):
         ''' init_declarator_list : init_declarator_list ',' init_declarator '''
-        p[0] = p[1] + (',',p[3]) 
+        p[0] = p[1] + (p[3]) 
     def p_init_declarator_list_2(self, p):
         ''' init_declarator_list : init_declarator '''
         p[0] = p[1]

@@ -84,8 +84,14 @@ class BinaryOp(Node):
 
     attr_names = ('op', )
 
-# TODO ----------------------------
-# Break ( ), Cast ( ), Compound ( )
+class Break(Node):
+    __slots__ = ()
+
+class Cast(Node):
+    __slots__ = ()
+
+class Compound(Node):
+    __slots__ = ()
 
 class Constant(Node):
     __slots__ = ('type', 'value', 'coord')
@@ -101,8 +107,68 @@ class Constant(Node):
 
     attr_names = ('type', 'value', )
 
-# , Constant (type, value), Decl (name), DeclList ( ), EmptyStatement ( ), ExprList ( ), For ( ), FuncCall ( ), FuncDecl ( ), FuncDef ( ), GlobalDecl ( ), ID (name), If ( ), InitList ( ), ParamList ( ), Print ( ), Program ( ), PtrDecl ( ), Read ( ), Return ( ), Type (names), VarDecl (declname), UnaryOp (op), While ( ).
+class Decl(Node):
+    __slots__ = ('name')
 
+class DeclList(Node):
+    __slots__ = ()
+
+class EmptyStatement(Node):
+    __slots__ = ()
+
+class ExprList(Node):
+    __slots__ = ()
+
+class For(Node):
+    __slots__ = ()
+
+class FuncCall(Node):
+    __slots__ = ()
+
+class FuncDecl(Node):
+    __slots__ = ()
+
+class FuncDef(Node):
+    __slots__ = ()
+
+class GlobalDecl(Node):
+    __slots__ = ()
+
+class ID(Node):
+    __slots__ = ('name')
+
+class If(Node):
+    __slots__ = ()
+
+class InitList(Node):
+    __slots__ = ()
+
+class ParamList(Node):
+    __slots__ = ()
+
+class Print(Node):
+    __slots__ = ()
+
+class PtrDecl(Node):
+    __slots__ = ()
+
+class Read(Node):
+    __slots__ = ()
+
+class Return(Node):
+    __slots__ = ()
+
+class Type(Node):
+    __slots__ = ('names')
+
+class VarDecl(Node):
+    __slots__ = ('declname')
+
+class UnaryOp(Node):
+    __slots__ = ()
+
+class While(Node):
+    __slots__ = ()
 
 # def _build_declarations(self, spec, decls):
 #     """ Builds a list of declarations all sharing the given specifiers.
