@@ -486,13 +486,14 @@ class Type(Node):
     attr_names = ('name',)
 
 class VarDecl(Node):
-    __slots__ = ('declname', 'coord') # NOTE: Not sure it there's
+    __slots__ = ('declname', 'type', 'coord') # NOTE: Not sure it there's
 
-    def __init__(self, declname, coord=None):
+    def __init__(self, declname, type, coord=None):
         self.declname = declname   # Var name [ID token value]
+        self.type = type
         self.coord = coord 
 
-    attr_names = ()
+    attr_names = ('declname',)
 
 class UnaryOp(Node):
     __slots__ = ('op', 'coord')
@@ -502,9 +503,9 @@ class UnaryOp(Node):
 class While(Node):
     __slots__ = ('cond', 'body', 'coord')
     
-    def __init__(self, cond, statement, coord=None):
-        self.cond = expr
-        self.body = body
+    def __init__(self, cond, body, coord=None):
+        self.cond = cond   # Conditional expression
+        self.body = body   # Statement
         self.coord = coord
         
     def children(self):

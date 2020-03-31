@@ -51,12 +51,12 @@ class uCParser():
             with open(data, 'r') as content_file :
                 data = content_file.read()
         print(self.parse(data))
+        self.parse(data)[0].show()
     
     #### ROOT ####
     
     def p_program(self, p) :
-        ''' program : global_declaration_list
-        '''
+        ''' program : global_declaration_list '''
         p[0] = ast.Program(p[1])
 
     #### FIRST SPLIT ####
@@ -71,24 +71,27 @@ class uCParser():
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
         #p[0] = ('func', p[1], p[2], p[3], p[4])
         p[0] = ast.FuncDef(p[1], p[2], p[3], p[4])
-        
     def p_function_definition_2(self, p):
         ''' function_definition : declarator declaration_list_opt compound_statement '''
-        #p[0] = ('func', 'void', p[1], p[2], p[3]) # TODO: This 'void' might be wrong
+        #p[0] = ('func', 'void', p[1], p[2], p[3]) 
         p[0] = ast.FuncDef(None, p[1], p[2], p[3])
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
         # TODO: Understand how to use auxiliary functions to fix declarator list
-        #p[0] = self._build_declarations(p[1], p[2]) # Build multiple declarations based on single specifier
-        p[0] = (p[1], p[2])
+        # p[0] = (p[1], p[2])
+        p[0] = self._build_declarations(p[1], p[2]) # Build multiple declarations based on single specifier
+        print(type(p[2]))
 
     def p_init_declarator_1(self, p):
         ''' init_declarator : declarator '''
-        p[0] = (p[1], None) # returns tuple without initializer
+        # p[0] = (p[1], None) # returns tuple without initializer
+        p[0] = dict(decl=p[1], init=None)
     def p_init_declarator_2(self, p):
         ''' init_declarator : declarator '=' initializer '''
-        p[0] = (p[1], p[3]) # Has initializer in tuple
+        # p[0] = (p[1], p[3]) # Has initializer in tuple
+        p[0] = dict(decl=p[1], init=p[3])
+
 
     def p_type_specifier(self, p):
         ''' type_specifier : VOID
@@ -109,13 +112,13 @@ class uCParser():
         p[0] = ('{', p[2], '}')
 
     def p_declarator(self, p):
-        ''' declarator : direct_declarator
-        '''
+        ''' declarator : direct_declarator '''
         p[0] = p[1]
         
     def p_direct_declarator_1(self, p):
         ''' direct_declarator : identifier '''
-        p[0] = p[1]
+        # p[0] = p[1]
+        p[0] = ast.VarDecl(p[1], None, None) # Initialy, it has None type
     def p_direct_declarator_2(self, p):
         ''' direct_declarator : '(' declarator ')' '''
         p[0] = p[2] 
@@ -381,10 +384,10 @@ class uCParser():
 
     def p_init_declarator_list_1(self, p):
         ''' init_declarator_list : init_declarator_list ',' init_declarator '''
-        p[0] = p[1] + (p[3]) 
+        p[0] = p[1] + [p[3]] 
     def p_init_declarator_list_2(self, p):
         ''' init_declarator_list : init_declarator '''
-        p[0] = p[1]
+        p[0] = [p[1]] # TODO: Might have to change _list declarations (single elements and brackets)
 
     def p_initializer_list_1(self, p):
         ''' initializer_list : initializer_list ',' initializer '''
@@ -448,8 +451,7 @@ class uCParser():
 
     #### EMPTY PRODUCTION ####
     def p_empty(self, p):
-        '''empty :
-        '''
+        '''empty : '''
         pass
 
     #### ERROR HANDLING ####
@@ -472,6 +474,8 @@ class uCParser():
         """
         declarations = []
 
+        if decls is None : return None
+
         for decl in decls:
             assert decl['decl'] is not None
             declaration = ast.Decl(
@@ -480,6 +484,7 @@ class uCParser():
                     init=decl.get('init'),
                     coord=decl['decl'].coord)
 
+            print(declaration)
             fixed_decl = self._fix_decl_name_type(declaration, spec)
             declarations.append(fixed_decl)
 
@@ -495,30 +500,42 @@ class uCParser():
 
         decl.name = type.declname
 
-        # The typename is a list of types. If any type in this
-        # list isn't an Type, it must be the only
-        # type in the list.
-        # If all the types are basic, they're collected in the
-        # Type holder.
-        for tn in typename:
-            if not isinstance(tn, ast.Type):
-                if len(typename) > 1:
-                    self.p_error(tn.coord)
-                else:
-                    type.type = tn
-                    return decl
+        # UNNECESSARY ????
+        #  So form what i uderstand this is not necessary for us because
+        #  typename can only be a list if we consider all the possible
+        #  declaration specifiers:  storage-class, type-specifier and
+        #  type-qualifier. Since we only evaluate the second, this section
+        #  is of no use to us.
+        #
+        #     # The typename is a list of types. If any type in this
+        #     # list isn't an Type, it must be the only
+        #     # type in the list.
+        #     # If all the types are basic, they're collected in the
+        #     # Type holder.
+        #     for tn in typename:
+        #         if not isinstance(tn, ast.Type):
+        #             if len(typename) > 1:
+        #                 self.p_error(tn.coord)
+        #             else:
+        #                 type.type = tn
+        #                 return decl
 
+        # This is for fucntions with no return value.
+        # So yeah... Apparently C does this
         if not typename:
             # Functions default to returning int
             if not isinstance(decl.type, ast.FuncDecl):
                 self.p_error(decl.coord)
             type.type = ast.Type(['int'], coord=decl.coord)
         else:
-            # At this point, we know that typename is a list of Type
-            # nodes. Concatenate all the names into a single list.
-            type.type = ast.Type(
-                [typename.names[0]],
-                coord=typename.coord)
+            # Simplifying since there will never be more than one type
+            type.type = ast.Type([typename.name], coord=typename.coord)
+            # # At this point, we know that typename is a list of Type
+            # # nodes. Concatenate all the names into a single list.
+            # type.type = ast.Type(
+            #     [typename.names[0]],
+            #     coord=typename.coord)
+        
         return decl
         
     def _type_modify_decl(self, decl, modifier):
