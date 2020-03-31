@@ -28,6 +28,8 @@ Last Modified: 31/03/2020.
 # ParamList     
 # UnaryOp     
 
+import sys
+
 def _repr(obj):
     """
     Get the representation of an object, with dedicated pprint-like format for lists.
@@ -65,7 +67,7 @@ class Node(object):
         nodelist = []
         return tuple(nodelist)
 
-        def show(self, buf=sys.stdout, offset=0, attrnames=False, nodenames=False, showcoord=False, _my_node_name=None):
+    def show(self, buf=sys.stdout, offset=0, attrnames=False, nodenames=False, showcoord=False, _my_node_name=None):
         """ Pretty print the Node and all its attributes and children (recursively) to a buffer.
             buf:
                 Open IO buffer into which the Node is printed.
