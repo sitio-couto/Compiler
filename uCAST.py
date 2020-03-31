@@ -233,7 +233,7 @@ class Decl(Node):
         if self.init is not None: nodelist.append(("init", self.init))
         return tuple(nodelist)
 
-    attr_names = ('name', 'type', )
+    attr_names = ('name', )
 
 class DeclList(Node):
     __slots__ = ()
@@ -324,13 +324,13 @@ class Return(Node):
     attr_names = ()
 
 class Type(Node):
-    __slots__ = ('names', 'coord')
+    __slots__ = ('name', 'coord')
     
     def __init__(self, names, coord=None):
         self.names = names
         self.coord = coord
     
-    attr_names = ('names',)
+    attr_names = ('name',)
 
 class VarDecl(Node):
     __slots__ = ('declname', 'coord') # NOTE: Not sure it there's
@@ -339,10 +339,12 @@ class VarDecl(Node):
         self.declname = declname   # Var name [ID token value]
         self.coord = coord 
 
-    attr_names = ('declname', )
+    attr_names = ()
 
 class UnaryOp(Node):
-    __slots__ = ()
+    __slots__ = ('op', 'coord')
+    
+    attr_names = ('op', )
 
 class While(Node):
     __slots__ = ('expr', 'statement')
