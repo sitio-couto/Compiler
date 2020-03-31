@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 28/03/2020.
+Last Modified: 31/03/2020.
 '''
 
 import ply.lex as lex
@@ -53,7 +53,8 @@ class uCLexer():
     # Internal auxiliary methods
     def _error(self, msg, token):
         location = self._make_tok_location(token)
-        self.error_func(msg, location[0], location[1])
+        if self.error_func is not None:
+            self.error_func(msg, location[0], location[1])
         self.lexer.skip(1)
 
     def _make_tok_location(self, token):

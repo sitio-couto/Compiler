@@ -313,7 +313,19 @@ class Decl(Node):
     attr_names = ('name', )
 
 class DeclList(Node):
-    __slots__ = ()
+    __slots__ = ('decls', 'coord')
+    
+    def __init__(self, decls, coord=None):
+        self.decls = decls
+        self.coord = coord
+
+    def children(self):
+        nodelist = []
+        for i, child in enumerate(self.decls or []):
+            nodelist.append(("decls[%d]" % i, child))
+        return tuple(nodelist)
+
+    attr_names = ()
 
 class EmptyStatement(Node):
     __slots__ = ('coord')
@@ -327,22 +339,62 @@ class EmptyStatement(Node):
     attr_names = ()
 
 class ExprList(Node):
-    __slots__ = ()
+    __slots__ = ('coord')
 
 class For(Node):
-    __slots__ = ()
+    __slots__ = ('init', 'cond', 'inc_dec', 'body', 'coord')
+    
+    def __init__(self, init, cond, inc_dec, body, coord=None):
+        self.init = init
+        self.cond = cond
+        self.inc_dec = inc_dec
+        self.body = body
+        self.coord = coord
+    
+    def children(self):
+        nodelist = []
+        if self.init is not None: nodelist.append(('init', self.init))
+        if self.cond is not None: nodelist.append(('cond', self.cond))
+        if self.inc_dec is not None: nodelist.append(('inc_dec', self.inc_dec))
+        if self.body is not None: nodelist.append(('body', self.body))
+        return tuple(nodelist)
 
 class FuncCall(Node):
-    __slots__ = ()
+    __slots__ = ('coord')
 
 class FuncDecl(Node):
-    __slots__ = ()
+    __slots__ = ('coord')
 
 class FuncDef(Node):
-    __slots__ = ()
+    __slots__ = ('type', 'name', 'params', 'body', 'coord')
+    
+    def __init__(self, type, decltor, decltions, body, coord=None):
+        self.type = type
+        self.name = name
+        self.params = params
+        self.body = body
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.type is not None: nodelist.append(('type', self.type))
+        if self.name is not None: nodelist.append(('name', self.name))
+        if self.params is not None: nodelist.append(('params', self.params))
+        if self.body is not None: nodelist.append(('body', self.body))
+        return tuple(nodelist)
+        
 
 class GlobalDecl(Node):
-    __slots__ = ()
+    __slots__ = ('decl', 'coord')
+    
+    def _init__(self, decl, coord=None):
+        self.decl = decl
+        self.coord = coords
+        
+    def children(self):
+        nodelist = []
+        if self.decl is not None: nodelist.append(('decl', self.decl))
+        return tuple(nodelist)
 
 class ID(Node): # NOTE: Const class is ID's sibiling, not child
     __slots__ = ('name', 'coord')
@@ -353,15 +405,27 @@ class ID(Node): # NOTE: Const class is ID's sibiling, not child
 
     attr_names = ('name', )
 
-
 class If(Node):
-    __slots__ = ()
+    __slots__ = ('cond', 'if_stat', 'else_stat', 'coord')
+    
+    def __init__(self, cond, if_stat, else_stat, coord=None):
+        self.cond = cond
+        self.if_stat = if_stat 
+        self.else_stat = else_stat
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.cond is not None: nodelist.append(('cond', self.cond))
+        if self.if_stat is not None: nodelist.append(('if_stat', self.if_stat))
+        if self.else_stat is not None: nodelist.append(('else_stat', self.else_stat))
+        return tuple(nodelist)
 
 class InitList(Node):
-    __slots__ = ()
+    __slots__ = ('coord')
 
 class ParamList(Node):
-    __slots__ = ()
+    __slots__ = ('coord')
 
 class Print(Node):
     __slots__ = ('expr', 'coord')
@@ -408,8 +472,8 @@ class Return(Node):
 class Type(Node):
     __slots__ = ('name', 'coord')
     
-    def __init__(self, names, coord=None):
-        self.names = names
+    def __init__(self, name, coord=None):
+        self.names = name
         self.coord = coord
     
     attr_names = ('name',)
@@ -429,17 +493,17 @@ class UnaryOp(Node):
     attr_names = ('op', )
 
 class While(Node):
-    __slots__ = ('expr', 'statement')
+    __slots__ = ('cond', 'body', 'coord')
     
-    def __init__(self, expr, statement, coord=None):
-        self.expr = expr
-        self.statement = statement
+    def __init__(self, cond, statement, coord=None):
+        self.cond = expr
+        self.body = body
         self.coord = coord
         
     def children(self):
         nodelist = []
-        if self.expr is not None: nodelist.append(('expr', self.expr))
-        if self.statement is not None: nodelist.append(('statement', self.statement))
+        if self.cond is not None: nodelist.append(('cond', self.cond))
+        if self.body is not None: nodelist.append(('body', self.body))
         return tuple(nodelist)
         
     attr_names = ()

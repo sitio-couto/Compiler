@@ -57,7 +57,7 @@ class uCParser():
     def p_program(self, p) :
         ''' program : global_declaration_list
         '''
-        p[0] = p[1]
+        p[0] = ast.Program(p[1])
 
     #### FIRST SPLIT ####
 
@@ -65,14 +65,17 @@ class uCParser():
         ''' global_declaration : function_definition
                                | declaration
         '''
-        p[0] = p[1]
+        p[0] = ast.GlobalDecl(p[1])
 
     def p_function_definition_1(self, p):
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
-        p[0] = ('func', p[1], p[2], p[3], p[4])
+        #p[0] = ('func', p[1], p[2], p[3], p[4])
+        p[0] = ast.FuncDef(p[1], p[2], p[3], p[4])
+        
     def p_function_definition_2(self, p):
         ''' function_definition : declarator declaration_list_opt compound_statement '''
-        p[0] = ('func', 'void', p[1], p[2], p[3]) # TODO: This 'void' might be wrong
+        #p[0] = ('func', 'void', p[1], p[2], p[3]) # TODO: This 'void' might be wrong
+        p[0] = ast.FuncDef(None, p[1], p[2], p[3])
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
@@ -93,7 +96,8 @@ class uCParser():
                            | INT
                            | FLOAT
         '''
-        p[0] = p[1]
+        #p[0] = p[1]
+        p[0] = ast.Type(p[1])
 
     def p_initializer_1(self, p):
         ''' initializer : assign_expr '''
@@ -287,10 +291,12 @@ class uCParser():
 
     def p_selection_statement_1(self, p): # If block only
         ''' selection_statement : IF '(' expr ')' statement '''
-        p[0] = ('if', p[3], p[5], None)
+        #p[0] = ('if', p[3], p[5], None)
+        p[0] = ast.If(p[3], p[5], None)
     def p_selection_statement_2(self, p): # If-Else block
         ''' selection_statement : IF '(' expr ')' statement ELSE statement '''
-        p[0] = ('if', p[3], p[5], p[7]) # TODO: Might not be the best nesting option for ELSE 
+        #p[0] = ('if', p[3], p[5], p[7])
+        p[0] = ast.If(p[3], p[5], p[7])
 
 
     # Iteration Statements #
@@ -298,13 +304,16 @@ class uCParser():
 
     def p_iteration_statement_1(self, p):
         ''' iteration_statement : WHILE '(' expr ')' statement '''
-        p[0] = (p[1], p[3], p[5])
+        #p[0] = (p[1], p[3], p[5])
+        p[0] = ast.While(p[3], p[5])
     def p_iteration_statement_2(self, p):
         ''' iteration_statement : FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement '''
-        p[0] = (p[1], p[3], p[5], p[7], p[9])
+        #p[0] = (p[1], p[3], p[5], p[7], p[9])
+        p[0] = ast.For(p[3], p[5], p[7], p[9])
     def p_iteration_statement_3(self, p): # TODO: This might need to be revised (declaration can be a list: int a, b=0, c;)
         ''' iteration_statement : FOR '(' declaration expr_opt ';' expr_opt ')' statement '''
-        p[0] = (p[1], p[3], p[4], p[6], p[8])                
+        #p[0] = (p[1], p[3], p[4], p[6], p[8])                
+        p[0] = ast.For(p[3], p[4], p[6], p[8])                
 
     # Jump Statements #
     # break; return; 

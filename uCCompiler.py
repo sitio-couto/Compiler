@@ -21,7 +21,8 @@ Last Modified: 31/03/2020.
 # ============================================================
 
 import sys
-from uCParser import UCParser
+from uCLexer import uCLexer
+from uCParser import uCParser
 from contextlib import contextmanager
 
 _subscribers = []
@@ -80,7 +81,11 @@ class Compiler:
             or running at susy machine,
             prints out the abstract syntax tree.
         """
-        self.parser = UCParser()
+        self.lexer = UCLexer(None)
+        self.lexer.build()
+        self.parser = UCParser(self.lexer)
+        self.parser.build()
+        
         self.ast = self.parser.parse(self.code, '', debug)
         if susy:
             self.ast.show(showcoord=True)
@@ -153,7 +158,6 @@ def run_compiler():
             sys.exit(retval)
 
     sys.exit(retval)
-
 
 if __name__ == '__main__':
     run_compiler()
