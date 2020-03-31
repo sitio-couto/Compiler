@@ -481,7 +481,7 @@ class Type(Node):
     __slots__ = ('name', 'coord')
     
     def __init__(self, name, coord=None):
-        self.names = name
+        self.name = name
         self.coord = coord
     
     attr_names = ('name',)
