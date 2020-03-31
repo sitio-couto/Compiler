@@ -15,15 +15,9 @@ Last Modified: 31/03/2020.
 # TODO: CLASSESS NOT IMPLEMENTED YET
 # ArrayDecl     
 # ArrayRef     
-# Compound
-# DeclList     
 # ExprList     
-# For     
 # FuncCall     
 # FuncDecl     
-# FuncDef     # Difference between FuncDef and FuncDecl?
-# GlobalDecl  
-# If     
 # InitList     
 # ParamList     
 # UnaryOp     
@@ -265,7 +259,19 @@ class Cast(Node):
     attr_names = ()
 
 class Compound(Node):
-    __slots__ = ()
+    __slots__ = ('decls', 'stats', 'coord')
+    
+    def __init__(self, decls, stats, coord=None):
+        self.decls = decls
+        self.stats = stats
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.decls is not None: nodelist.append('decls', self.decls)
+        for i, child in enumerate(self.stats or []):
+            if child is not None: nodelist.append(("stats[%d]" % i, child))
+        return tuple(nodelist)
 
 class Constant(Node):
     __slots__ = ('type', 'value', 'coord')

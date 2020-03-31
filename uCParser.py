@@ -284,7 +284,8 @@ class uCParser():
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
-        p[0] = ('{', p[2], p[3], '}')
+        #p[0] = ('{', p[2], p[3], '}')
+        p[0] = ast.Compound(p[2], p[3])
 
     # Selection Staments #    
     # if () {} | if () {} else {}
@@ -369,7 +370,8 @@ class uCParser():
 
     def p_statement_list_1(self, p) :
         ''' statement_list : statement_list statement '''
-        p[0] = (p[1], p[2]) # TODO: Double check if this is the proper tree association
+        #p[0] = (p[1], p[2]) # TODO: Double check if this is the proper tree association
+        p[0] = p[1] + (p[2])
     def p_statement_list_2(self, p) :
         ''' statement_list : statement '''
         p[0] = p[1]
@@ -411,7 +413,8 @@ class uCParser():
         ''' declaration_list_opt : declaration_list
                                  | empty
         '''
-        p[0] = p[1]
+        #p[0] = p[1]
+        p[0] = ast.DeclList(p[1])
 
     def p_init_declarator_list_opt(self,p):
         ''' init_declarator_list_opt : init_declarator_list 
