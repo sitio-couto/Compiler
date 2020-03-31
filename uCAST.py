@@ -17,7 +17,6 @@ Last Modified: 31/03/2020.
 # ArrayRef     
 # Compound
 # DeclList     
-# EmptyStatement     
 # ExprList     
 # For     
 # FuncCall     
@@ -27,7 +26,6 @@ Last Modified: 31/03/2020.
 # If     
 # InitList     
 # ParamList     
-# PtrDecl     # Guess we can ignore this
 # UnaryOp     
 
 def _repr(obj):
@@ -279,6 +277,24 @@ class Constant(Node):
 
     attr_names = ('type', 'value', )
 
+class Coord(object):
+    """ Coordinates of a syntactic element. Consists of:
+            - Line number
+            - (optional) column number, for the Lexer
+    """
+    __slots__ = ('line', 'column')
+
+    def __init__(self, line, column=None):
+        self.line = line
+        self.column = column
+
+    def __str__(self):
+        if self.line:
+            coord_str = "   @ %s:%s" % (self.line, self.column)
+        else:
+            coord_str = ""
+        return coord_str
+
 class Decl(Node):
     __slots__ = ('name', 'type', 'init', 'coord')
 
@@ -360,9 +376,6 @@ class Print(Node):
         return tuple(nodelist)
     
     attr_names = ()
-
-class PtrDecl(Node):
-    __slots__ = ()
 
 class Read(Node):
     __slots__ = ('expr', 'coord')

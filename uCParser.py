@@ -447,6 +447,9 @@ class uCParser():
         else:
             print("Error at the end of input")
 
+
+    #### AUXILIARY FUNCTIONS ####
+    
     def _build_declarations(self, spec, decls):
         """ Builds a list of declarations all sharing the given specifiers.
         
@@ -505,3 +508,40 @@ class uCParser():
                 [typename.names[0]],
                 coord=typename.coord)
         return decl
+        
+    def _type_modify_decl(self, decl, modifier):
+        """ Tacks a type modifier on a declarator, and returns
+            the modified declarator.
+            Note: the declarator and modifier may be modified
+        """
+        modifier_head = modifier
+        modifier_tail = modifier
+
+        # The modifier may be a nested list. Reach its tail.
+        while modifier_tail.type:
+            modifier_tail = modifier_tail.type
+
+        # If the decl is a basic type, just tack the modifier onto it
+        if isinstance(decl, ast.VarDecl):
+            modifier_tail.type = decl
+            return modifier
+        else:
+            # Otherwise, the decl is a list of modifiers. Reach
+            # its tail and splice the modifier onto the tail,
+            # pointing to the underlying basic type.
+            decl_tail = decl
+
+            while not isinstance(decl_tail.type, ast.VarDecl):
+                decl_tail = decl_tail.type
+
+            modifier_tail.type = decl_tail.type
+            decl_tail.type = modifier_head
+            return decl
+
+    # Get coordinates for token.
+    def _token_coord(self, p, token_idx):
+        last_cr = p.lexer.lexer.lexdata.rfind('\n', 0, p.lexpos(token_idx))
+        if last_cr < 0:
+            last_cr = -1
+        column = (p.lexpos(token_idx) - (last_cr))
+        return ast.Coord(p.lineno(token_idx), column)

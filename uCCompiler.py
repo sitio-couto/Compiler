@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 '''
 First Project: Parser for the uC language.
 
@@ -10,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 30/03/2020.
+Last Modified: 31/03/2020.
 '''
 # ============================================================
 # uCCompiler.py -- uC (a.k.a. micro C) language compiler
@@ -22,8 +21,6 @@ Last Modified: 30/03/2020.
 # ============================================================
 
 import sys
-import logging
-from functools import partial
 from uCParser import UCParser
 from contextlib import contextmanager
 
@@ -78,28 +75,29 @@ class Compiler:
         self.total_errors = 0
         self.total_warnings = 0
 
-    def _parse(self, ast_file, debug):
+    def _parse(self, susy, ast_file, debug):
         """ Parses the source code. If ast_file != None,
+            or running at susy machine,
             prints out the abstract syntax tree.
         """
         self.parser = UCParser()
         self.ast = self.parser.parse(self.code, '', debug)
-        if ast_file is not None:
+        if susy:
+            self.ast.show(showcoord=True)
+        elif ast_file is not None:
             self.ast.show(buf=ast_file, showcoord=True)
 
-    def _do_compile(self, ast_file, debug):
+    def _do_compile(self, susy, ast_file, debug):
         """ Compiles the code to the given file object. """
-        self._parse(ast_file, debug)
+        self._parse(susy, ast_file, debug)
 
-    def compile(self, code, ast_file, debug):
+    def compile(self, code, susy, ast_file, debug):
         """ Compiles the given code string """
         self.code = code
-        with subscribe_errors(lambda msg: sys.stdout.write(msg+"\n")):
-            self._do_compile(ast_file, debug)
-            if not errors_reported():
-                print("Compile successful.")
-            else:
-                print("{} error(s) encountered.".format(errors_reported()))
+        with subscribe_errors(lambda msg: sys.stderr.write(msg+"\n")):
+            self._do_compile(susy, ast_file, debug)
+            if errors_reported():
+                sys.stderr.write("{} error(s) encountered.".format(errors_reported()))
         return 0
 
 
@@ -107,10 +105,11 @@ def run_compiler():
     """ Runs the command-line compiler. """
 
     if len(sys.argv) < 2:
-        print("Usage: ./uCCompiler.py <source-file> [-no-ast] [-debug]")
+        print("Usage: ./uc.py <source-file> [-at-susy] [-no-ast] [-debug]")
         sys.exit(1)
 
     emit_ast = True
+    susy = False
     debug = False
 
     params = sys.argv[1:]
@@ -120,6 +119,8 @@ def run_compiler():
         if param[0] == '-':
             if param == '-no-ast':
                 emit_ast = False
+            elif param == '-at-susy':
+                susy = True
             elif param == '-debug':
                 debug = True
             else:
@@ -135,7 +136,7 @@ def run_compiler():
 
         open_files = []
         ast_file = None
-        if emit_ast:
+        if emit_ast and not susy:
             ast_filename = source_filename[:-3] + '.ast'
             print("Outputting the AST to %s." % ast_filename)
             ast_file = open(ast_filename, 'w')
@@ -145,7 +146,7 @@ def run_compiler():
         code = source.read()
         source.close()
 
-        retval = Compiler().compile(code, ast_file, debug)
+        retval = Compiler().compile(code, susy, ast_file, debug)
         for f in open_files:
             f.close()
         if retval != 0:
