@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 30/03/2020.
+Last Modified: 31/03/2020.
 '''
 
 from ply.yacc import yacc
@@ -180,10 +180,12 @@ class uCParser():
 
     def p_cast_expr_1(self, p):
         ''' cast_expr : un_expr '''
-        p[0] = p[1]
+        p[0] = ast.Cast(None, p[1])
+        # p[0] = p[1]
     def p_cast_expr_2(self, p):
         ''' cast_expr : '(' type_specifier ')' cast_expr '''
-        p[0] = ('cast', p[2], p[4])
+        p[0] = ast.Cast(p[2], p[4])
+        #p[0] = ('cast', p[2], p[4])
 
     # Unary Expressions #
     # ++i; 
@@ -250,13 +252,13 @@ class uCParser():
     # TODO: There might be a better way to do this   
     def p_constant_1(self, p):
         ''' constant : CCONST '''
-        p[0] = ast.Constant('char', p[1], None) # TODO: Not sure how to use p.lineno here
+        p[0] = ast.Constant('char', p[1]) # TODO: Not sure how to use p.lineno here
     def p_constant_2(self, p):
         ''' constant : ICONST '''
-        p[0] = ast.Constant('char', p[1], None)
+        p[0] = ast.Constant('int', p[1])
     def p_constant_3(self, p):
         ''' constant : FCONST '''
-        p[0] = ast.Constant('char', p[1], None)
+        p[0] = ast.Constant('float', p[1])
 
     #### STATEMENTS ####
 
@@ -308,25 +310,30 @@ class uCParser():
     # break; return; 
 
     def p_jump_statement_1(self, p):
-        ''' jump_statement : BREAK '''
-        p[0] = ('break')
+        ''' jump_statement : BREAK ';' '''
+        p[0] = ast.Break()
+        # p[0] = ('break')
     def p_jump_statement_2(self, p):
         ''' jump_statement : RETURN expr_opt ';' '''
-        p[0] = ('return', p[2])
+        p[0] = ast.Return(p[2])
+        #p[0] = ('return', p[2])
 
     # Functions Statements #
 
     def p_assert_statement(self, p):
         ''' assert_statement : ASSERT expr ';' '''
-        p[0] = ('assert', p[2])
+        p[0] = ast.Assert(p[2])
+        # p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
         ''' print_statement : PRINT '(' expr_opt ')' ';'  '''
-        p[0] = ('print', p[3])
+        p[0] = ast.Print(p[3])
+        #p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
         ''' read_statement : READ '(' expr ')' ';' '''
-        p[0] = ('read', p[3])
+        p[0] = ast.Read(p[3])
+        #p[0] = ('read', p[3])
 
     #### MISCELANEOUS ####
 

@@ -9,15 +9,12 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 30/03/2020.
+Last Modified: 31/03/2020.
 '''
 
 # TODO: CLASSESS NOT IMPLEMENTED YET
 # ArrayDecl     
 # ArrayRef     
-# Assert  
-# Break     
-# Cast     
 # Compound
 # DeclList     
 # EmptyStatement     
@@ -30,21 +27,39 @@ Last Modified: 30/03/2020.
 # If     
 # InitList     
 # ParamList     
-# Print    
 # PtrDecl     # Guess we can ignore this
-# Read     
-# Return     
-# Type     
 # UnaryOp     
-# While     
 
+def _repr(obj):
+    """
+    Get the representation of an object, with dedicated pprint-like format for lists.
+    """
+    if isinstance(obj, list):
+        return '[' + (',\n '.join((_repr(e).replace('\n', '\n ') for e in obj))) + '\n]'
+    else:
+        return repr(obj) 
 
 #### NODE CLASS - The All Father ####
 # It's but a reference to other classes, allowing us to create default
 # methods such as children() which can be recursively accessed by it's children.
 class Node(object):
     __slots__ = ()
-    
+
+    def __repr__(self):
+        """ Generates a python representation of the current node
+        """
+        result = self.__class__.__name__ + '('
+        indent = ''
+        separator = ''
+        for name in self.__slots__[:-2]:
+            result += separator
+            result += indent
+            result += name + '=' + (_repr(getattr(self, name)).replace('\n', '\n  ' + (' ' * (len(name) + len(self.__class__.__name__)))))
+            separator = ','
+            indent = ' ' * len(self.__class__.__name__)
+        result += indent + ')'
+        return result
+            
     # NOTE: Imma use this function as a inheritance for leaf classes
     # If a class has children, it will be overriden, else it will use it 
     def children(self):
@@ -52,6 +67,42 @@ class Node(object):
         nodelist = []
         return tuple(nodelist)
 
+        def show(self, buf=sys.stdout, offset=0, attrnames=False, nodenames=False, showcoord=False, _my_node_name=None):
+        """ Pretty print the Node and all its attributes and children (recursively) to a buffer.
+            buf:
+                Open IO buffer into which the Node is printed.
+            offset:
+                Initial offset (amount of leading spaces)
+            attrnames:
+                True if you want to see the attribute names in name=value pairs. False to only see the values.
+            nodenames:
+                True if you want to see the actual node names within their parents.
+            showcoord:
+                Do you want the coordinates of each Node to be displayed.
+        """
+        lead = ' ' * offset
+        if nodenames and _my_node_name is not None:
+            buf.write(lead + self.__class__.__name__+ ' <' + _my_node_name + '>: ')
+        else:
+            buf.write(lead + self.__class__.__name__+ ': ')
+
+        if self.attr_names:
+            if attrnames:
+                nvlist = [(n, getattr(self, n)) for n in self.attr_names if getattr(self, n) is not None]
+                attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
+            else:
+                vlist = [getattr(self, n) for n in self.attr_names]
+                attrstr = ', '.join('%s' % v for v in vlist)
+            buf.write(attrstr)
+
+        if showcoord:
+            if self.coord:
+                buf.write('%s' % self.coord)
+        buf.write('\n')
+
+        for (child_name, child) in self.children():
+            child.show(buf, offset + 4, attrnames, nodenames, showcoord, child_name)
+            
     # NOTE: it seems to be a list for variables contained in the class (excluding subtrees)
     attr_names = () 
 
@@ -77,13 +128,24 @@ class Program(Node):
 #### AST NODES CLASSES ####
 
 class ArrayDecl(Node):
-    __slots__ = []
+    __slots__ = ()
 
 class ArrayRef(Node):
-    __slots__ = []
+    __slots__ = ()
 
 class Assert(Node):
-    __slots__ = []
+    __slots__ = ('expr', 'coord')
+    
+    def __init__(self, expr, coord=None):
+        self.expr = expr      # Expression to assert.
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.expr is not None: nodelist.append(('expr', self.expr))
+        return tuple(nodelist)
+    
+    attr_names = ()
 
 class Assignment(Node):
     __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
@@ -120,10 +182,28 @@ class BinaryOp(Node):
     attr_names = ('op', ) # NOTE: lvalue and rvalue are subtrees, so they dont make the list
 
 class Break(Node):
-    __slots__ = ()
+    __slots__ = ('coord')
+    
+    def __init__(self, coord=None):
+        self.coord = coord
+    
+    attr_names = ()
 
 class Cast(Node):
-    __slots__ = ()
+    __slots__ = ('type', 'expr', 'coord')
+    
+    def __init__(self, type, expr, coord=None):
+        self.type = type
+        self.expr = expr
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.type is not None: nodelist.append(('type', self.type))
+        if self.expr is not None: nodelist.append(('expr', self.expr))
+        return tuple(nodelist)
+        
+    attr_names = ()
 
 class Compound(Node):
     __slots__ = ()
@@ -199,19 +279,58 @@ class ParamList(Node):
     __slots__ = ()
 
 class Print(Node):
-    __slots__ = ()
+    __slots__ = ('expr', 'coord')
+    
+    def __init__(self, expr, coord=None):
+        self.expr = expr      # Expression to print.
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.expr is not None: nodelist.append(('expr', self.expr))
+        return tuple(nodelist)
+    
+    attr_names = ()
 
 class PtrDecl(Node):
     __slots__ = ()
 
 class Read(Node):
-    __slots__ = ()
+    __slots__ = ('expr', 'coord')
+    
+    def __init__(self, expr, coord=None):
+        self.expr = expr      # Expression to read.
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.expr is not None: nodelist.append(('expr', self.expr))
+        return tuple(nodelist)
+    
+    attr_names = ()
 
 class Return(Node):
-    __slots__ = ()
+    __slots__ = ('expr', 'coord')
+    
+    def __init__(self, expr, coord=None):
+        self.expr = expr
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.expr is not None: nodelist.append(('expr', self.expr))
+        return tuple(nodelist)
+    
+    attr_names = ()
 
 class Type(Node):
-    __slots__ = ('names')
+    __slots__ = ('names', 'coord')
+    
+    def __init__(self, names, coord=None):
+        self.names = names
+        self.coord = coord
+    
+    attr_names = ('names',)
 
 class VarDecl(Node):
     __slots__ = ('declname', 'coord') # NOTE: Not sure it there's
@@ -226,73 +345,17 @@ class UnaryOp(Node):
     __slots__ = ()
 
 class While(Node):
-    __slots__ = ()
-
-#### AUXILIARY FUNCTIONS ####
-
-# def _fix_decl_name_type(self, decl, typename):
-#     """ Fixes a declaration. Modifies decl.
-#     """
-#     # Reach the underlying basic type
-#     type = decl
-#     while not isinstance(type, uc_ast.VarDecl):
-#         type = type.type
-
-#     decl.name = type.declname
-
-#     # The typename is a list of types. If any type in this
-#     # list isn't an Type, it must be the only
-#     # type in the list.
-#     # If all the types are basic, they're collected in the
-#     # Type holder.
-#     for tn in typename:
-#         if not isinstance(tn, uc_ast.Type):
-#             if len(typename) > 1:
-#                 self._parse_error(
-#                     "Invalid multiple types specified", tn.coord)
-#             else:
-#                 type.type = tn
-#                 return decl
-
-#     if not typename:
-#         # Functions default to returning int
-#         if not isinstance(decl.type, uc_ast.FuncDecl):
-#             self._parse_error("Missing type in declaration", decl.coord)
-#         type.type = uc_ast.Type(['int'], coord=decl.coord)
-#     else:
-#         # At this point, we know that typename is a list of Type
-#         # nodes. Concatenate all the names into a single list.
-#         type.type = uc_ast.Type(
-#             [typename.names[0]],
-#             coord=typename.coord)
-#     return decl
-
-
-# def _type_modify_decl(self, decl, modifier):
-#     """ Tacks a type modifier on a declarator, and returns
-#         the modified declarator.
-#         Note: the declarator and modifier may be modified
-#     """
-#     modifier_head = modifier
-#     modifier_tail = modifier
-
-#     # The modifier may be a nested list. Reach its tail.
-#     while modifier_tail.type:
-#         modifier_tail = modifier_tail.type
-
-#     # If the decl is a basic type, just tack the modifier onto it
-#     if isinstance(decl, uc_ast.VarDecl):
-#         modifier_tail.type = decl
-#         return modifier
-#     else:
-#         # Otherwise, the decl is a list of modifiers. Reach
-#         # its tail and splice the modifier onto the tail,
-#         # pointing to the underlying basic type.
-#         decl_tail = decl
-
-#         while not isinstance(decl_tail.type, uc_ast.VarDecl):
-#             decl_tail = decl_tail.type
-
-#         modifier_tail.type = decl_tail.type
-#         decl_tail.type = modifier_head
-#         return decl
+    __slots__ = ('expr', 'statement')
+    
+    def __init__(self, expr, statement, coord=None):
+        self.expr = expr
+        self.statement = statement
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.expr is not None: nodelist.append(('expr', self.expr))
+        if self.statement is not None: nodelist.append(('statement', self.statement))
+        return tuple(nodelist)
+        
+    attr_names = ()
