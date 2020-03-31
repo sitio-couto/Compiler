@@ -374,9 +374,9 @@ class FuncDecl(Node):
     __slots__ = ('coord')
 
 class FuncDef(Node):
-    __slots__ = ('type', 'name', 'params', 'body', 'coord')
+    __slots__ = ('name', 'type', 'params', 'body', 'coord')
     
-    def __init__(self, type, decltor, decltions, body, coord=None):
+    def __init__(self, name, type, params, body, coord=None):
         self.type = type
         self.name = name
         self.params = params
@@ -390,14 +390,13 @@ class FuncDef(Node):
         if self.params is not None: nodelist.append(('params', self.params))
         if self.body is not None: nodelist.append(('body', self.body))
         return tuple(nodelist)
-        
 
 class GlobalDecl(Node):
     __slots__ = ('decl', 'coord')
     
-    def _init__(self, decl, coord=None):
+    def __init__(self, decl, coord=None):
         self.decl = decl
-        self.coord = coords
+        self.coord = coord
         
     def children(self):
         nodelist = []
