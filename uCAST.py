@@ -12,15 +12,48 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 30/03/2020.
 '''
 
+# TODO: CLASSESS NOT IMPLEMENTED YET
+# ArrayDecl     
+# ArrayRef     
+# Assert  
+# Break     
+# Cast     
+# Compound
+# DeclList     
+# EmptyStatement     
+# ExprList     
+# For     
+# FuncCall     
+# FuncDecl     
+# FuncDef     # Difference between FuncDef and FuncDecl?
+# GlobalDecl  
+# If     
+# InitList     
+# ParamList     
+# Print    
+# PtrDecl     # Guess we can ignore this
+# Read     
+# Return     
+# Type     
+# UnaryOp     
+# While     
+
+
 #### NODE CLASS - The All Father ####
 # It's but a reference to other classes, allowing us to create default
 # methods such as children() which can be recursively accessed by it's children.
 class Node(object):
     __slots__ = ()
     
+    # NOTE: Imma use this function as a inheritance for leaf classes
+    # If a class has children, it will be overriden, else it will use it 
     def children(self):
         """ A sequence of all children that are Nodes. """
-        pass
+        nodelist = []
+        return tuple(nodelist)
+
+    # NOTE: it seems to be a list for variables contained in the class (excluding subtrees)
+    attr_names = () 
 
 # This is the top of the AST, representing a uC program (a
 # translation unit in K&R jargon). It contains a list of
@@ -67,6 +100,8 @@ class Assignment(Node):
         if self.rvalue is not None: nodelist.append(("rvalue", self.rvalue))
         return tuple(nodelist)
 
+    attr_names = ('op', ) 
+
 class BinaryOp(Node):
     __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
     
@@ -82,7 +117,7 @@ class BinaryOp(Node):
         if self.rvalue is not None: nodelist.append(("rvalue", self.rvalue))
         return tuple(nodelist)
 
-    attr_names = ('op', )
+    attr_names = ('op', ) # NOTE: lvalue and rvalue are subtrees, so they dont make the list
 
 class Break(Node):
     __slots__ = ()
@@ -101,14 +136,24 @@ class Constant(Node):
         self.value = value
         self.coord = coord
 
-    def children(self):
-        nodelist = []
-        return tuple(nodelist)
-
     attr_names = ('type', 'value', )
 
 class Decl(Node):
-    __slots__ = ('name')
+    __slots__ = ('name', 'type', 'init', 'coord')
+
+    def __init__(self, name, type, init, coord=None):
+        self.name = name # TODO: Not sure what's this name variable (I think it will derive from one of the childre or just remain as none)
+        self.type = type # Func/Var Type [type_specifier] (int, float... tokens)
+        self.init = init # One or more initializers [init_declarator_list_opt]
+        self.coord = coord
+
+    def children(self):
+        nodelist = []
+        if self.type is not None: nodelist.append(("type", self.type))
+        if self.init is not None: nodelist.append(("init", self.init))
+        return tuple(nodelist)
+
+    attr_names = ('name', 'type', )
 
 class DeclList(Node):
     __slots__ = ()
@@ -134,8 +179,15 @@ class FuncDef(Node):
 class GlobalDecl(Node):
     __slots__ = ()
 
-class ID(Node):
-    __slots__ = ('name')
+class ID(Node): # NOTE: Const class is ID's sibiling, not child
+    __slots__ = ('name', 'coord')
+
+    def __init__(self, name, coord=None):
+        self.name = name   # Func/Var name [ID token value]
+        self.coord = coord 
+
+    attr_names = ('name', )
+
 
 class If(Node):
     __slots__ = ()
@@ -162,7 +214,13 @@ class Type(Node):
     __slots__ = ('names')
 
 class VarDecl(Node):
-    __slots__ = ('declname')
+    __slots__ = ('declname', 'coord') # NOTE: Not sure it there's
+
+    def __init__(self, declname, coord=None):
+        self.declname = declname   # Var name [ID token value]
+        self.coord = coord 
+
+    attr_names = ('declname', )
 
 class UnaryOp(Node):
     __slots__ = ()
@@ -170,23 +228,7 @@ class UnaryOp(Node):
 class While(Node):
     __slots__ = ()
 
-# def _build_declarations(self, spec, decls):
-#     """ Builds a list of declarations all sharing the given specifiers.
-#     """
-#     declarations = []
-
-#     for decl in decls:
-#         assert decl['decl'] is not None
-#         declaration = uc_ast.Decl(
-#                 name=None,
-#                 type=decl['decl'],
-#                 init=decl.get('init'),
-#                 coord=decl['decl'].coord)
-
-#         fixed_decl = self._fix_decl_name_type(declaration, spec)
-#         declarations.append(fixed_decl)
-
-#     return declarations
+#### AUXILIARY FUNCTIONS ####
 
 # def _fix_decl_name_type(self, decl, typename):
 #     """ Fixes a declaration. Modifies decl.

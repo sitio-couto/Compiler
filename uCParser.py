@@ -76,15 +76,16 @@ class uCParser():
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
-        p[0] = ('declaration', p[1], p[2])
+        # TODO: Understand how to use auxiliary functions to fix declarator list
+        #p[0] = self._build_declarations(p[1], p[2]) # Build multiple declarations based on single specifier
+        p[0] = (p[1], p[2])
 
     def p_init_declarator_1(self, p):
         ''' init_declarator : declarator '''
-        p[0] = p[1]
+        p[0] = (p[1], None) # returns tuple without initializer
     def p_init_declarator_2(self, p):
         ''' init_declarator : declarator '=' initializer '''
-        p[0] = (p[1], p[2], p[3])
-
+        p[0] = (p[1], p[3]) # Has initializer in tuple
 
     def p_type_specifier(self, p):
         ''' type_specifier : VOID
@@ -244,14 +245,18 @@ class uCParser():
 
     def p_identifier(self, p):
         ''' identifier : ID '''
-        p[0] = ('id', p[1])
-        
-    def p_constant(self, p):
-        ''' constant : CCONST
-                     | ICONST
-                     | FCONST
-        '''
-        p[0] = ('const', p[1]) # TODO: check if num is realy the best tag for this
+        p[0] = ast.ID(p[1], None) # TODO: Not sure how to use p.lineno here
+
+    # TODO: There might be a better way to do this   
+    def p_constant_1(self, p):
+        ''' constant : CCONST '''
+        p[0] = ast.Constant('char', p[1], None) # TODO: Not sure how to use p.lineno here
+    def p_constant_2(self, p):
+        ''' constant : ICONST '''
+        p[0] = ast.Constant('char', p[1], None)
+    def p_constant_3(self, p):
+        ''' constant : FCONST '''
+        p[0] = ast.Constant('char', p[1], None)
 
     #### STATEMENTS ####
 
@@ -434,3 +439,62 @@ class uCParser():
             print("Error near the symbol %s at (%s, %s)." % (p.value, p.lineno, p.lexpos))
         else:
             print("Error at the end of input")
+
+    def _build_declarations(self, spec, decls):
+        """ Builds a list of declarations all sharing the given specifiers.
+        
+            When a list of declarations is defined (such as int a, b, c=0, d[];),
+            the type specifier (spec) apears only once with an undetermined number
+            of declarations, which can cause issues instanciating nodes.
+            This function handles this issue.
+        """
+        declarations = []
+
+        for decl in decls:
+            assert decl['decl'] is not None
+            declaration = ast.Decl(
+                    name=None,
+                    type=decl['decl'],
+                    init=decl.get('init'),
+                    coord=decl['decl'].coord)
+
+            fixed_decl = self._fix_decl_name_type(declaration, spec)
+            declarations.append(fixed_decl)
+
+        return declarations
+
+    def _fix_decl_name_type(self, decl, typename):
+        """ Fixes a declaration. Modifies decl.
+        """
+        # Reach the underlying basic type
+        type = decl
+        while not isinstance(type, ast.VarDecl):
+            type = type.type
+
+        decl.name = type.declname
+
+        # The typename is a list of types. If any type in this
+        # list isn't an Type, it must be the only
+        # type in the list.
+        # If all the types are basic, they're collected in the
+        # Type holder.
+        for tn in typename:
+            if not isinstance(tn, ast.Type):
+                if len(typename) > 1:
+                    self.p_error(tn.coord)
+                else:
+                    type.type = tn
+                    return decl
+
+        if not typename:
+            # Functions default to returning int
+            if not isinstance(decl.type, ast.FuncDecl):
+                self.p_error(decl.coord)
+            type.type = ast.Type(['int'], coord=decl.coord)
+        else:
+            # At this point, we know that typename is a list of Type
+            # nodes. Concatenate all the names into a single list.
+            type.type = ast.Type(
+                [typename.names[0]],
+                coord=typename.coord)
+        return decl
