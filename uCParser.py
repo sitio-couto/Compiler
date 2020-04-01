@@ -121,11 +121,15 @@ class uCParser():
         ''' direct_declarator : '(' declarator ')' '''
         p[0] = p[2] 
     def p_direct_declarator_3(self, p):
-        ''' direct_declarator : direct_declarator '[' const_expr_opt ']'
-                              | direct_declarator '(' parameter_list ')'
+        ''' direct_declarator : direct_declarator '[' const_expr_opt ']' '''
+        aux = ast.ArrayDecl(None, p[3] if len(p) == 5 else 1, p[1].coord)
+        p[0] = self._type_modify_decl(p[1], aux)
+    def p_direct_declarator_4(self, p):
+        ''' direct_declarator : direct_declarator '(' parameter_list ')'
                               | direct_declarator '(' id_list_opt ')'
         '''
         p[0] = (p[1], p[3]) 
+
 
     #### EXPRESSIONS ####
 
@@ -544,10 +548,13 @@ class uCParser():
         modifier_tail = modifier
 
         # The modifier may be a nested list. Reach its tail.
+        # Necessary if int cube[][][]; 
         while modifier_tail.type:
             modifier_tail = modifier_tail.type
 
         # If the decl is a basic type, just tack the modifier onto it
+        # 'decl' has the type int, now propagate to ArrayDecl
+        # int x[] => int ID(x) ArrDecl(None) => int ID(x) ArrDecl(int)
         if isinstance(decl, ast.VarDecl):
             modifier_tail.type = decl
             return modifier

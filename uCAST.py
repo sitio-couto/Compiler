@@ -180,7 +180,18 @@ class Program(Node):
 #### AST NODES CLASSES ####
 
 class ArrayDecl(Node):
-    __slots__ = ()
+    __slots__ = ('type', 'dims', 'coord')
+    
+    def __init__(self, type, dims, coord=None):
+        self.type = type
+        self.dims = dims
+        self.coord = coord
+
+    def children(self):
+        nodelist = []
+        if self.type is not None: nodelist.append(("type", self.type))
+        if self.dims is not None: nodelist.append(("dims", self.dims))
+        return tuple(nodelist)
 
 class ArrayRef(Node):
     __slots__ = ()

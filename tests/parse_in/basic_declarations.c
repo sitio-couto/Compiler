@@ -1,6 +1,15 @@
-// Multiple
+// Basic Declarations
 int a = 10 + 8;
 int x, y=3*2, z;
+float aloha = (y-a);
+char b = 'b';
+void p;
+
+// Arrays declarations
+int vec[];
+char c[12];
+float arr[][][], varr[10][10][10];
+// arr[] = {1,2,3,4};
 
 // // Variables
 // int i = 10;
