@@ -30,7 +30,7 @@ if __name__ == '__main__':
     
     while True:
         # quick testing input file
-        if argv[1] :
+        if len(argv) > 1 :
             parser.test(argv[1])
             exit(1)
 
