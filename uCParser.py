@@ -51,7 +51,7 @@ class uCParser():
             with open(data, 'r') as content_file :
                 data = content_file.read()
         self.parse(data).show()
-    
+
     #### ROOT ####
     
     def p_program(self, p) :
@@ -98,7 +98,7 @@ class uCParser():
                            | FLOAT
         '''
         #p[0] = p[1]
-        p[0] = ast.Type(p[1])
+        p[0] = ast.Type(p[1], self.get_coord(p,1))
 
     def p_initializer_1(self, p):
         ''' initializer : assign_expr '''
@@ -252,18 +252,18 @@ class uCParser():
 
     def p_identifier(self, p):
         ''' identifier : ID '''
-        p[0] = ast.ID(p[1], None) # TODO: Not sure how to use p.lineno here
+        p[0] = ast.ID(p[1], self.get_coord(p,1)) # TODO: Not sure how to use p.lineno here
 
     # TODO: There might be a better way to do this   
     def p_constant_1(self, p):
         ''' constant : CCONST '''
-        p[0] = ast.Constant('char', p[1]) # TODO: Not sure how to use p.lineno here
+        p[0] = ast.Constant('char', p[1], self.get_coord(p,1)) # TODO: Not sure how to use p.lineno here
     def p_constant_2(self, p):
         ''' constant : ICONST '''
-        p[0] = ast.Constant('int', p[1])
+        p[0] = ast.Constant('int', p[1], self.get_coord(p,1))
     def p_constant_3(self, p):
         ''' constant : FCONST '''
-        p[0] = ast.Constant('float', p[1])
+        p[0] = ast.Constant('float', p[1], self.get_coord(p,1))
 
     #### STATEMENTS ####
 
@@ -565,9 +565,9 @@ class uCParser():
             return decl
 
     # Get coordinates for token.
-    def _token_coord(self, p, token_idx):
-        last_cr = p.lexer.lexer.lexdata.rfind('\n', 0, p.lexpos(token_idx))
+    def get_coord(self, p, token_idx):
+        last_cr = p.lexer.lexdata.rfind('\n', 0, p.lexpos(token_idx))
         if last_cr < 0:
             last_cr = -1
         column = (p.lexpos(token_idx) - (last_cr))
-        return ast.Coord(p.lineno(token_idx), column)
+        return f'   @ {p.lineno(token_idx)}:{column}'

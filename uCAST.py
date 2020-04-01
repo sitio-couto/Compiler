@@ -61,7 +61,7 @@ class Node(object):
         nodelist = []
         return tuple(nodelist)
 
-    def show(self, buf=sys.stdout, offset=0, attrnames=False, nodenames=False, showcoord=False, _my_node_name=None):
+    def show(self, buf=sys.stdout, offset=0, attrnames=False, nodenames=False, showcoord=True, _my_node_name=None):
         """ Pretty print the Node and all its attributes and children (recursively) to a buffer.
             buf:
                 Open IO buffer into which the Node is printed.
@@ -285,23 +285,23 @@ class Constant(Node):
 
     attr_names = ('type', 'value', )
 
-class Coord(object):
-    """ Coordinates of a syntactic element. Consists of:
-            - Line number
-            - (optional) column number, for the Lexer
-    """
-    __slots__ = ('line', 'column')
+# class Coord(object):
+#     """ Coordinates of a syntactic element. Consists of:
+#             - Line number
+#             - (optional) column number, for the Lexer
+#     """
+#     __slots__ = ('line', 'column')
 
-    def __init__(self, line, column=None):
-        self.line = line
-        self.column = column
+#     def __init__(self, line, column=None):
+#         self.line = line
+#         self.column = column
 
-    def __str__(self):
-        if self.line:
-            coord_str = "   @ %s:%s" % (self.line, self.column)
-        else:
-            coord_str = ""
-        return coord_str
+#     def __str__(self):
+#         if self.line:
+#             coord_str = "   @ %s:%s" % (self.line, self.column)
+#         else:
+#             coord_str = ""
+#         return coord_str
 
 class Decl(Node):
     __slots__ = ('name', 'type', 'init', 'coord')

@@ -1,5 +1,6 @@
 // Multiple
 int a = 10 + 8;
+int x, y=3*2, z;
 
 // // Variables
 // int i = 10;
