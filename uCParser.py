@@ -50,8 +50,7 @@ class uCParser():
         if exists(data): 
             with open(data, 'r') as content_file :
                 data = content_file.read()
-        print(self.parse(data))
-        self.parse(data)[0].show()
+        self.parse(data).show()
     
     #### ROOT ####
     
@@ -81,7 +80,6 @@ class uCParser():
         # TODO: Understand how to use auxiliary functions to fix declarator list
         # p[0] = (p[1], p[2])
         p[0] = self._build_declarations(p[1], p[2]) # Build multiple declarations based on single specifier
-        print(type(p[2]))
 
     def p_init_declarator_1(self, p):
         ''' init_declarator : declarator '''
@@ -359,10 +357,10 @@ class uCParser():
 
     def p_global_declaration_list_1(self, p) :
         ''' global_declaration_list : global_declaration_list global_declaration '''
-        p[0] = p[1] + (p[2])
+        p[0] = p[1] + [p[2]]
     def p_global_declaration_list_2(self, p) :
         ''' global_declaration_list : global_declaration '''
-        p[0] = p[1]
+        p[0] = [p[1]]
 
     def p_declaration_list_1(self, p) :
         ''' declaration_list : declaration_list declaration '''
@@ -483,8 +481,7 @@ class uCParser():
                     type=decl['decl'],
                     init=decl.get('init'),
                     coord=decl['decl'].coord)
-
-            print(declaration)
+                    
             fixed_decl = self._fix_decl_name_type(declaration, spec)
             declarations.append(fixed_decl)
 

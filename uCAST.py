@@ -392,15 +392,17 @@ class FuncDef(Node):
         return tuple(nodelist)
 
 class GlobalDecl(Node):
-    __slots__ = ('decl', 'coord')
+    __slots__ = ('decls', 'coord')
     
-    def __init__(self, decl, coord=None):
-        self.decl = decl
+    def __init__(self, decls, coord=None):
+        self.decls = decls
         self.coord = coord
         
+    # NOTE: This might not be correct
     def children(self):
         nodelist = []
-        if self.decl is not None: nodelist.append(('decl', self.decl))
+        for child in self.decls or []:
+            if child is not None: nodelist.append(("Decl", child))
         return tuple(nodelist)
 
 class ID(Node): # NOTE: Const class is ID's sibiling, not child
