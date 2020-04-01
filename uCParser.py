@@ -50,6 +50,7 @@ class uCParser():
         if exists(data): 
             with open(data, 'r') as content_file :
                 data = content_file.read()
+        # print(self.parse(data))
         self.parse(data).show()
 
     #### ROOT ####
@@ -77,7 +78,6 @@ class uCParser():
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
-        # TODO: Understand how to use auxiliary functions to fix declarator list
         # p[0] = (p[1], p[2])
         p[0] = self._build_declarations(p[1], p[2]) # Build multiple declarations based on single specifier
 
@@ -103,11 +103,13 @@ class uCParser():
     def p_initializer_1(self, p):
         ''' initializer : assign_expr '''
         p[0] = p[1]
+    # NOTE: Initilizer_list will never be None by the grammar (and maybe it should)
     def p_initializer_2(self, p):
         ''' initializer : '{' initializer_list '}'
                         | '{' initializer_list ',' '}'
         '''
-        p[0] = ('{', p[2], '}')
+        # p[0] = ('{', p[2], '}')
+        p[0] = p[2]
 
     def p_declarator(self, p):
         ''' declarator : direct_declarator '''
@@ -128,8 +130,8 @@ class uCParser():
         ''' direct_declarator : direct_declarator '(' parameter_list ')'
                               | direct_declarator '(' id_list_opt ')'
         '''
-        p[0] = (p[1], p[3]) 
-
+        # p[0] = (p[1], p[3]) 
+        p[0] = ast.FuncDecl(None, p[3]) # None type will be overwritten later
 
     #### EXPRESSIONS ####
 
@@ -248,9 +250,8 @@ class uCParser():
     def p_primary_expr_2(self, p):
         ''' primary_expr : identifier
                          | constant
-                         | STRING
         '''
-        p[0] = p[1] # TODO: Not sure if there should be a tuple here (pe (ID,val))
+        p[0] = p[1] # NOTE: Removed String from here
 
     # Terminal Expressions #
 
@@ -268,6 +269,9 @@ class uCParser():
     def p_constant_3(self, p):
         ''' constant : FCONST '''
         p[0] = ast.Constant('float', p[1], self.get_coord(p,1))
+    def p_constant_4(self, p): # TODO: Check if this is right (it seemed more organized)
+        ''' constant : STRING'''
+        p[0] = ast.Constant('string', p[1], self.get_coord(p,1))
 
     #### STATEMENTS ####
 
@@ -289,7 +293,7 @@ class uCParser():
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
-        #p[0] = ('{', p[2], p[3], '}')
+        # p[0] = ('{', p[2], p[3], '}')
         p[0] = ast.Compound(p[2], p[3])
 
     # Selection Staments #    
@@ -368,21 +372,19 @@ class uCParser():
 
     def p_declaration_list_1(self, p) :
         ''' declaration_list : declaration_list declaration '''
-        p[0] = p[1] + (p[2])
+        p[0] = p[1] + [p[2]]
     def p_declaration_list_2(self, p) :
         ''' declaration_list : declaration '''
-        p[0] = p[1]
+        p[0] = [p[1]]
 
     def p_statement_list_1(self, p) :
         ''' statement_list : statement_list statement '''
-        #p[0] = (p[1], p[2]) # TODO: Double check if this is the proper tree association
-        p[0] = p[1] + (p[2])
+        p[0] = p[1] + [p[2]]
     def p_statement_list_2(self, p) :
         ''' statement_list : statement '''
-        p[0] = p[1]
+        p[0] = [p[1]]
 
     # Listable Productions Separated By Tokens #
-    # TODO: Not sure if the comma token should be in the tree
 
     def p_init_declarator_list_1(self, p):
         ''' init_declarator_list : init_declarator_list ',' init_declarator '''
@@ -393,24 +395,28 @@ class uCParser():
 
     def p_initializer_list_1(self, p):
         ''' initializer_list : initializer_list ',' initializer '''
-        p[0] = p[1] + (',', p[3]) 
+        # p[0] = p[1] + [p[3]] 
+        p[1].exprs.append(p[3]) # Appends elements while retuning from leftside recursion
+        p[0] = p[1]             # Return appended list
     def p_initializer_list_2(self, p):
         ''' initializer_list : initializer '''
-        p[0] = p[1]
+        # p[0] = [p[1]] 
+        # Base Case: Ends left recursion and returns single element InitList
+        p[0] = ast.InitList([p[1]], p[1].coord)
 
     def p_id_list_1(self, p):
         ''' id_list : id_list ',' identifier '''
-        p[0] = p[1] + (',', p[3]) 
+        p[0] = p[1] + [',', p[3]] 
     def p_id_list_2(self, p):
         ''' id_list : identifier '''
-        p[0] = p[1]
+        p[0] = [p[1]]
 
     def p_parameter_list_1(self, p):
         ''' parameter_list : parameter_list ',' parameter_declaration '''
-        p[0] = p[1] + (',', p[3]) 
+        p[0] = p[1] + [',', p[3]] 
     def p_parameter_list_2(self, p):
         ''' parameter_list : parameter_declaration '''
-        p[0] = p[1]
+        p[0] = [p[1]]
 
     # Optional Productions #
 
@@ -558,7 +564,7 @@ class uCParser():
         if isinstance(decl, ast.VarDecl):
             modifier_tail.type = decl
             return modifier
-        else:
+        else: # int x[][][]
             # Otherwise, the decl is a list of modifiers. Reach
             # its tail and splice the modifier onto the tail,
             # pointing to the underlying basic type.

@@ -12,8 +12,7 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 31/03/2020.
 '''
 
-# TODO: CLASSESS NOT IMPLEMENTED YET
-# ArrayDecl     
+# TODO: CLASSESS NOT IMPLEMENTED YET     
 # ArrayRef     
 # ExprList     
 # FuncCall     
@@ -37,7 +36,7 @@ def _repr(obj):
 # It's but a reference to other classes, allowing us to create default
 # methods such as children() which can be recursively accessed by it's children.
 class Node(object):
-    __slots__ = ()
+    __slots__ = ('coord')
 
     def __repr__(self):
         """ Generates a python representation of the current node
@@ -382,7 +381,18 @@ class FuncCall(Node):
     __slots__ = ('coord')
 
 class FuncDecl(Node):
-    __slots__ = ('coord')
+    __slots__ = ('type', 'args', 'coord')
+    
+    def __init__(self, type, args, coord=None):
+        self.type = type
+        self.args = args
+        self.coord = coord
+
+    def children(self):
+        nodelist = []
+        if self.type is not None: nodelist.append(("type", self.type))
+        if self.args is not None: nodelist.append(("args", self.args))
+        return tuple(nodelist)
 
 class FuncDef(Node):
     __slots__ = ('name', 'type', 'params', 'body', 'coord')
@@ -442,7 +452,17 @@ class If(Node):
         return tuple(nodelist)
 
 class InitList(Node):
-    __slots__ = ('coord')
+    __slots__ = ('exprs', 'coord')
+
+    def __init__(self, exprs, coord=None):
+        self.exprs = exprs
+        self.coord = coord
+
+    def children(self):
+        nodelist = []
+        for i, child in enumerate(self.exprs or []):
+            nodelist.append(("exprs[%d]" % i, child))
+        return tuple(nodelist)
 
 class ParamList(Node):
     __slots__ = ('coord')
