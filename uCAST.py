@@ -495,7 +495,10 @@ class VarDecl(Node):
         self.type = type
         self.coord = coord 
 
-    attr_names = ('declname',)
+    def children(self):
+        nodelist = []
+        if self.type is not None: nodelist.append(('type', self.type))
+        return tuple(nodelist)
 
 class UnaryOp(Node):
     __slots__ = ('op', 'coord')

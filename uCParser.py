@@ -185,7 +185,7 @@ class uCParser():
 
     def p_cast_expr_1(self, p):
         ''' cast_expr : un_expr '''
-        p[0] = ast.Cast(None, p[1])
+        p[0] = p[1]
         # p[0] = p[1]
     def p_cast_expr_2(self, p):
         ''' cast_expr : '(' type_specifier ')' cast_expr '''
@@ -498,11 +498,11 @@ class uCParser():
         decl.name = type.declname
 
         # UNNECESSARY ????
-        #  So form what i uderstand this is not necessary for us because
+        #  So from what i uderstand this is not necessary for us because
         #  typename can only be a list if we consider all the possible
-        #  declaration specifiers:  storage-class, type-specifier and
-        #  type-qualifier. Since we only evaluate the second, this section
-        #  is of no use to us.
+        #  declaration specifiers: storage-class, type-specifier and
+        #  type-qualifier. Since we only evaluate the second one, this 
+        #  section is of no use to us.
         #
         #     # The typename is a list of types. If any type in this
         #     # list isn't an Type, it must be the only
@@ -517,8 +517,8 @@ class uCParser():
         #                 type.type = tn
         #                 return decl
 
-        # This is for fucntions with no return value.
-        # So yeah... Apparently C does this
+        # This is for functions with no return value Type.
+        # So yeah... Apparently C can do this
         if not typename:
             # Functions default to returning int
             if not isinstance(decl.type, ast.FuncDecl):
