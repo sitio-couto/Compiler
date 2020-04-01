@@ -45,7 +45,7 @@ class Node(object):
         result = self.__class__.__name__ + '('
         indent = ''
         separator = ''
-        for name in self.__slots__[:-2]:
+        for name in self.__slots__[:-1]:
             result += separator
             result += indent
             result += name + '=' + (_repr(getattr(self, name)).replace('\n', '\n  ' + (' ' * (len(name) + len(self.__class__.__name__)))))
