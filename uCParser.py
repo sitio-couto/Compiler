@@ -522,6 +522,8 @@ class uCParser():
         """
         declaration = self._build_declarations(spec, [dict(decl=decl, init=None)])[0]
 
+        # Adding "list" to type.
+        spec.name = [spec.name]
         return ast.FuncDef(spec, declaration, param_decls, body)
 
     def _fix_decl_name_type(self, decl, typename):
@@ -569,7 +571,7 @@ class uCParser():
             # type.type = ast.Type(
             #     [typename.names[0]],
             #     coord=typename.coord)
-        
+
         return decl
         
     def _type_modify_decl(self, decl, modifier):
