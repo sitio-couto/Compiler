@@ -309,7 +309,9 @@ class uCParser():
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
         # p[0] = ('{', p[2], p[3], '}')
         # TODO: Same as DeclList: not printing if is None
-        p[0] = ast.Compound(p[2], p[3], self.get_coord(p,1)) if p[2] or p[3] else None
+        coord = self.get_coord(p,1)
+        coord.column = 1
+        p[0] = ast.Compound(p[2], p[3], coord) if p[2] or p[3] else None
 
     # Selection Staments #    
     # if () {} | if () {} else {}
@@ -612,4 +614,4 @@ class uCParser():
         if last_cr < 0:
             last_cr = -1
         column = (p.lexpos(token_idx) - (last_cr))
-        return f'   @ {p.lineno(token_idx)}:{column}'
+        return ast.Coord(p.lineno(token_idx), column)

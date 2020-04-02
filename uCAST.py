@@ -307,23 +307,25 @@ class Constant(Node):
 
     attr_names = ('type', 'value', )
 
-# class Coord(object):
-#     """ Coordinates of a syntactic element. Consists of:
-#             - Line number
-#             - (optional) column number, for the Lexer
-#     """
-#     __slots__ = ('line', 'column')
+class Coord(Node):
+    """ Coordinates of a syntactic element. Consists of:
+            - Line number
+            - (optional) column number, for the Lexer
+    """
+    __slots__ = ('line', 'column')
+    
+    def __init__(self, line, column=None):
+        self.line = line
+        self.column = column
 
-#     def __init__(self, line, column=None):
-#         self.line = line
-#         self.column = column
-
-#     def __str__(self):
-#         if self.line:
-#             coord_str = "   @ %s:%s" % (self.line, self.column)
-#         else:
-#             coord_str = ""
-#         return coord_str
+    def __str__(self):
+        if self.line:
+            coord_str = "   @ %s:%s" % (self.line, self.column)
+        else:
+            coord_str = ""
+        return coord_str
+    
+    attr_names = ()
 
 class Decl(Node):
     __slots__ = ('name', 'type', 'init', 'coord')
