@@ -217,7 +217,8 @@ class uCParser():
                     | MINUSMINUS un_expr
                     | un_op cast_expr
         '''
-        p[0] = (p[1], p[2])
+        #p[0] = (p[1], p[2])
+        p[0] = ast.UnaryOp(p[1], p[2])
 
     # Unary Operators #
     # '-' NUM | '*' PTR | '&' ADDR 
@@ -247,7 +248,8 @@ class uCParser():
         '''postfix_expr : postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
         '''
-        p[0] = (p[1], p[2]) 
+        #p[0] = (p[1], p[2]) 
+        p[0] = ast.UnaryOp(p[2], p[1]) # Any indication of postfix? ++i different from i++.
 
     # Primary Expressios #
     # ( ... ) | var | 12.5 | "hello"

@@ -14,7 +14,6 @@ Last Modified: 02/04/2020.
 
 # TODO: CLASSESS NOT IMPLEMENTED YET     
 # ExprList     
-# UnaryOp     
 
 import sys
 
@@ -558,7 +557,17 @@ class VarDecl(Node):
         return tuple(nodelist)
 
 class UnaryOp(Node):
-    __slots__ = ('op', 'coord')
+    __slots__ = ('op', 'expr', 'coord')
+    
+    def __init__(self, op, expr, coord=None):
+        self.op = op
+        self.expr = expr
+        self.coord = coord
+    
+    def children(self):
+        nodelist = []
+        if self.expr is not None: nodelist.append(("expr", self.expr))
+        return tuple(nodelist)
     
     attr_names = ('op', )
 
