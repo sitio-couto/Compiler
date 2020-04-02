@@ -158,7 +158,7 @@ class uCParser():
     def p_assign_expr_2(self, p):
         ''' assign_expr : un_expr assign_op assign_expr '''
         #  __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
-        p[0] = ast.Assignment(p[2], p[1], p[3], self.get_coord(p,1))
+        p[0] = ast.Assignment(p[2], p[1], p[3], p[1].coord)
         # p[0] = (p[1], p[2], p[3])
 
     def p_assign_op(self, p):
@@ -193,7 +193,7 @@ class uCParser():
                      | bin_expr OR bin_expr
         '''
         # __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
-        p[0] = ast.BinaryOp(p[2], p[1], p[3], self.get_coord(p,1))
+        p[0] = ast.BinaryOp(p[2], p[1], p[3], p[1].coord)
         # p[0] = (p[1], p[2], p[3])
 
     # Cast Expressions # 
@@ -221,7 +221,7 @@ class uCParser():
                     | un_op cast_expr
         '''
         #p[0] = (p[1], p[2])
-        p[0] = ast.UnaryOp(p[1], p[2], self.get_coord(p,1))
+        p[0] = ast.UnaryOp(p[1], p[2], p[2].coord)
 
     # Unary Operators #
     # '-' NUM | '*' PTR | '&' ADDR 
@@ -243,16 +243,17 @@ class uCParser():
         p[0] = p[1]
     def p_postfix_expr_2(self, p):
         '''postfix_expr : postfix_expr '[' expr ']' '''
-        p[0] = ast.ArrayRef(p[1], p[3], self.get_coord(p,1))
+        p[0] = ast.ArrayRef(p[1], p[3], p[1].coord)
     def p_postfix_expr_3(self, p):
         '''postfix_expr : postfix_expr '(' expr_opt ')' '''
-        p[0] = ast.FuncCall(p[1], p[3], self.get_coord(p,1)) # Maybe wrong?
+        p[0] = ast.FuncCall(p[1], p[3], p[1].coord) 
     def p_postfix_expr_4(self, p):
         '''postfix_expr : postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
         '''
         #p[0] = (p[1], p[2]) 
-        p[0] = ast.UnaryOp(p[2], p[1], self.get_coord(p,1)) # Any indication of postfix? ++i different from i++.
+        # NOTE: 'p' as in 'postfix' (t1.ast)
+        p[0] = ast.UnaryOp('p' + p[2], p[1], p[1].coord) 
 
     # Primary Expressios #
     # ( ... ) | var | 12.5 | "hello"
@@ -308,7 +309,7 @@ class uCParser():
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
         # p[0] = ('{', p[2], p[3], '}')
         # TODO: Same as DeclList: not printing if is None
-        p[0] = ast.Compound(p[2], p[3]) if p[2] or p[3] else None
+        p[0] = ast.Compound(p[2], p[3], self.get_coord(p,1)) if p[2] or p[3] else None
 
     # Selection Staments #    
     # if () {} | if () {} else {}
