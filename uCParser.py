@@ -77,8 +77,7 @@ class uCParser():
         #p[0] = ('func', 'void', p[1], p[2], p[3])
         # p[0] = [ast.FuncDef(None, p[1], p[2], p[3])]
         # type = ast.Type(['int'], self.get_coord(p, 1)) # If no reutur type specified, defaults to INT
-        # p[0] = self._build_function_definition(type, p[1], p[2], p[3])
-        print(p[0])
+        p[0] = [self._build_function_definition(type, p[1], p[2], p[3])]
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
@@ -365,10 +364,11 @@ class uCParser():
 
     def p_parameter_declaration(self, p):
         ''' parameter_declaration : type_specifier declarator '''
-        p[0] = (p[1], p[2])
-    
+        p[0] = self._build_declarations(p[1], [dict(decl=p[2])])[0]
 
     # Listable Productions #
+    # NOTE: SOME LISTING ALREADY HAVE A LIST AS A RETURN TYPE
+    # If this is the case, there's no need to put the values in brackets ([val])
 
     def p_global_declaration_list_1(self, p) :
         ''' global_declaration_list : global_declaration_list global_declaration '''
@@ -379,20 +379,19 @@ class uCParser():
 
     def p_declaration_list_1(self, p) :
         ''' declaration_list : declaration_list declaration '''
-        p[0] = p[1] + [p[2]]
+        p[0] = p[1] + p[2]
     def p_declaration_list_2(self, p) :
         ''' declaration_list : declaration '''
-        p[0] = [p[1]]
+        p[0] = p[1]
 
     def p_statement_list_1(self, p) :
         ''' statement_list : statement_list statement '''
         p[0] = p[1] + [p[2]]
     def p_statement_list_2(self, p) :
         ''' statement_list : statement '''
-        p[0] = [p[1]]
+        p[0] = p[1]
 
     # Listable Productions Separated By Tokens #
-    # TODO: Might have to change _list declarations (single elements and brackets)
 
     def p_init_declarator_list_1(self, p):
         ''' init_declarator_list : init_declarator_list ',' init_declarator '''
@@ -425,7 +424,8 @@ class uCParser():
         p[0] = p[1] 
     def p_parameter_list_2(self, p):
         ''' parameter_list : parameter_declaration '''
-        p[0] = ast.ParamList([p[1]], p[1].coord)
+        p[0] = ast.ParamList([p[1]], p[1].coord) 
+        # NOTE: Instead of creating by hand, we can use the builder to create a single Decl
 
     # Optional Productions #
 
@@ -433,7 +433,7 @@ class uCParser():
         ''' declaration_list_opt : declaration_list
                                  | empty
         '''
-        #p[0] = p[1] 
+        # p[0] = p[1] 
         # TODO: His output does not use DeclList (maybe because is an Empty return)
         p[0] = ast.DeclList(p[1]) if p[1] else None 
 
