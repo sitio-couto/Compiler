@@ -419,17 +419,17 @@ class FuncCall(Node):
     attr_names = ()
 
 class FuncDecl(Node):
-    __slots__ = ('type', 'args', 'coord')
+    __slots__ = ('type', 'params', 'coord')
     
-    def __init__(self, type, args, coord=None):
+    def __init__(self, type, params, coord=None):
         self.type = type
-        self.args = args
+        self.params = params
         self.coord = coord
 
     def children(self):
         nodelist = []
+        if self.params is not None: nodelist.append(("params", self.params))
         if self.type is not None: nodelist.append(("type", self.type))
-        if self.args is not None: nodelist.append(("args", self.args))
         return tuple(nodelist)
     
     attr_names = ()
