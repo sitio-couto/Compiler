@@ -286,7 +286,8 @@ class Compound(Node):
         
     def children(self):
         nodelist = []
-        if self.decls is not None: nodelist.append(('decls', self.decls))
+        for i, child in enumerate(self.decls or []):
+            if child is not None: nodelist.append(("decls[%d]" % i, child))
         for i, child in enumerate(self.stats or []):
             if child is not None: nodelist.append(("stats[%d]" % i, child))
         return tuple(nodelist)
