@@ -13,10 +13,7 @@ Last Modified: 02/04/2020.
 '''
 
 # TODO: CLASSESS NOT IMPLEMENTED YET     
-# ArrayRef     
 # ExprList     
-# FuncCall     
-# InitList     
 # UnaryOp     
 
 import sys
@@ -191,7 +188,18 @@ class ArrayDecl(Node):
         return tuple(nodelist)
 
 class ArrayRef(Node):
-    __slots__ = ()
+    __slots__ = ('name', 'index', 'coord')
+    
+    def __init__(self, name, index, coord):
+        self.name = name
+        self.index = index
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        if self.name is not None: nodelist.append(('name', self.name))
+        if self.index is not None: nodelist.append(('index', self.index))
+        return tuple(nodelist)
 
 class Assert(Node):
     __slots__ = ('expr', 'coord')
