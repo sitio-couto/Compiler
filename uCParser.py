@@ -61,10 +61,11 @@ class uCParser():
 
     #### FIRST SPLIT ####
 
-    def p_global_declaration(self, p) :
-        ''' global_declaration : function_definition
-                               | declaration
-        '''
+    def p_global_declaration_1(self, p) :
+        ''' global_declaration : function_definition '''
+        p[0] = p[1]
+    def p_global_declaration_2(self, p) :
+        ''' global_declaration : declaration '''
         p[0] = ast.GlobalDecl(p[1])
 
     def p_function_definition_1(self, p):
@@ -130,15 +131,13 @@ class uCParser():
         aux = ast.ArrayDecl(None, p[3] if len(p) == 5 else 1, p[1].coord)
         p[0] = self._type_modify_decl(p[1], aux)
     def p_direct_declarator_4(self, p):
-        ''' direct_declarator : direct_declarator '(' parameter_list ')' '''
+        ''' direct_declarator : direct_declarator '(' parameter_list ')' 
+                              | direct_declarator '(' id_list_opt ')' 
+        '''
         # p[0] = (p[1], p[3]) 
         # NOTE: Not defining coodinates do it seems more like the professors output
         aux = ast.FuncDecl(None, p[3], None) # None type will be overwritten later
         p[0] = self._type_modify_decl(p[1], aux)
-    def p_direct_declarator_5(self, p):
-        ''' direct_declarator : direct_declarator '(' id_list_opt ')' '''
-        # p[0] = (p[1], p[3]) 
-        p[0] = ast.FuncCall(p[1], p[3])
 
     #### EXPRESSIONS ####
 
