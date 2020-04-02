@@ -143,10 +143,14 @@ class uCParser():
 
     def p_expr_1(self, p):
         ''' expr : assign_expr '''
-        p[0] = [p[1]]
+        p[0] = p[1]
     def p_expr_2(self, p):
         ''' expr : expr ',' assign_expr '''
-        p[0] = p[1] + [p[3]]
+        if not isinstance(p[1], ast.ExprList):
+            p[1] = ast.ExprList([p[1]], p[1].coord)
+            
+        p[1].exprs.append(p[3])
+        p[0] = p[1]
 
     def p_assign_expr_1(self, p):
         ''' assign_expr : bin_expr '''
@@ -312,11 +316,11 @@ class uCParser():
     def p_selection_statement_1(self, p): # If block only
         ''' selection_statement : IF '(' expr ')' statement '''
         #p[0] = ('if', p[3], p[5], None)
-        p[0] = [ast.If(p[3], p[5], None, self.get_coord(p,1))]
+        p[0] = ast.If(p[3], p[5], None, self.get_coord(p,1))
     def p_selection_statement_2(self, p): # If-Else block
         ''' selection_statement : IF '(' expr ')' statement ELSE statement '''
         #p[0] = ('if', p[3], p[5], p[7])
-        p[0] = [ast.If(p[3], p[5], p[7], self.get_coord(p,1))]
+        p[0] = ast.If(p[3], p[5], p[7], self.get_coord(p,1))
 
 
     # Iteration Statements #
@@ -325,43 +329,43 @@ class uCParser():
     def p_iteration_statement_1(self, p):
         ''' iteration_statement : WHILE '(' expr ')' statement '''
         #p[0] = (p[1], p[3], p[5])
-        p[0] = [ast.While(p[3], p[5], self.get_coord(p,1))]
+        p[0] = ast.While(p[3], p[5], self.get_coord(p,1))
     def p_iteration_statement_2(self, p):
         ''' iteration_statement : FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement '''
         #p[0] = (p[1], p[3], p[5], p[7], p[9])
-        p[0] = [ast.For(p[3], p[5], p[7], p[9], self.get_coord(p,1))]
+        p[0] = ast.For(p[3], p[5], p[7], p[9], self.get_coord(p,1))
     def p_iteration_statement_3(self, p): # TODO: This might need to be revised (declaration can be a list: int a, b=0, c;)
         ''' iteration_statement : FOR '(' declaration expr_opt ';' expr_opt ')' statement '''
         #p[0] = (p[1], p[3], p[4], p[6], p[8])                
-        p[0] = [ast.For(p[3], p[4], p[6], p[8], self.get_coord(p,1))]                
+        p[0] = ast.For(p[3], p[4], p[6], p[8], self.get_coord(p,1))                
 
     # Jump Statements #
     # break; return; 
 
     def p_jump_statement_1(self, p):
         ''' jump_statement : BREAK ';' '''
-        p[0] = [ast.Break(self.get_coord(p,1))]
+        p[0] = ast.Break(self.get_coord(p,1))
         # p[0] = ('break')
     def p_jump_statement_2(self, p):
         ''' jump_statement : RETURN expr_opt ';' '''
-        p[0] = [ast.Return(p[2], self.get_coord(p,1))]
+        p[0] = ast.Return(p[2], self.get_coord(p,1))
         #p[0] = ('return', p[2])
 
     # Functions Statements #
 
     def p_assert_statement(self, p):
         ''' assert_statement : ASSERT expr ';' '''
-        p[0] = [ast.Assert(p[2], self.get_coord(p,1))]
+        p[0] = ast.Assert(p[2], self.get_coord(p,1))
         # p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
         ''' print_statement : PRINT '(' expr_opt ')' ';'  '''
-        p[0] = [ast.Print(p[3], self.get_coord(p,1))]
+        p[0] = ast.Print(p[3], self.get_coord(p,1))
         #p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
         ''' read_statement : READ '(' expr ')' ';' '''
-        p[0] = [ast.Read(p[3], self.get_coord(p,1))]
+        p[0] = ast.Read(p[3], self.get_coord(p,1))
         #p[0] = ('read', p[3])
 
     #### MISCELANEOUS ####
@@ -393,7 +397,7 @@ class uCParser():
         p[0] = p[1] + [p[2]]
     def p_statement_list_2(self, p) :
         ''' statement_list : statement '''
-        p[0] = p[1]
+        p[0] = [p[1]]
 
     # Listable Productions Separated By Tokens #
 
