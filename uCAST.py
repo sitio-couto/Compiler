@@ -16,9 +16,7 @@ Last Modified: 31/03/2020.
 # ArrayRef     
 # ExprList     
 # FuncCall     
-# FuncDecl     
 # InitList     
-# ParamList     
 # UnaryOp     
 
 import sys
@@ -280,7 +278,7 @@ class Compound(Node):
         
     def children(self):
         nodelist = []
-        if self.decls is not None: nodelist.append('decls', self.decls)
+        if self.decls is not None: nodelist.append(('decls', self.decls))
         for i, child in enumerate(self.stats or []):
             if child is not None: nodelist.append(("stats[%d]" % i, child))
         return tuple(nodelist)
@@ -395,11 +393,11 @@ class FuncDecl(Node):
         return tuple(nodelist)
 
 class FuncDef(Node):
-    __slots__ = ('name', 'type', 'params', 'body', 'coord')
+    __slots__ = ('type', 'decl', 'params', 'body', 'coord')
     
-    def __init__(self, name, type, params, body, coord=None):
+    def __init__(self, type, decl, params, body, coord=None):
         self.type = type
-        self.name = name
+        self.decl = decl
         self.params = params
         self.body = body
         self.coord = coord
@@ -407,7 +405,7 @@ class FuncDef(Node):
     def children(self):
         nodelist = []
         if self.type is not None: nodelist.append(('type', self.type))
-        if self.name is not None: nodelist.append(('name', self.name))
+        if self.decl is not None: nodelist.append(('decl', self.decl))
         if self.params is not None: nodelist.append(('params', self.params))
         if self.body is not None: nodelist.append(('body', self.body))
         return tuple(nodelist)
@@ -465,7 +463,16 @@ class InitList(Node):
         return tuple(nodelist)
 
 class ParamList(Node):
-    __slots__ = ('coord')
+    __slots__ = ('params', 'coord')
+    def __init__(self, params, coord=None):
+        self.params = params
+        self.coord = coord
+
+    def children(self):
+        nodelist = []
+        for i, child in enumerate(self.params or []):
+            nodelist.append(("params[%d]" % i, child))
+        return tuple(nodelist)
 
 class Print(Node):
     __slots__ = ('expr', 'coord')

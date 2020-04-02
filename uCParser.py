@@ -69,12 +69,16 @@ class uCParser():
 
     def p_function_definition_1(self, p):
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
-        #p[0] = ('func', p[1], p[2], p[3], p[4])
-        p[0] = ast.FuncDef(p[1], p[2], p[3], p[4])
-    def p_function_definition_2(self, p):
+        # p[0] = ('func', p[1], p[2], p[3], p[4])
+        # p[0] = [ast.FuncDef(p[1], p[2], p[3], p[4])]
+        p[0] = [self._build_function_definition(p[1], p[2], p[3], p[4])]
+    def p_function_definition_2(self, p): # If return type not defined, defaults to INT
         ''' function_definition : declarator declaration_list_opt compound_statement '''
-        #p[0] = ('func', 'void', p[1], p[2], p[3]) 
-        p[0] = ast.FuncDef(None, p[1], p[2], p[3])
+        #p[0] = ('func', 'void', p[1], p[2], p[3])
+        # p[0] = [ast.FuncDef(None, p[1], p[2], p[3])]
+        # type = ast.Type(['int'], self.get_coord(p, 1)) # If no reutur type specified, defaults to INT
+        # p[0] = self._build_function_definition(type, p[1], p[2], p[3])
+        print(p[0])
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
@@ -131,7 +135,9 @@ class uCParser():
                               | direct_declarator '(' id_list_opt ')'
         '''
         # p[0] = (p[1], p[3]) 
-        p[0] = ast.FuncDecl(None, p[3]) # None type will be overwritten later
+        # NOTE: Not defining coodinates do it seems more like the professors output
+        aux = ast.FuncDecl(None, p[3], None) # None type will be overwritten later
+        p[0] = self._type_modify_decl(p[1], aux)
 
     #### EXPRESSIONS ####
 
@@ -215,7 +221,7 @@ class uCParser():
     # Unary Operators #
     # '-' NUM | '*' PTR | '&' ADDR 
 
-    # TODO: the '*' is only used if pointer are considered
+    # NOTE: the '*' is only used if pointer are considered
     def p_un_op(self, p):
         ''' un_op : '&'
                   | '+'
@@ -257,19 +263,19 @@ class uCParser():
 
     def p_identifier(self, p):
         ''' identifier : ID '''
-        p[0] = ast.ID(p[1], self.get_coord(p,1)) # TODO: Not sure how to use p.lineno here
+        p[0] = ast.ID(p[1], self.get_coord(p,1))
 
     # TODO: There might be a better way to do this   
     def p_constant_1(self, p):
         ''' constant : CCONST '''
-        p[0] = ast.Constant('char', p[1], self.get_coord(p,1)) # TODO: Not sure how to use p.lineno here
+        p[0] = ast.Constant('char', p[1], self.get_coord(p,1))
     def p_constant_2(self, p):
         ''' constant : ICONST '''
         p[0] = ast.Constant('int', p[1], self.get_coord(p,1))
     def p_constant_3(self, p):
         ''' constant : FCONST '''
         p[0] = ast.Constant('float', p[1], self.get_coord(p,1))
-    def p_constant_4(self, p): # TODO: Check if this is right (it seemed more organized)
+    def p_constant_4(self, p): # TODO: Check if this production is right (it seemed more organized)
         ''' constant : STRING'''
         p[0] = ast.Constant('string', p[1], self.get_coord(p,1))
 
@@ -294,7 +300,8 @@ class uCParser():
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
         # p[0] = ('{', p[2], p[3], '}')
-        p[0] = ast.Compound(p[2], p[3])
+        # TODO: Same as DeclList: not printing if is None
+        p[0] = ast.Compound(p[2], p[3]) if p[2] or p[3] else None
 
     # Selection Staments #    
     # if () {} | if () {} else {}
@@ -385,13 +392,14 @@ class uCParser():
         p[0] = [p[1]]
 
     # Listable Productions Separated By Tokens #
+    # TODO: Might have to change _list declarations (single elements and brackets)
 
     def p_init_declarator_list_1(self, p):
         ''' init_declarator_list : init_declarator_list ',' init_declarator '''
         p[0] = p[1] + [p[3]] 
     def p_init_declarator_list_2(self, p):
         ''' init_declarator_list : init_declarator '''
-        p[0] = [p[1]] # TODO: Might have to change _list declarations (single elements and brackets)
+        p[0] = [p[1]] 
 
     def p_initializer_list_1(self, p):
         ''' initializer_list : initializer_list ',' initializer '''
@@ -413,10 +421,11 @@ class uCParser():
 
     def p_parameter_list_1(self, p):
         ''' parameter_list : parameter_list ',' parameter_declaration '''
-        p[0] = p[1] + [',', p[3]] 
+        p[1].params.append(p[3])
+        p[0] = p[1] 
     def p_parameter_list_2(self, p):
         ''' parameter_list : parameter_declaration '''
-        p[0] = [p[1]]
+        p[0] = ast.ParamList([p[1]], p[1].coord)
 
     # Optional Productions #
 
@@ -424,8 +433,9 @@ class uCParser():
         ''' declaration_list_opt : declaration_list
                                  | empty
         '''
-        #p[0] = p[1]
-        p[0] = ast.DeclList(p[1])
+        #p[0] = p[1] 
+        # TODO: His output does not use DeclList (maybe because is an Empty return)
+        p[0] = ast.DeclList(p[1]) if p[1] else None 
 
     def p_init_declarator_list_opt(self,p):
         ''' init_declarator_list_opt : init_declarator_list 
@@ -491,11 +501,18 @@ class uCParser():
                     type=decl['decl'],
                     init=decl.get('init'),
                     coord=decl['decl'].coord)
-                    
+                       
             fixed_decl = self._fix_decl_name_type(declaration, spec)
             declarations.append(fixed_decl)
 
         return declarations
+
+    def _build_function_definition(self, spec, decl, param_decls, body):
+        """ Builds a function definition.
+        """
+        declaration = self._build_declarations(spec, [dict(decl=decl, init=None)])[0]
+
+        return ast.FuncDef(spec, declaration, param_decls, body)
 
     def _fix_decl_name_type(self, decl, typename):
         """ Fixes a declaration. Modifies decl.

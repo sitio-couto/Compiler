@@ -13,9 +13,10 @@ int int_arr[] = {1,2,3,4};
 int float_arr[5] = {0.1,.2,3.0,.0};
 char str[] = "Hello World!";
 
-// // functions
+// functions
 // void voidfunc (); THIS IS NOT ACCEPTED APPARENTLY
-// void voidfunc ( ) { } // and this is
+void voidfunc ( ) { } // and this is
+// int intfunc (int a, float b, char str[]) {}
 
 // void func (int a, float b, char c);
 // int main (int argc, char argv[]) {
