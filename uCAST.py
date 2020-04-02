@@ -182,20 +182,24 @@ class ArrayDecl(Node):
         if self.type is not None: nodelist.append(("type", self.type))
         if self.dims is not None: nodelist.append(("dims", self.dims))
         return tuple(nodelist)
+        
+    attr_names = ()
 
 class ArrayRef(Node):
-    __slots__ = ('name', 'index', 'coord')
+    __slots__ = ('name', 'subsc', 'coord')
     
-    def __init__(self, name, index, coord):
+    def __init__(self, name, subsc, coord):
         self.name = name
-        self.index = index
+        self.subsc = subsc
         self.coord = coord
         
     def children(self):
         nodelist = []
         if self.name is not None: nodelist.append(('name', self.name))
-        if self.index is not None: nodelist.append(('index', self.index))
+        if self.subsc is not None: nodelist.append(('subscript', self.subsc))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class Assert(Node):
     __slots__ = ('expr', 'coord')
@@ -286,6 +290,8 @@ class Compound(Node):
         for i, child in enumerate(self.stats or []):
             if child is not None: nodelist.append(("stats[%d]" % i, child))
         return tuple(nodelist)
+        
+    attr_names = ()
 
 class Constant(Node):
     __slots__ = ('type', 'value', 'coord')
@@ -294,6 +300,9 @@ class Constant(Node):
         self.type = type
         self.value = value
         self.coord = coord
+    
+    def children(self):
+        return ()
 
     attr_names = ('type', 'value', )
 
@@ -370,14 +379,16 @@ class ExprList(Node):
         for i, child in enumerate(self.exprs or []):
             nodelist.append(("exprs[%d]" % i, child))
         return tuple(nodelist)
+        
+    attr_names = ()
 
 class For(Node):
-    __slots__ = ('init', 'cond', 'inc_dec', 'body', 'coord')
+    __slots__ = ('init', 'cond', 'next', 'body', 'coord')
     
-    def __init__(self, init, cond, inc_dec, body, coord=None):
+    def __init__(self, init, cond, next, body, coord=None):
         self.init = init
         self.cond = cond
-        self.inc_dec = inc_dec
+        self.next = next
         self.body = body
         self.coord = coord
     
@@ -385,9 +396,11 @@ class For(Node):
         nodelist = []
         if self.init is not None: nodelist.append(('init', self.init))
         if self.cond is not None: nodelist.append(('cond', self.cond))
-        if self.inc_dec is not None: nodelist.append(('inc_dec', self.inc_dec))
+        if self.next is not None: nodelist.append(('next', self.next))
         if self.body is not None: nodelist.append(('body', self.body))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class FuncCall(Node):
     __slots__ = ('name', 'args', 'coord')
@@ -402,6 +415,8 @@ class FuncCall(Node):
         if self.name is not None: nodelist.append(('name', self.name))
         if self.args is not None: nodelist.append(('args', self.args))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class FuncDecl(Node):
     __slots__ = ('type', 'args', 'coord')
@@ -416,6 +431,8 @@ class FuncDecl(Node):
         if self.type is not None: nodelist.append(("type", self.type))
         if self.args is not None: nodelist.append(("args", self.args))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class FuncDef(Node):
     __slots__ = ('type', 'decl', 'params', 'body', 'coord')
@@ -434,6 +451,8 @@ class FuncDef(Node):
         if self.params is not None: nodelist.append(('params', self.params))
         if self.body is not None: nodelist.append(('body', self.body))
         return tuple(nodelist)
+        
+    attr_names = ()
 
 class GlobalDecl(Node):
     __slots__ = ('decls', 'coord')
@@ -448,6 +467,8 @@ class GlobalDecl(Node):
         for child in self.decls or []:
             if child is not None: nodelist.append(("Decl", child))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class ID(Node): # NOTE: Const class is ID's sibiling, not child
     __slots__ = ('name', 'coord')
@@ -455,6 +476,9 @@ class ID(Node): # NOTE: Const class is ID's sibiling, not child
     def __init__(self, name, coord=None):
         self.name = name   # Func/Var name [ID token value]
         self.coord = coord 
+        
+    def children(self):
+        return ()
 
     attr_names = ('name', )
 
@@ -473,6 +497,8 @@ class If(Node):
         if self.if_stat is not None: nodelist.append(('if_stat', self.if_stat))
         if self.else_stat is not None: nodelist.append(('else_stat', self.else_stat))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class InitList(Node):
     __slots__ = ('exprs', 'coord')
@@ -486,6 +512,8 @@ class InitList(Node):
         for i, child in enumerate(self.exprs or []):
             nodelist.append(("exprs[%d]" % i, child))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class ParamList(Node):
     __slots__ = ('params', 'coord')
@@ -498,6 +526,8 @@ class ParamList(Node):
         for i, child in enumerate(self.params or []):
             nodelist.append(("params[%d]" % i, child))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class Print(Node):
     __slots__ = ('expr', 'coord')
@@ -548,6 +578,9 @@ class Type(Node):
         self.name = name
         self.coord = coord
     
+    def children(self):
+        return ()
+        
     attr_names = ('name',)
 
 class VarDecl(Node):
@@ -562,6 +595,8 @@ class VarDecl(Node):
         nodelist = []
         if self.type is not None: nodelist.append(('type', self.type))
         return tuple(nodelist)
+    
+    attr_names = ()
 
 class UnaryOp(Node):
     __slots__ = ('op', 'expr', 'coord')
