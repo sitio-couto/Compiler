@@ -445,7 +445,11 @@ class uCParser():
         '''
         # p[0] = p[1] 
         # TODO: His output does not use DeclList (maybe because is an Empty return)
-        p[0] = ast.DeclList(p[1]) if p[1] else None 
+        if p[1] is None:
+            p[0] = p[1]
+        else:
+            p[0] = p[1][0] if len(p[1]) == 1 else ast.DeclList(p[1]) 
+        
 
     def p_init_declarator_list_opt(self,p):
         ''' init_declarator_list_opt : init_declarator_list 
