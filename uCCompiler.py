@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 31/03/2020.
+Last Modified: 02/04/2020.
 '''
 # ============================================================
 # uCCompiler.py -- uC (a.k.a. micro C) language compiler
@@ -81,12 +81,12 @@ class Compiler:
             or running at susy machine,
             prints out the abstract syntax tree.
         """
-        self.lexer = UCLexer(None)
+        self.lexer = uCLexer(None)
         self.lexer.build()
-        self.parser = UCParser(self.lexer)
+        self.parser = uCParser(self.lexer)
         self.parser.build()
         
-        self.ast = self.parser.parse(self.code, '', debug)
+        self.ast = self.parser.parse(self.code, debug)
         if susy:
             self.ast.show(showcoord=True)
         elif ast_file is not None:

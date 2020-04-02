@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 31/03/2020.
+Last Modified: 02/04/2020.
 '''
 
 from ply.yacc import yacc
@@ -41,8 +41,8 @@ class uCParser():
             **kwargs)
     
     # Parses an expression.
-    def parse(self, data):
-        return self.parser.parse(data)
+    def parse(self, data, debug):
+        return self.parser.parse(data, debug=debug)
     
     # Tests an expression and prints the result
     def test(self, data):
