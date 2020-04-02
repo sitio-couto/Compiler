@@ -336,8 +336,9 @@ class uCParser():
         p[0] = ast.For(p[3], p[5], p[7], p[9], self.get_coord(p,1))
     def p_iteration_statement_3(self, p): # TODO: This might need to be revised (declaration can be a list: int a, b=0, c;)
         ''' iteration_statement : FOR '(' declaration expr_opt ';' expr_opt ')' statement '''
-        #p[0] = (p[1], p[3], p[4], p[6], p[8])                
-        p[0] = ast.For(p[3], p[4], p[6], p[8], self.get_coord(p,1))                
+        #p[0] = (p[1], p[3], p[4], p[6], p[8])
+        aux = ast.DeclList(p[3], self.get_coord(p,1))
+        p[0] = ast.For(aux, p[4], p[6], p[8], self.get_coord(p,1))                
 
     # Jump Statements #
     # break; return; 
