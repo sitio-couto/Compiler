@@ -72,13 +72,13 @@ class uCParser():
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
         # p[0] = ('func', p[1], p[2], p[3], p[4])
         # p[0] = [ast.FuncDef(p[1], p[2], p[3], p[4])]
-        p[0] = [self._build_function_definition(p[1], p[2], p[3], p[4])]
+        p[0] = self._build_function_definition(p[1], p[2], p[3], p[4])
     def p_function_definition_2(self, p): # If return type not defined, defaults to INT
         ''' function_definition : declarator declaration_list_opt compound_statement '''
         #p[0] = ('func', 'void', p[1], p[2], p[3])
         # p[0] = [ast.FuncDef(None, p[1], p[2], p[3])]
         # type = ast.Type(['int'], self.get_coord(p, 1)) # If no reutur type specified, defaults to INT
-        p[0] = [self._build_function_definition(type, p[1], p[2], p[3])]
+        p[0] = self._build_function_definition(type, p[1], p[2], p[3])
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
