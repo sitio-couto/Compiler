@@ -238,11 +238,12 @@ class uCParser():
         '''postfix_expr : primary_expr '''
         p[0] = p[1]
     def p_postfix_expr_2(self, p):
-        '''postfix_expr : postfix_expr '[' expr ']'
-                        | postfix_expr '(' expr_opt ')'
-        '''
-        p[0] = ( p[1], (p[2], p[3], p[4]) )
+        '''postfix_expr : postfix_expr '[' expr ']' '''
+        p[0] = ast.ArrayRef(p[1], p[3])
     def p_postfix_expr_3(self, p):
+        '''postfix_expr : postfix_expr '(' expr_opt ')' '''
+        p[0] = ast.FuncCall(p[1], p[3]) # Maybe wrong?
+    def p_postfix_expr_4(self, p):
         '''postfix_expr : postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
         '''
