@@ -12,9 +12,6 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 02/04/2020.
 '''
 
-# TODO: CLASSESS NOT IMPLEMENTED YET     
-# ExprList     
-
 import sys
 
 def _repr(obj):
@@ -362,7 +359,17 @@ class EmptyStatement(Node):
     attr_names = ()
 
 class ExprList(Node):
-    __slots__ = ('coord')
+    __slots__ = ('exprs', 'coord')
+    
+    def __init__(self, exprs, coord=None):
+        self.exprs = exprs
+        self.coord = coord
+        
+    def children(self):
+        nodelist = []
+        for i, child in enumerate(self.exprs or []):
+            nodelist.append(("exprs[%d]" % i, child))
+        return tuple(nodelist)
 
 class For(Node):
     __slots__ = ('init', 'cond', 'inc_dec', 'body', 'coord')

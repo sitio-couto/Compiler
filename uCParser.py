@@ -143,10 +143,10 @@ class uCParser():
 
     def p_expr_1(self, p):
         ''' expr : assign_expr '''
-        p[0] = p[1]
+        p[0] = [p[1]]
     def p_expr_2(self, p):
         ''' expr : expr ',' assign_expr '''
-        p[0] = (p[1], p[3])
+        p[0] = p[1] + [p[3]]
 
     def p_assign_expr_1(self, p):
         ''' assign_expr : bin_expr '''
@@ -154,7 +154,7 @@ class uCParser():
     def p_assign_expr_2(self, p):
         ''' assign_expr : un_expr assign_op assign_expr '''
         #  __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
-        p[0] = ast.Assignment(p[2], p[1], p[3])
+        p[0] = ast.Assignment(p[2], p[1], p[3], self.get_coord(p,1))
         # p[0] = (p[1], p[2], p[3])
 
     def p_assign_op(self, p):
@@ -189,7 +189,7 @@ class uCParser():
                      | bin_expr OR bin_expr
         '''
         # __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
-        p[0] = ast.BinaryOp(p[2], p[1], p[3])
+        p[0] = ast.BinaryOp(p[2], p[1], p[3], self.get_coord(p,1))
         # p[0] = (p[1], p[2], p[3])
 
     # Cast Expressions # 
@@ -201,7 +201,7 @@ class uCParser():
         # p[0] = p[1]
     def p_cast_expr_2(self, p):
         ''' cast_expr : '(' type_specifier ')' cast_expr '''
-        p[0] = ast.Cast(p[2], p[4])
+        p[0] = ast.Cast(p[2], p[4], self.get_coord(p,1))
         #p[0] = ('cast', p[2], p[4])
 
     # Unary Expressions #
@@ -217,7 +217,7 @@ class uCParser():
                     | un_op cast_expr
         '''
         #p[0] = (p[1], p[2])
-        p[0] = ast.UnaryOp(p[1], p[2])
+        p[0] = ast.UnaryOp(p[1], p[2], self.get_coord(p,1))
 
     # Unary Operators #
     # '-' NUM | '*' PTR | '&' ADDR 
@@ -239,16 +239,16 @@ class uCParser():
         p[0] = p[1]
     def p_postfix_expr_2(self, p):
         '''postfix_expr : postfix_expr '[' expr ']' '''
-        p[0] = ast.ArrayRef(p[1], p[3])
+        p[0] = ast.ArrayRef(p[1], p[3], self.get_coord(p,1))
     def p_postfix_expr_3(self, p):
         '''postfix_expr : postfix_expr '(' expr_opt ')' '''
-        p[0] = ast.FuncCall(p[1], p[3]) # Maybe wrong?
+        p[0] = ast.FuncCall(p[1], p[3], self.get_coord(p,1)) # Maybe wrong?
     def p_postfix_expr_4(self, p):
         '''postfix_expr : postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
         '''
         #p[0] = (p[1], p[2]) 
-        p[0] = ast.UnaryOp(p[2], p[1]) # Any indication of postfix? ++i different from i++.
+        p[0] = ast.UnaryOp(p[2], p[1], self.get_coord(p,1)) # Any indication of postfix? ++i different from i++.
 
     # Primary Expressios #
     # ( ... ) | var | 12.5 | "hello"
@@ -260,8 +260,8 @@ class uCParser():
         ''' primary_expr : identifier
                          | constant
         '''
-        p[0] = p[1] # NOTE: Removed String from here
-
+        p[0] = p[1] 
+        
     # Terminal Expressions #
 
     def p_identifier(self, p):
@@ -298,7 +298,7 @@ class uCParser():
 
     def p_expr_statement(self, p):
         ''' expr_statement : expr_opt ';' '''
-        p[0] = p[1]
+        p[0] = ast.EmptyStatement(self.get_coord(p,1)) if p[1] is None else p[1]
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
@@ -312,11 +312,11 @@ class uCParser():
     def p_selection_statement_1(self, p): # If block only
         ''' selection_statement : IF '(' expr ')' statement '''
         #p[0] = ('if', p[3], p[5], None)
-        p[0] = ast.If(p[3], p[5], None)
+        p[0] = [ast.If(p[3], p[5], None, self.get_coord(p,1))]
     def p_selection_statement_2(self, p): # If-Else block
         ''' selection_statement : IF '(' expr ')' statement ELSE statement '''
         #p[0] = ('if', p[3], p[5], p[7])
-        p[0] = ast.If(p[3], p[5], p[7])
+        p[0] = [ast.If(p[3], p[5], p[7], self.get_coord(p,1))]
 
 
     # Iteration Statements #
@@ -325,43 +325,43 @@ class uCParser():
     def p_iteration_statement_1(self, p):
         ''' iteration_statement : WHILE '(' expr ')' statement '''
         #p[0] = (p[1], p[3], p[5])
-        p[0] = ast.While(p[3], p[5])
+        p[0] = [ast.While(p[3], p[5], self.get_coord(p,1))]
     def p_iteration_statement_2(self, p):
         ''' iteration_statement : FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement '''
         #p[0] = (p[1], p[3], p[5], p[7], p[9])
-        p[0] = ast.For(p[3], p[5], p[7], p[9])
+        p[0] = [ast.For(p[3], p[5], p[7], p[9], self.get_coord(p,1))]
     def p_iteration_statement_3(self, p): # TODO: This might need to be revised (declaration can be a list: int a, b=0, c;)
         ''' iteration_statement : FOR '(' declaration expr_opt ';' expr_opt ')' statement '''
         #p[0] = (p[1], p[3], p[4], p[6], p[8])                
-        p[0] = ast.For(p[3], p[4], p[6], p[8])                
+        p[0] = [ast.For(p[3], p[4], p[6], p[8], self.get_coord(p,1))]                
 
     # Jump Statements #
     # break; return; 
 
     def p_jump_statement_1(self, p):
         ''' jump_statement : BREAK ';' '''
-        p[0] = ast.Break()
+        p[0] = [ast.Break(self.get_coord(p,1))]
         # p[0] = ('break')
     def p_jump_statement_2(self, p):
         ''' jump_statement : RETURN expr_opt ';' '''
-        p[0] = ast.Return(p[2])
+        p[0] = [ast.Return(p[2], self.get_coord(p,1))]
         #p[0] = ('return', p[2])
 
     # Functions Statements #
 
     def p_assert_statement(self, p):
         ''' assert_statement : ASSERT expr ';' '''
-        p[0] = ast.Assert(p[2])
+        p[0] = [ast.Assert(p[2], self.get_coord(p,1))]
         # p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
         ''' print_statement : PRINT '(' expr_opt ')' ';'  '''
-        p[0] = ast.Print(p[3])
+        p[0] = [ast.Print(p[3], self.get_coord(p,1))]
         #p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
         ''' read_statement : READ '(' expr ')' ';' '''
-        p[0] = ast.Read(p[3])
+        p[0] = [ast.Read(p[3], self.get_coord(p,1))]
         #p[0] = ('read', p[3])
 
     #### MISCELANEOUS ####
@@ -417,7 +417,7 @@ class uCParser():
 
     def p_id_list_1(self, p):
         ''' id_list : id_list ',' identifier '''
-        p[0] = p[1] + [',', p[3]] 
+        p[0] = p[1] + [p[3]] 
     def p_id_list_2(self, p):
         ''' id_list : identifier '''
         p[0] = [p[1]]
