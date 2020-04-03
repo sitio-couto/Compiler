@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 26/03/2020.
+Last Modified: 02/04/2020.
 '''
 
 import ply.lex as lex
@@ -32,7 +32,7 @@ class uCLexer():
 
     # Build the lexer. Needs to be called after object is created.
     def build(self, **kwargs):
-        self.lexer = lex.lex(object=self, **kwargs)
+        self.lexer = lex.lex(object=self, optimize=1, **kwargs)
 
     # Resets line counter.
     def reset_line_num(self):
@@ -53,7 +53,8 @@ class uCLexer():
     # Internal auxiliary methods
     def _error(self, msg, token):
         location = self._make_tok_location(token)
-        self.error_func(msg, location[0], location[1])
+        if self.error_func is not None:
+            self.error_func(msg, location[0], location[1])
         self.lexer.skip(1)
 
     def _make_tok_location(self, token):
@@ -61,6 +62,7 @@ class uCLexer():
 
     # Test the output
     def test(self, data):
+        self.reset_line_num()
         
         # If filename.
         if exists(data): 

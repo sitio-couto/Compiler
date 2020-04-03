@@ -1,0 +1,163 @@
+'''
+First Project: Parser for the uC language.
+
+Subject:
+    MC921 - Construction of Compilers
+Authors:
+    Victor Ferreira Ferrari  - RA 187890
+    Vinicius Couto Espindola - RA 188115
+
+University of Campinas - UNICAMP - 2020
+
+Last Modified: 02/04/2020.
+'''
+# ============================================================
+# uCCompiler.py -- uC (a.k.a. micro C) language compiler
+#
+# This is the main program for the uC compiler, which just
+# parses command-line options, figures out which source files
+# to read and write to, and invokes the different stages of
+# the compiler proper.
+# ============================================================
+
+import sys
+from uCLexer import uCLexer
+from uCParser import uCParser
+from contextlib import contextmanager
+
+_subscribers = []
+_num_errors = 0
+
+def error(lineno, message, filename=None):
+    """ Report a compiler error to all subscribers """
+    global _num_errors
+    if not filename:
+        errmsg = "{}: {}".format(lineno, message)
+    else:
+        errmsg = "{}:{}: {}".format(filename,lineno,message)
+    for subscriber in _subscribers:
+        subscriber(errmsg)
+    _num_errors += 1
+
+
+def errors_reported():
+    """ Return number of errors reported. """
+    return _num_errors
+
+
+def clear_errors():
+    """ Clear the total number of errors reported. """
+    global _num_errors
+    _num_errors = 0
+
+
+@contextmanager
+def subscribe_errors(handler):
+    """ Context manager that allows monitoring of compiler error messages.
+        Use as follows where handler is a callable taking a single argument
+        which is the error message string:
+
+        with subscribe_errors(handler):
+            ... do compiler ops ...
+    """
+    _subscribers.append(handler)
+    try:
+        yield
+    finally:
+        _subscribers.remove(handler)
+
+
+class Compiler:
+    """ This object encapsulates the compiler and serves as a
+        facade interface for the compiler itself.
+    """
+
+    def __init__(self):
+        self.total_errors = 0
+        self.total_warnings = 0
+
+    def _parse(self, susy, ast_file, debug):
+        """ Parses the source code. If ast_file != None,
+            or running at susy machine,
+            prints out the abstract syntax tree.
+        """
+        self.lexer = uCLexer(None)
+        self.lexer.build()
+        self.parser = uCParser(self.lexer)
+        self.parser.build()
+        
+        self.ast = self.parser.parse(self.code, debug)
+        if susy:
+            self.ast.show(showcoord=True)
+        elif ast_file is not None:
+            self.ast.show(buf=ast_file, showcoord=True)
+
+    def _do_compile(self, susy, ast_file, debug):
+        """ Compiles the code to the given file object. """
+        self._parse(susy, ast_file, debug)
+
+    def compile(self, code, susy, ast_file, debug):
+        """ Compiles the given code string """
+        self.code = code
+        with subscribe_errors(lambda msg: sys.stderr.write(msg+"\n")):
+            self._do_compile(susy, ast_file, debug)
+            if errors_reported():
+                sys.stderr.write("{} error(s) encountered.".format(errors_reported()))
+        return 0
+
+
+def run_compiler():
+    """ Runs the command-line compiler. """
+
+    if len(sys.argv) < 2:
+        print("Usage: ./uc.py <source-file> [-at-susy] [-no-ast] [-debug]")
+        sys.exit(1)
+
+    emit_ast = True
+    susy = False
+    debug = False
+
+    params = sys.argv[1:]
+    files = sys.argv[1:]
+
+    for param in params:
+        if param[0] == '-':
+            if param == '-no-ast':
+                emit_ast = False
+            elif param == '-at-susy':
+                susy = True
+            elif param == '-debug':
+                debug = True
+            else:
+                print("Unknown option: %s" % param)
+                sys.exit(1)
+            files.remove(param)
+
+    for file in files:
+        if file[-3:] == '.uc':
+            source_filename = file
+        else:
+            source_filename = file + '.uc'
+
+        open_files = []
+        ast_file = None
+        if emit_ast and not susy:
+            ast_filename = source_filename[:-3] + '.ast'
+            print("Outputting the AST to %s." % ast_filename)
+            ast_file = open(ast_filename, 'w')
+            open_files.append(ast_file)
+
+        source = open(source_filename, 'r')
+        code = source.read()
+        source.close()
+
+        retval = Compiler().compile(code, susy, ast_file, debug)
+        for f in open_files:
+            f.close()
+        if retval != 0:
+            sys.exit(retval)
+
+    sys.exit(retval)
+
+if __name__ == '__main__':
+    run_compiler()
