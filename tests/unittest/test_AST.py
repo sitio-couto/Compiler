@@ -5,20 +5,11 @@ from contextlib import contextmanager
 from importlib.machinery import SourceFileLoader
 
 workdir = os.path.dirname(os.path.abspath(__file__))
-workdir = re.sub('(.)tests(.)unittest$', '', workdir)
+workdir = re.sub('.tests.unittest$', '', workdir)
 sys.path.append(workdir)
 import uCCompiler
-print()
 
-@contextmanager
-def captured_output():
-    new_out, new_err = StringIO(), StringIO()
-    old_out, old_err = sys.stdout, sys.stderr
-    try:
-        sys.stdout, sys.stderr = new_out, new_err
-        yield sys.stdout, sys.stderr
-    finally:
-        sys.stdout, sys.stderr = old_out, old_err
+print('\n', f'Working Directory: {workdir}','\n')
 
 class TestAST(unittest.TestCase):
 
@@ -47,7 +38,6 @@ class TestAST(unittest.TestCase):
         id -= 1
         i,o,t = self.inputs[id], self.outputs[id], self.targets[id]
         sys.argv = sys.argv[:1]+[i]
-        print('\n\n')
         with self.assertRaises(SystemExit) as cm:
             uCCompiler.run_compiler()
         print(f'Comparing: {o} == {t} ?')
