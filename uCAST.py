@@ -55,101 +55,92 @@ class Node(object):
                 Open IO buffer into which the Node is printed.
             offset:
                 Initial offset (amount of leading spaces)
-            attrnames:
-                True if you want to see the attribute names in name=value pairs. False to only see the values.
-            nodenames:
-                True if you want to see the actual node names within their parents.
             showcoord:
                 Do you want the coordinates of each Node to be displayed.
         """
         lead = ' ' * offset
-        if nodenames and _my_node_name is not None:
-            buf.write(lead + self.__class__.__name__+ ' <' + _my_node_name + '>: ')
-        else:
-            buf.write(lead + self.__class__.__name__+ ': ')
+        # if nodenames and _my_node_name is not None:
+        #     buf.write(lead + self.__class__.__name__+ ' <' + _my_node_name + '>: ')
+        # else:
+        buf.write(lead + self.__class__.__name__+ ': ')
 
         if self.attr_names:
-            if attrnames:
-                nvlist = [(n, getattr(self, n)) for n in self.attr_names if getattr(self, n) is not None]
-                attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
-            else:
-                vlist = [getattr(self, n) for n in self.attr_names]
-                attrstr = ', '.join('%s' % v for v in vlist)
+            # if attrnames:
+            #     nvlist = [(n, getattr(self, n)) for n in self.attr_names if getattr(self, n) is not None]
+            #     attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
+            # else:
+            vlist = [getattr(self, n) for n in self.attr_names]
+            attrstr = ', '.join('%s' % v for v in vlist)
             buf.write(attrstr)
 
         if showcoord:
-            if self.coord:
-                buf.write('%s' % self.coord)
+            if self.coord : buf.write('%s' % self.coord)
         buf.write('\n')
 
         for (child_name, child) in self.children():
             child.show(buf, offset + 4, attrnames, nodenames, showcoord, child_name)
             
-    # List for variables contained in the class (excluding subtrees)
     attr_names = () 
 
-class NodeVisitor(object):
-    """ A base NodeVisitor class for visiting uc_ast nodes.
-        Subclass it and define your own visit_XXX methods, where
-        XXX is the class name you want to visit with these
-        methods.
+# class NodeVisitor(object):
+#     """ A base NodeVisitor class for visiting uc_ast nodes.
+#         Subclass it and define your own visit_XXX methods, where
+#         XXX is the class name you want to visit with these
+#         methods.
 
-        For example:
+#         For example:
 
-        class ConstantVisitor(NodeVisitor):
-            def __init__(self):
-                self.values = []
+#         class ConstantVisitor(NodeVisitor):
+#             def __init__(self):
+#                 self.values = []
 
-            def visit_Constant(self, node):
-                self.values.append(node.value)
+#             def visit_Constant(self, node):
+#                 self.values.append(node.value)
 
-        Creates a list of values of all the constant nodes
-        encountered below the given node. To use it:
+#         Creates a list of values of all the constant nodes
+#         encountered below the given node. To use it:
 
-        cv = ConstantVisitor()
-        cv.visit(node)
+#         cv = ConstantVisitor()
+#         cv.visit(node)
 
-        Notes:
+#         Notes:
 
-        *   generic_visit() will be called for AST nodes for which
-            no visit_XXX method was defined.
-        *   The children of nodes for which a visit_XXX was
-            defined will not be visited - if you need this, call
-            generic_visit() on the node.
-            You can use:
-                NodeVisitor.generic_visit(self, node)
-        *   Modeled after Python's own AST visiting facilities
-            (the ast module of Python 3.0)
-    """
+#         *   generic_visit() will be called for AST nodes for which
+#             no visit_XXX method was defined.
+#         *   The children of nodes for which a visit_XXX was
+#             defined will not be visited - if you need this, call
+#             generic_visit() on the node.
+#             You can use:
+#                 NodeVisitor.generic_visit(self, node)
+#         *   Modeled after Python's own AST visiting facilities
+#             (the ast module of Python 3.0)
+#     """
 
-    _method_cache = None
+#     _method_cache = None
 
-    def visit(self, node):
-        """ Visit a node.
-        """
+#     def visit(self, node):
+#         """ Visit a node.
+#         """
 
-        if self._method_cache is None:
-            self._method_cache = {}
+#         if self._method_cache is None:
+#             self._method_cache = {}
 
-        visitor = self._method_cache.get(node.__class__.__name__, None)
-        if visitor is None:
-            method = 'visit_' + node.__class__.__name__
-            visitor = getattr(self, method, self.generic_visit)
-            self._method_cache[node.__class__.__name__] = visitor
+#         visitor = self._method_cache.get(node.__class__.__name__, None)
+#         if visitor is None:
+#             method = 'visit_' + node.__class__.__name__
+#             visitor = getattr(self, method, self.generic_visit)
+#             self._method_cache[node.__class__.__name__] = visitor
 
-        return visitor(node)
+#         return visitor(node)
 
-    def generic_visit(self, node):
-        """ Called if no explicit visitor function exists for a
-            node. Implements preorder visiting of the node.
-        """
-        for c in node:
-            self.visit(c)
+#     def generic_visit(self, node):
+#         """ Called if no explicit visitor function exists for a
+#             node. Implements preorder visiting of the node.
+#         """
+#         for c in node:
+#             self.visit(c)
 
-# This is the top of the AST, representing a uC program (a
-# translation unit in K&R jargon). It contains a list of
-# global-declaration's, which is either declarations (Decl),
-# or function definitions (FuncDef).
+# Tree's root - Represents the program
 class Program(Node):
     __slots__ = ('gdecls', 'coord')
     
@@ -198,7 +189,7 @@ class Assert(Node):
     __slots__ = ('expr', 'coord')
     
     def __init__(self, expr, coord=None):
-        self.expr = expr      # Expression to assert.
+        self.expr = expr
         self.coord = coord
         
     def children(self):
@@ -210,9 +201,9 @@ class Assignment(Node):
     __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
 
     def __init__(self, op, left, right, coord=None):
-        self.op = op        # assign_op (TERMINAL EXPR - represents the node)
-        self.lvalue = left  # un_expr
-        self.rvalue = right # assign_expr
+        self.op = op
+        self.lvalue = left
+        self.rvalue = right
         self.coord = coord
 
     def children(self):
@@ -227,9 +218,9 @@ class BinaryOp(Node):
     __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
     
     def __init__(self, op, left, right, coord=None):
-        self.op = op        # TOKEN (represents the node)
-        self.lvalue = left  # bin_expr
-        self.rvalue = right # bin_expr
+        self.op = op
+        self.lvalue = left
+        self.rvalue = right
         self.coord = coord
 
     def children(self):
@@ -238,7 +229,7 @@ class BinaryOp(Node):
         if self.rvalue: children += [("rvalue", self.rvalue)]
         return children
 
-    attr_names = ('op', ) # NOTE: lvalue and rvalue are subtrees, so they dont make the list
+    attr_names = ('op', )
 
 class Break(Node):
     __slots__ = ('coord')
@@ -418,11 +409,11 @@ class GlobalDecl(Node):
             if child: children += [("Decl", child)]
         return children
 
-class ID(Node): # NOTE: Const class is ID's sibiling, not child
+class ID(Node):
     __slots__ = ('name', 'coord')
 
     def __init__(self, name, coord=None):
-        self.name = name   # Func/Var name [ID token value]
+        self.name = name
         self.coord = coord 
 
     attr_names = ('name', )
@@ -472,7 +463,7 @@ class Print(Node):
     __slots__ = ('expr', 'coord')
     
     def __init__(self, expr, coord=None):
-        self.expr = expr      # Expression to print.
+        self.expr = expr
         self.coord = coord
         
     def children(self):
@@ -484,7 +475,7 @@ class Read(Node):
     __slots__ = ('expr', 'coord')
     
     def __init__(self, expr, coord=None):
-        self.expr = expr      # Expression to read.
+        self.expr = expr
         self.coord = coord
         
     def children(self):
@@ -545,8 +536,8 @@ class While(Node):
     __slots__ = ('cond', 'body', 'coord')
     
     def __init__(self, cond, body, coord=None):
-        self.cond = cond   # Conditional expression
-        self.body = body   # Statement
+        self.cond = cond 
+        self.body = body
         self.coord = coord
         
     def children(self):
