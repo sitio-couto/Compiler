@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/04/2020.
+Last Modified: 03/04/2020.
 '''
 
 import sys
@@ -47,7 +47,7 @@ class Node(object):
     def children(self):
         """ A sequence of all children that are Nodes. """
         children = []
-        return children
+        return tuple(children)
 
     def show(self, buf=sys.stdout, offset=0, attrnames=False, nodenames=False, showcoord=True, _my_node_name=None):
         """ Pretty print the Node and all its attributes and children (recursively) to a buffer.
@@ -59,19 +59,19 @@ class Node(object):
                 Do you want the coordinates of each Node to be displayed.
         """
         lead = ' ' * offset
-        # if nodenames and _my_node_name is not None:
-        #     buf.write(lead + self.__class__.__name__+ ' <' + _my_node_name + '>: ')
-        # else:
-        buf.write(lead + self.__class__.__name__+ ': ')
+        if nodenames and _my_node_name is not None:
+            buf.write(lead + self.__class__.__name__+ ' <' + _my_node_name + '>: ')
+        else:
+            buf.write(lead + self.__class__.__name__+ ': ')
 
         if self.attr_names:
-            # if attrnames:
-            #     nvlist = [(n, getattr(self, n)) for n in self.attr_names if getattr(self, n) is not None]
-            #     attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
-            # else:
-            vlist = [getattr(self, n) for n in self.attr_names]
-            attrstr = ', '.join('%s' % v for v in vlist)
-            buf.write(attrstr)
+            if attrnames:
+                nvlist = [(n, getattr(self, n)) for n in self.attr_names if getattr(self, n) is not None]
+                attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
+            else:
+                vlist = [getattr(self, n) for n in self.attr_names]
+                attrstr = ', '.join('%s' % v for v in vlist)
+                buf.write(attrstr)
 
         if showcoord:
             if self.coord : buf.write('%s' % self.coord)
@@ -82,63 +82,62 @@ class Node(object):
             
     attr_names = () 
 
-# class NodeVisitor(object):
-#     """ A base NodeVisitor class for visiting uc_ast nodes.
-#         Subclass it and define your own visit_XXX methods, where
-#         XXX is the class name you want to visit with these
-#         methods.
+class NodeVisitor(object):
+    """ A base NodeVisitor class for visiting uc_ast nodes.
+        Subclass it and define your own visit_XXX methods, where
+        XXX is the class name you want to visit with these
+        methods.
 
-#         For example:
+        For example:
 
-#         class ConstantVisitor(NodeVisitor):
-#             def __init__(self):
-#                 self.values = []
+        class ConstantVisitor(NodeVisitor):
+            def __init__(self):
+                self.values = []
 
-#             def visit_Constant(self, node):
-#                 self.values.append(node.value)
+            def visit_Constant(self, node):
+                self.values.append(node.value)
 
-#         Creates a list of values of all the constant nodes
-#         encountered below the given node. To use it:
+        Creates a list of values of all the constant nodes
+        encountered below the given node. To use it:
 
-#         cv = ConstantVisitor()
-#         cv.visit(node)
+        cv = ConstantVisitor()
+        cv.visit(node)
 
-#         Notes:
+        Notes:
 
-#         *   generic_visit() will be called for AST nodes for which
-#             no visit_XXX method was defined.
-#         *   The children of nodes for which a visit_XXX was
-#             defined will not be visited - if you need this, call
-#             generic_visit() on the node.
-#             You can use:
-#                 NodeVisitor.generic_visit(self, node)
-#         *   Modeled after Python's own AST visiting facilities
-#             (the ast module of Python 3.0)
-#     """
+        *   generic_visit() will be called for AST nodes for which
+            no visit_XXX method was defined.
+        *   The children of nodes for which a visit_XXX was
+            defined will not be visited - if you need this, call
+            generic_visit() on the node.
+            You can use:
+                NodeVisitor.generic_visit(self, node)
+        *   Modeled after Python's own AST visiting facilities
+            (the ast module of Python 3.0)
+    """
 
-#     _method_cache = None
+    _method_cache = None
 
-#     def visit(self, node):
-#         """ Visit a node.
-#         """
+    def visit(self, node):
+        """ Visit a node.  """
 
-#         if self._method_cache is None:
-#             self._method_cache = {}
+        if self._method_cache is None:
+            self._method_cache = {}
 
-#         visitor = self._method_cache.get(node.__class__.__name__, None)
-#         if visitor is None:
-#             method = 'visit_' + node.__class__.__name__
-#             visitor = getattr(self, method, self.generic_visit)
-#             self._method_cache[node.__class__.__name__] = visitor
+        visitor = self._method_cache.get(node.__class__.__name__, None)
+        if visitor is None:
+            method = 'visit_' + node.__class__.__name__
+            visitor = getattr(self, method, self.generic_visit)
+            self._method_cache[node.__class__.__name__] = visitor
 
-#         return visitor(node)
+        return visitor(node)
 
-#     def generic_visit(self, node):
-#         """ Called if no explicit visitor function exists for a
-#             node. Implements preorder visiting of the node.
-#         """
-#         for c in node:
-#             self.visit(c)
+    def generic_visit(self, node):
+        """ Called if no explicit visitor function exists for a
+            node. Implements preorder visiting of the node.
+        """
+        for c in node:
+            self.visit(c)
 
 # Tree's root - Represents the program
 class Program(Node):
@@ -152,7 +151,7 @@ class Program(Node):
         children = []
         for i, child in enumerate(self.gdecls or []):
             children += [("gdecls[%d]" % i, child)]
-        return children
+        return tuple(children)
 
 #### AST NODES CLASSES ####
 
@@ -168,7 +167,7 @@ class ArrayDecl(Node):
         children = []
         if self.type: children += [("type", self.type)]
         if self.dims: children += [("dims", self.dims)]
-        return children
+        return tuple(children)
 
 
 class ArrayRef(Node):
@@ -183,7 +182,7 @@ class ArrayRef(Node):
         children = []
         if self.name: children += [('name', self.name)]
         if self.subsc: children += [('subscript', self.subsc)]
-        return children
+        return tuple(children)
 
 class Assert(Node):
     __slots__ = ('expr', 'coord')
@@ -195,7 +194,7 @@ class Assert(Node):
     def children(self):
         children = []
         if self.expr: children += [('expr', self.expr)]
-        return children
+        return tuple(children)
 
 class Assignment(Node):
     __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
@@ -210,7 +209,7 @@ class Assignment(Node):
         children = []
         if self.lvalue: children += [("lvalue", self.lvalue)]
         if self.rvalue: children += [("rvalue", self.rvalue)]
-        return children
+        return tuple(children)
 
     attr_names = ('op', ) 
 
@@ -227,7 +226,7 @@ class BinaryOp(Node):
         children = []
         if self.lvalue: children += [("lvalue", self.lvalue)]
         if self.rvalue: children += [("rvalue", self.rvalue)]
-        return children
+        return tuple(children)
 
     attr_names = ('op', )
 
@@ -236,7 +235,6 @@ class Break(Node):
     
     def __init__(self, coord=None):
         self.coord = coord
-
 
 class Cast(Node):
     __slots__ = ('type', 'expr', 'coord')
@@ -250,8 +248,7 @@ class Cast(Node):
         children = []
         if self.type: children += [('type', self.type)]
         if self.expr: children += [('expr', self.expr)]
-        return children
-
+        return tuple(children)
 
 class Compound(Node):
     __slots__ = ('decls', 'stats', 'coord')
@@ -267,8 +264,7 @@ class Compound(Node):
             if child: children += [("decls[%d]" % i, child)]
         for i, child in enumerate(self.stats or []):
             if child: children += [("stats[%d]" % i, child)]
-        return children
-
+        return tuple(children)
 
 class Constant(Node):
     __slots__ = ('type', 'value', 'coord')
@@ -280,6 +276,24 @@ class Constant(Node):
 
     attr_names = ('type', 'value', )
 
+class Coord(Node):
+    """ Coordinates of a syntactic element. Consists of:
+            - Line number
+            - (optional) column number, for the Lexer
+    """
+    __slots__ = ('line', 'column')
+
+    def __init__(self, line, column=None):
+        self.line = line
+        self.column = column
+
+    def __str__(self):
+        if self.line:
+            coord_str = "   @ %s:%s" % (self.line, self.column)
+        else:
+            coord_str = ""
+        return coord_str 
+        
 class Decl(Node):
     __slots__ = ('name', 'type', 'init', 'coord')
 
@@ -293,7 +307,7 @@ class Decl(Node):
         children = []
         if self.type: children += [("type", self.type)]
         if self.init: children += [("init", self.init)]
-        return children
+        return tuple(children)
 
     attr_names = ('name', )
 
@@ -308,14 +322,13 @@ class DeclList(Node):
         children = []
         for i, child in enumerate(self.decls or []):
             children += [("decls[%d]" % i, child)]
-        return children
+        return tuple(children)
 
 class EmptyStatement(Node):
     __slots__ = ('coord')
     
     def __init__(self, coord=None):
         self.coord = coord
-
 
 class ExprList(Node):
     __slots__ = ('exprs', 'coord')
@@ -328,8 +341,7 @@ class ExprList(Node):
         children = []
         for i, child in enumerate(self.exprs or []):
             children += [("exprs[%d]" % i, child)]
-        return children
-
+        return tuple(children)
 
 class For(Node):
     __slots__ = ('init', 'cond', 'next', 'body', 'coord')
@@ -347,7 +359,7 @@ class For(Node):
         if self.cond: children += [('cond', self.cond)]
         if self.next: children += [('next', self.next)]
         if self.body: children += [('body', self.body)]
-        return children
+        return tuple(children)
 
 class FuncCall(Node):
     __slots__ = ('name', 'args', 'coord')
@@ -361,7 +373,7 @@ class FuncCall(Node):
         children = []
         if self.name: children += [('name', self.name)]
         if self.args: children += [('args', self.args)]
-        return children
+        return tuple(children)
 
 class FuncDecl(Node):
     __slots__ = ('type', 'params', 'coord')
@@ -375,7 +387,7 @@ class FuncDecl(Node):
         children = []
         if self.params: children += [("params", self.params)]
         if self.type: children += [("type", self.type)]
-        return children
+        return tuple(children)
 
 class FuncDef(Node):
     __slots__ = ('type', 'decl', 'params', 'body', 'coord')
@@ -393,8 +405,7 @@ class FuncDef(Node):
         if self.decl: children += [('decl', self.decl)]
         if self.params: children += [('params', self.params)]
         if self.body: children += [('body', self.body)]
-        return children
-
+        return tuple(children)
 
 class GlobalDecl(Node):
     __slots__ = ('decls', 'coord')
@@ -407,7 +418,7 @@ class GlobalDecl(Node):
         children = []
         for child in self.decls or []:
             if child: children += [("Decl", child)]
-        return children
+        return tuple(children)
 
 class ID(Node):
     __slots__ = ('name', 'coord')
@@ -432,7 +443,7 @@ class If(Node):
         if self.cond: children += [('cond', self.cond)]
         if self.if_stat: children += [('if_stat', self.if_stat)]
         if self.else_stat: children += [('else_stat', self.else_stat)]
-        return children
+        return tuple(children)
 
 class InitList(Node):
     __slots__ = ('exprs', 'coord')
@@ -445,7 +456,7 @@ class InitList(Node):
         children = []
         for i, child in enumerate(self.exprs or []):
             children += [("exprs[%d]" % i, child)]
-        return children
+        return tuple(children)
 
 class ParamList(Node):
     __slots__ = ('params', 'coord')
@@ -457,7 +468,7 @@ class ParamList(Node):
         children = []
         for i, child in enumerate(self.params or []):
             children += [("params[%d]" % i, child)]
-        return children
+        return tuple(children)
 
 class Print(Node):
     __slots__ = ('expr', 'coord')
@@ -469,7 +480,7 @@ class Print(Node):
     def children(self):
         children = []
         if self.expr: children += [('expr', self.expr)]
-        return children
+        return tuple(children)
 
 class Read(Node):
     __slots__ = ('expr', 'coord')
@@ -481,7 +492,7 @@ class Read(Node):
     def children(self):
         children = []
         if self.expr: children += [('expr', self.expr)]
-        return children
+        return tuple(children)
 
 class Return(Node):
     __slots__ = ('expr', 'coord')
@@ -493,7 +504,7 @@ class Return(Node):
     def children(self):
         children = []
         if self.expr: children += [('expr', self.expr)]
-        return children
+        return tuple(children)
 
 class Type(Node):
     __slots__ = ('name', 'coord')
@@ -515,7 +526,7 @@ class VarDecl(Node):
     def children(self):
         children = []
         if self.type: children += [('type', self.type)]
-        return children
+        return tuple(children)
 
 class UnaryOp(Node):
     __slots__ = ('op', 'expr', 'coord')
@@ -528,7 +539,7 @@ class UnaryOp(Node):
     def children(self):
         children = []
         if self.expr: children += [("expr", self.expr)]
-        return children
+        return tuple(children)
     
     attr_names = ('op', )
 
@@ -544,5 +555,5 @@ class While(Node):
         children = []
         if self.cond: children += [('cond', self.cond)]
         if self.body: children += [('body', self.body)]
-        return children
+        return tuple(children)
 
