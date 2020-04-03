@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 31/03/2020.
+Last Modified: 02/04/2020.
 '''
 
 import ply.lex as lex
@@ -32,7 +32,7 @@ class uCLexer():
 
     # Build the lexer. Needs to be called after object is created.
     def build(self, **kwargs):
-        self.lexer = lex.lex(object=self, **kwargs)
+        self.lexer = lex.lex(object=self, optimize=1, **kwargs)
 
     # Resets line counter.
     def reset_line_num(self):

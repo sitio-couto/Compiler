@@ -37,7 +37,7 @@ class uCParser():
         self.parser = yacc(
             module=self,
             start='program',
-            write_tables=False,
+            optimize=1,
             **kwargs)
     
     # Parses an expression.
@@ -50,7 +50,6 @@ class uCParser():
         if exists(data): 
             with open(data, 'r') as content_file :
                 data = content_file.read()
-        # print(self.parse(data))
         self.parse(data).show()
 
     #### ROOT ####
@@ -70,28 +69,20 @@ class uCParser():
 
     def p_function_definition_1(self, p):
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
-        # p[0] = ('func', p[1], p[2], p[3], p[4])
-        # p[0] = [ast.FuncDef(p[1], p[2], p[3], p[4])]
         p[0] = self._build_function_definition(p[1], p[2], p[3], p[4])
     def p_function_definition_2(self, p): # If return type not defined, defaults to INT
         ''' function_definition : declarator declaration_list_opt compound_statement '''
-        #p[0] = ('func', 'void', p[1], p[2], p[3])
-        # p[0] = [ast.FuncDef(None, p[1], p[2], p[3])]
-        # type = ast.Type(['int'], self.get_coord(p, 1)) # If no reutur type specified, defaults to INT
         p[0] = self._build_function_definition(type, p[1], p[2], p[3])
 
     def p_declaration(self, p):
         ''' declaration : type_specifier init_declarator_list_opt ';' '''
-        # p[0] = (p[1], p[2])
         p[0] = self._build_declarations(p[1], p[2]) # Build multiple declarations based on single specifier
 
     def p_init_declarator_1(self, p):
         ''' init_declarator : declarator '''
-        # p[0] = (p[1], None) # returns tuple without initializer
         p[0] = dict(decl=p[1], init=None)
     def p_init_declarator_2(self, p):
         ''' init_declarator : declarator '=' initializer '''
-        # p[0] = (p[1], p[3]) # Has initializer in tuple
         p[0] = dict(decl=p[1], init=p[3])
 
 
@@ -101,18 +92,15 @@ class uCParser():
                            | INT
                            | FLOAT
         '''
-        #p[0] = p[1]
         p[0] = ast.Type(p[1], self.get_coord(p,1))
 
     def p_initializer_1(self, p):
         ''' initializer : assign_expr '''
         p[0] = p[1]
-    # NOTE: Initilizer_list will never be None by the grammar (and maybe it should)
     def p_initializer_2(self, p):
         ''' initializer : '{' initializer_list '}'
                         | '{' initializer_list ',' '}'
         '''
-        # p[0] = ('{', p[2], '}')
         p[0] = p[2]
 
     def p_declarator(self, p):
@@ -121,8 +109,7 @@ class uCParser():
         
     def p_direct_declarator_1(self, p):
         ''' direct_declarator : identifier '''
-        # p[0] = p[1]
-        p[0] = ast.VarDecl(p[1], None, None) # Initialy, it has None type
+        p[0] = ast.VarDecl(p[1], None, None) # Initially, it has None type
     def p_direct_declarator_2(self, p):
         ''' direct_declarator : '(' declarator ')' '''
         p[0] = p[2] 
@@ -134,8 +121,6 @@ class uCParser():
         ''' direct_declarator : direct_declarator '(' parameter_list ')' 
                               | direct_declarator '(' id_list_opt ')' 
         '''
-        # p[0] = (p[1], p[3]) 
-        # NOTE: Not defining coodinates do it seems more like the professors output
         aux = ast.FuncDecl(None, p[3], None) # None type will be overwritten later
         p[0] = self._type_modify_decl(p[1], aux)
 
@@ -157,9 +142,7 @@ class uCParser():
         p[0] = p[1]
     def p_assign_expr_2(self, p):
         ''' assign_expr : un_expr assign_op assign_expr '''
-        #  __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
         p[0] = ast.Assignment(p[2], p[1], p[3], p[1].coord)
-        # p[0] = (p[1], p[2], p[3])
 
     def p_assign_op(self, p):
         ''' assign_op : '='
@@ -192,9 +175,7 @@ class uCParser():
                      | bin_expr AND bin_expr
                      | bin_expr OR bin_expr
         '''
-        # __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
         p[0] = ast.BinaryOp(p[2], p[1], p[3], p[1].coord)
-        # p[0] = (p[1], p[2], p[3])
 
     # Cast Expressions # 
     # (float) 123;
@@ -202,11 +183,9 @@ class uCParser():
     def p_cast_expr_1(self, p):
         ''' cast_expr : un_expr '''
         p[0] = p[1]
-        # p[0] = p[1]
     def p_cast_expr_2(self, p):
         ''' cast_expr : '(' type_specifier ')' cast_expr '''
         p[0] = ast.Cast(p[2], p[4], self.get_coord(p,1))
-        #p[0] = ('cast', p[2], p[4])
 
     # Unary Expressions #
     # ++i; 
@@ -220,13 +199,12 @@ class uCParser():
                     | MINUSMINUS un_expr
                     | un_op cast_expr
         '''
-        #p[0] = (p[1], p[2])
         p[0] = ast.UnaryOp(p[1], p[2], p[2].coord)
 
     # Unary Operators #
     # '-' NUM | '*' PTR | '&' ADDR 
 
-    # NOTE: the '*' is only used if pointer are considered
+    # NOTE: the '*' is only used if pointers are considered
     def p_un_op(self, p):
         ''' un_op : '&'
                   | '+'
@@ -251,7 +229,6 @@ class uCParser():
         '''postfix_expr : postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
         '''
-        #p[0] = (p[1], p[2]) 
         # NOTE: 'p' as in 'postfix' (t1.ast)
         p[0] = ast.UnaryOp('p' + p[2], p[1], p[1].coord) 
 
@@ -273,7 +250,6 @@ class uCParser():
         ''' identifier : ID '''
         p[0] = ast.ID(p[1], self.get_coord(p,1))
 
-    # TODO: There might be a better way to do this   
     def p_constant_1(self, p):
         ''' constant : CCONST '''
         p[0] = ast.Constant('char', p[1], self.get_coord(p,1))
@@ -283,7 +259,7 @@ class uCParser():
     def p_constant_3(self, p):
         ''' constant : FCONST '''
         p[0] = ast.Constant('float', p[1], self.get_coord(p,1))
-    def p_constant_4(self, p): # TODO: Check if this production is right (it seemed more organized)
+    def p_constant_4(self, p):
         ''' constant : STRING'''
         p[0] = ast.Constant('string', p[1], self.get_coord(p,1))
 
@@ -307,8 +283,6 @@ class uCParser():
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
-        # p[0] = ('{', p[2], p[3], '}')
-        # TODO: Same as DeclList: not printing if is None
         coord = self.get_coord(p,1)
         coord.column = 1
         p[0] = ast.Compound(p[2], p[3], coord) if p[2] or p[3] else None
@@ -318,11 +292,9 @@ class uCParser():
 
     def p_selection_statement_1(self, p): # If block only
         ''' selection_statement : IF '(' expr ')' statement '''
-        #p[0] = ('if', p[3], p[5], None)
         p[0] = ast.If(p[3], p[5], None, self.get_coord(p,1))
     def p_selection_statement_2(self, p): # If-Else block
         ''' selection_statement : IF '(' expr ')' statement ELSE statement '''
-        #p[0] = ('if', p[3], p[5], p[7])
         p[0] = ast.If(p[3], p[5], p[7], self.get_coord(p,1))
 
 
@@ -331,15 +303,12 @@ class uCParser():
 
     def p_iteration_statement_1(self, p):
         ''' iteration_statement : WHILE '(' expr ')' statement '''
-        #p[0] = (p[1], p[3], p[5])
         p[0] = ast.While(p[3], p[5], self.get_coord(p,1))
     def p_iteration_statement_2(self, p):
         ''' iteration_statement : FOR '(' expr_opt ';' expr_opt ';' expr_opt ')' statement '''
-        #p[0] = (p[1], p[3], p[5], p[7], p[9])
         p[0] = ast.For(p[3], p[5], p[7], p[9], self.get_coord(p,1))
-    def p_iteration_statement_3(self, p): # TODO: This might need to be revised (declaration can be a list: int a, b=0, c;)
+    def p_iteration_statement_3(self, p): 
         ''' iteration_statement : FOR '(' declaration expr_opt ';' expr_opt ')' statement '''
-        #p[0] = (p[1], p[3], p[4], p[6], p[8])
         aux = ast.DeclList(p[3], self.get_coord(p,1))
         p[0] = ast.For(aux, p[4], p[6], p[8], self.get_coord(p,1))                
 
@@ -349,28 +318,23 @@ class uCParser():
     def p_jump_statement_1(self, p):
         ''' jump_statement : BREAK ';' '''
         p[0] = ast.Break(self.get_coord(p,1))
-        # p[0] = ('break')
     def p_jump_statement_2(self, p):
         ''' jump_statement : RETURN expr_opt ';' '''
         p[0] = ast.Return(p[2], self.get_coord(p,1))
-        #p[0] = ('return', p[2])
 
     # Functions Statements #
 
     def p_assert_statement(self, p):
         ''' assert_statement : ASSERT expr ';' '''
         p[0] = ast.Assert(p[2], self.get_coord(p,1))
-        # p[0] = ('assert', p[2])
 
     def p_print_statement(self, p):
         ''' print_statement : PRINT '(' expr_opt ')' ';'  '''
         p[0] = ast.Print(p[3], self.get_coord(p,1))
-        #p[0] = ('print', p[3])
 
     def p_read_statement(self, p):
         ''' read_statement : READ '(' expr ')' ';' '''
         p[0] = ast.Read(p[3], self.get_coord(p,1))
-        #p[0] = ('read', p[3])
 
     #### MISCELANEOUS ####
 
@@ -414,12 +378,10 @@ class uCParser():
 
     def p_initializer_list_1(self, p):
         ''' initializer_list : initializer_list ',' initializer '''
-        # p[0] = p[1] + [p[3]] 
         p[1].exprs.append(p[3]) # Appends elements while retuning from leftside recursion
         p[0] = p[1]             # Return appended list
     def p_initializer_list_2(self, p):
         ''' initializer_list : initializer '''
-        # p[0] = [p[1]] 
         # Base Case: Ends left recursion and returns single element InitList
         p[0] = ast.InitList([p[1]], p[1].coord)
 
@@ -437,7 +399,6 @@ class uCParser():
     def p_parameter_list_2(self, p):
         ''' parameter_list : parameter_declaration '''
         p[0] = ast.ParamList([p[1]], p[1].coord) 
-        # NOTE: Instead of creating by hand, we can use the builder to create a single Decl
 
     # Optional Productions #
 
@@ -445,13 +406,11 @@ class uCParser():
         ''' declaration_list_opt : declaration_list
                                  | empty
         '''
-        p[0] = p[1] 
-        # TODO: His output does not use DeclList (maybe because is an Empty return)
-        #p[0] = ast.DeclList(p[1]) if p[1] else None 
+        p[0] = p[1]
 
     def p_init_declarator_list_opt(self,p):
         ''' init_declarator_list_opt : init_declarator_list 
-            	                     | empty
+                                     | empty
         '''
         p[0] = p[1]
 
@@ -538,41 +497,14 @@ class uCParser():
 
         decl.name = type.declname
 
-        # UNNECESSARY ????
-        #  So from what i uderstand this is not necessary for us because
-        #  typename can only be a list if we consider all the possible
-        #  declaration specifiers: storage-class, type-specifier and
-        #  type-qualifier. Since we only evaluate the second one, this 
-        #  section is of no use to us.
-        #
-        #     # The typename is a list of types. If any type in this
-        #     # list isn't an Type, it must be the only
-        #     # type in the list.
-        #     # If all the types are basic, they're collected in the
-        #     # Type holder.
-        #     for tn in typename:
-        #         if not isinstance(tn, ast.Type):
-        #             if len(typename) > 1:
-        #                 self.p_error(tn.coord)
-        #             else:
-        #                 type.type = tn
-        #                 return decl
-
         # This is for functions with no return value Type.
-        # So yeah... Apparently C can do this
         if not typename:
             # Functions default to returning int
             if not isinstance(decl.type, ast.FuncDecl):
                 self.p_error(decl.coord)
             type.type = ast.Type(['int'], coord=decl.coord)
         else:
-            # Simplifying since there will never be more than one type
             type.type = ast.Type([typename.name], coord=typename.coord)
-            # # At this point, we know that typename is a list of Type
-            # # nodes. Concatenate all the names into a single list.
-            # type.type = ast.Type(
-            #     [typename.names[0]],
-            #     coord=typename.coord)
 
         return decl
         

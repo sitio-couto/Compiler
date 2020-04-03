@@ -43,9 +43,7 @@ class Node(object):
             indent = ' ' * len(self.__class__.__name__)
         result += indent + ')'
         return result
-            
-    # NOTE: Imma use this function as a inheritance for leaf classes
-    # If a class has children, it will be overriden, else it will use it 
+
     def children(self):
         """ A sequence of all children that are Nodes. """
         nodelist = []
@@ -87,7 +85,7 @@ class Node(object):
         for (child_name, child) in self.children():
             child.show(buf, offset + 4, attrnames, nodenames, showcoord, child_name)
             
-    # NOTE: it seems to be a list for variables contained in the class (excluding subtrees)
+    # List for variables contained in the class (excluding subtrees)
     attr_names = () 
 
 class NodeVisitor(object):
@@ -331,9 +329,9 @@ class Decl(Node):
     __slots__ = ('name', 'type', 'init', 'coord')
 
     def __init__(self, name, type, init, coord=None):
-        self.name = name # TODO: Not sure what's this name variable (I think it will derive from one of the childre or just remain as none)
-        self.type = type # Func/Var Type [type_specifier] (int, float... tokens)
-        self.init = init # One or more initializers [init_declarator_list_opt]
+        self.name = name 
+        self.type = type 
+        self.init = init 
         self.coord = coord
 
     def children(self):
@@ -464,7 +462,6 @@ class GlobalDecl(Node):
         self.decls = decls
         self.coord = coord
         
-    # NOTE: This might not be correct
     def children(self):
         nodelist = []
         for child in self.decls or []:
@@ -587,10 +584,10 @@ class Type(Node):
     attr_names = ('name',)
 
 class VarDecl(Node):
-    __slots__ = ('declname', 'type', 'coord') # NOTE: Not sure it there's
+    __slots__ = ('declname', 'type', 'coord')
 
     def __init__(self, declname, type, coord=None):
-        self.declname = declname   # Var name [ID token value]
+        self.declname = declname
         self.type = type
         self.coord = coord 
 

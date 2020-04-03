@@ -3,3 +3,5 @@ __pycache__
 parser.out
 newParse.py
 *.ast
+lextab.py
+parsetab.py
