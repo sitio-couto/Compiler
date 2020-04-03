@@ -482,6 +482,18 @@ class Print(Node):
         if self.expr: children += [('expr', self.expr)]
         return tuple(children)
 
+class PtrDecl(Node):
+    __slots__ = ('type', 'coord')
+    
+    def __init__(self, type, coord=None):
+        self.type = type
+        self.coord = coord
+
+    def children(self):
+        children = []
+        if self.type: children += [("type", self.type)]
+        return tuple(children)
+
 class Read(Node):
     __slots__ = ('expr', 'coord')
     
