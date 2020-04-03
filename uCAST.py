@@ -46,8 +46,8 @@ class Node(object):
 
     def children(self):
         """ A sequence of all children that are Nodes. """
-        nodelist = []
-        return nodelist
+        children = []
+        return children
 
     def show(self, buf=sys.stdout, offset=0, attrnames=False, nodenames=False, showcoord=True, _my_node_name=None):
         """ Pretty print the Node and all its attributes and children (recursively) to a buffer.
@@ -158,10 +158,10 @@ class Program(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
+        children = []
         for i, child in enumerate(self.gdecls or []):
-            nodelist += [("gdecls[%d]" % i, child)]
-        return nodelist
+            children += [("gdecls[%d]" % i, child)]
+        return children
 
 #### AST NODES CLASSES ####
 
@@ -174,10 +174,10 @@ class ArrayDecl(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
-        if self.type: nodelist += [("type", self.type)]
-        if self.dims: nodelist += [("dims", self.dims)]
-        return nodelist
+        children = []
+        if self.type: children += [("type", self.type)]
+        if self.dims: children += [("dims", self.dims)]
+        return children
 
 
 class ArrayRef(Node):
@@ -189,10 +189,10 @@ class ArrayRef(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.name: nodelist += [('name', self.name)]
-        if self.subsc: nodelist += [('subscript', self.subsc)]
-        return nodelist
+        children = []
+        if self.name: children += [('name', self.name)]
+        if self.subsc: children += [('subscript', self.subsc)]
+        return children
 
 class Assert(Node):
     __slots__ = ('expr', 'coord')
@@ -202,9 +202,9 @@ class Assert(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.expr: nodelist += [('expr', self.expr)]
-        return nodelist
+        children = []
+        if self.expr: children += [('expr', self.expr)]
+        return children
 
 class Assignment(Node):
     __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
@@ -216,10 +216,10 @@ class Assignment(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
-        if self.lvalue: nodelist += [("lvalue", self.lvalue)]
-        if self.rvalue: nodelist += [("rvalue", self.rvalue)]
-        return nodelist
+        children = []
+        if self.lvalue: children += [("lvalue", self.lvalue)]
+        if self.rvalue: children += [("rvalue", self.rvalue)]
+        return children
 
     attr_names = ('op', ) 
 
@@ -233,10 +233,10 @@ class BinaryOp(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
-        if self.lvalue: nodelist += [("lvalue", self.lvalue)]
-        if self.rvalue: nodelist += [("rvalue", self.rvalue)]
-        return nodelist
+        children = []
+        if self.lvalue: children += [("lvalue", self.lvalue)]
+        if self.rvalue: children += [("rvalue", self.rvalue)]
+        return children
 
     attr_names = ('op', ) # NOTE: lvalue and rvalue are subtrees, so they dont make the list
 
@@ -256,10 +256,10 @@ class Cast(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.type: nodelist += [('type', self.type)]
-        if self.expr: nodelist += [('expr', self.expr)]
-        return nodelist
+        children = []
+        if self.type: children += [('type', self.type)]
+        if self.expr: children += [('expr', self.expr)]
+        return children
 
 
 class Compound(Node):
@@ -271,12 +271,12 @@ class Compound(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
+        children = []
         for i, child in enumerate(self.decls or []):
-            if child: nodelist += [("decls[%d]" % i, child)]
+            if child: children += [("decls[%d]" % i, child)]
         for i, child in enumerate(self.stats or []):
-            if child: nodelist += [("stats[%d]" % i, child)]
-        return nodelist
+            if child: children += [("stats[%d]" % i, child)]
+        return children
 
 
 class Constant(Node):
@@ -289,24 +289,6 @@ class Constant(Node):
 
     attr_names = ('type', 'value', )
 
-class Coord(Node):
-    """ Coordinates of a syntactic element. Consists of:
-            - Line number
-            - (optional) column number, for the Lexer
-    """
-    __slots__ = ('line', 'column')
-    
-    def __init__(self, line, column=None):
-        self.line = line
-        self.column = column
-
-    def __str__(self):
-        if self.line:
-            coord_str = "   @ %s:%s" % (self.line, self.column)
-        else:
-            coord_str = ""
-        return coord_str
-
 class Decl(Node):
     __slots__ = ('name', 'type', 'init', 'coord')
 
@@ -317,10 +299,10 @@ class Decl(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
-        if self.type: nodelist += [("type", self.type)]
-        if self.init: nodelist += [("init", self.init)]
-        return nodelist
+        children = []
+        if self.type: children += [("type", self.type)]
+        if self.init: children += [("init", self.init)]
+        return children
 
     attr_names = ('name', )
 
@@ -332,10 +314,10 @@ class DeclList(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
+        children = []
         for i, child in enumerate(self.decls or []):
-            nodelist += [("decls[%d]" % i, child)]
-        return nodelist
+            children += [("decls[%d]" % i, child)]
+        return children
 
 class EmptyStatement(Node):
     __slots__ = ('coord')
@@ -352,10 +334,10 @@ class ExprList(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
+        children = []
         for i, child in enumerate(self.exprs or []):
-            nodelist += [("exprs[%d]" % i, child)]
-        return nodelist
+            children += [("exprs[%d]" % i, child)]
+        return children
 
 
 class For(Node):
@@ -369,12 +351,12 @@ class For(Node):
         self.coord = coord
     
     def children(self):
-        nodelist = []
-        if self.init: nodelist += [('init', self.init)]
-        if self.cond: nodelist += [('cond', self.cond)]
-        if self.next: nodelist += [('next', self.next)]
-        if self.body: nodelist += [('body', self.body)]
-        return nodelist
+        children = []
+        if self.init: children += [('init', self.init)]
+        if self.cond: children += [('cond', self.cond)]
+        if self.next: children += [('next', self.next)]
+        if self.body: children += [('body', self.body)]
+        return children
 
 class FuncCall(Node):
     __slots__ = ('name', 'args', 'coord')
@@ -385,10 +367,10 @@ class FuncCall(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.name: nodelist += [('name', self.name)]
-        if self.args: nodelist += [('args', self.args)]
-        return nodelist
+        children = []
+        if self.name: children += [('name', self.name)]
+        if self.args: children += [('args', self.args)]
+        return children
 
 class FuncDecl(Node):
     __slots__ = ('type', 'params', 'coord')
@@ -399,10 +381,10 @@ class FuncDecl(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
-        if self.params: nodelist += [("params", self.params)]
-        if self.type: nodelist += [("type", self.type)]
-        return nodelist
+        children = []
+        if self.params: children += [("params", self.params)]
+        if self.type: children += [("type", self.type)]
+        return children
 
 class FuncDef(Node):
     __slots__ = ('type', 'decl', 'params', 'body', 'coord')
@@ -415,12 +397,12 @@ class FuncDef(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.type: nodelist += [('type', self.type)]
-        if self.decl: nodelist += [('decl', self.decl)]
-        if self.params: nodelist += [('params', self.params)]
-        if self.body: nodelist += [('body', self.body)]
-        return nodelist
+        children = []
+        if self.type: children += [('type', self.type)]
+        if self.decl: children += [('decl', self.decl)]
+        if self.params: children += [('params', self.params)]
+        if self.body: children += [('body', self.body)]
+        return children
 
 
 class GlobalDecl(Node):
@@ -431,10 +413,10 @@ class GlobalDecl(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
+        children = []
         for child in self.decls or []:
-            if child: nodelist += [("Decl", child)]
-        return nodelist
+            if child: children += [("Decl", child)]
+        return children
 
 class ID(Node): # NOTE: Const class is ID's sibiling, not child
     __slots__ = ('name', 'coord')
@@ -455,11 +437,11 @@ class If(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.cond: nodelist += [('cond', self.cond)]
-        if self.if_stat: nodelist += [('if_stat', self.if_stat)]
-        if self.else_stat: nodelist += [('else_stat', self.else_stat)]
-        return nodelist
+        children = []
+        if self.cond: children += [('cond', self.cond)]
+        if self.if_stat: children += [('if_stat', self.if_stat)]
+        if self.else_stat: children += [('else_stat', self.else_stat)]
+        return children
 
 class InitList(Node):
     __slots__ = ('exprs', 'coord')
@@ -469,10 +451,10 @@ class InitList(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
+        children = []
         for i, child in enumerate(self.exprs or []):
-            nodelist += [("exprs[%d]" % i, child)]
-        return nodelist
+            children += [("exprs[%d]" % i, child)]
+        return children
 
 class ParamList(Node):
     __slots__ = ('params', 'coord')
@@ -481,10 +463,10 @@ class ParamList(Node):
         self.coord = coord
 
     def children(self):
-        nodelist = []
+        children = []
         for i, child in enumerate(self.params or []):
-            nodelist += [("params[%d]" % i, child)]
-        return nodelist
+            children += [("params[%d]" % i, child)]
+        return children
 
 class Print(Node):
     __slots__ = ('expr', 'coord')
@@ -494,9 +476,9 @@ class Print(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.expr: nodelist += [('expr', self.expr)]
-        return nodelist
+        children = []
+        if self.expr: children += [('expr', self.expr)]
+        return children
 
 class Read(Node):
     __slots__ = ('expr', 'coord')
@@ -506,9 +488,9 @@ class Read(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.expr: nodelist += [('expr', self.expr)]
-        return nodelist
+        children = []
+        if self.expr: children += [('expr', self.expr)]
+        return children
 
 class Return(Node):
     __slots__ = ('expr', 'coord')
@@ -518,9 +500,9 @@ class Return(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.expr: nodelist += [('expr', self.expr)]
-        return nodelist
+        children = []
+        if self.expr: children += [('expr', self.expr)]
+        return children
 
 class Type(Node):
     __slots__ = ('name', 'coord')
@@ -540,9 +522,9 @@ class VarDecl(Node):
         self.coord = coord 
 
     def children(self):
-        nodelist = []
-        if self.type: nodelist += [('type', self.type)]
-        return nodelist
+        children = []
+        if self.type: children += [('type', self.type)]
+        return children
 
 class UnaryOp(Node):
     __slots__ = ('op', 'expr', 'coord')
@@ -553,9 +535,9 @@ class UnaryOp(Node):
         self.coord = coord
     
     def children(self):
-        nodelist = []
-        if self.expr: nodelist += [("expr", self.expr)]
-        return nodelist
+        children = []
+        if self.expr: children += [("expr", self.expr)]
+        return children
     
     attr_names = ('op', )
 
@@ -568,8 +550,8 @@ class While(Node):
         self.coord = coord
         
     def children(self):
-        nodelist = []
-        if self.cond: nodelist += [('cond', self.cond)]
-        if self.body: nodelist += [('body', self.body)]
-        return nodelist
+        children = []
+        if self.cond: children += [('cond', self.cond)]
+        if self.body: children += [('body', self.body)]
+        return children
 
