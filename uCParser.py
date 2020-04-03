@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/04/2020.
+Last Modified: 03/04/2020.
 '''
 
 from ply.yacc import yacc
@@ -37,7 +37,7 @@ class uCParser():
         self.parser = yacc(
             module=self,
             start='program',
-            optimize=1,
+            optimize=True,
             **kwargs)
     
     # Parses an expression.
@@ -50,7 +50,7 @@ class uCParser():
         if exists(data): 
             with open(data, 'r') as content_file :
                 data = content_file.read()
-        self.parse(data).show()
+        self.parse(data, False).show()
 
     #### ROOT ####
     
@@ -69,7 +69,9 @@ class uCParser():
 
     def p_function_definition_1(self, p):
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
-        p[0] = self._build_function_definition(p[1], p[2], p[3], p[4])
+        declaration = self._build_declarations(p[1], [dict(decl=p[2], init=None)])[0]
+        p[1].name = [p[1].name]
+        p[0] = ast.FuncDef(p[1], declaration, p[3], p[4])
     def p_function_definition_2(self, p): # If return type not defined, defaults to INT
         ''' function_definition : declarator declaration_list_opt compound_statement '''
         p[0] = self._build_function_definition(type, p[1], p[2], p[3])
@@ -133,7 +135,6 @@ class uCParser():
         ''' expr : expr ',' assign_expr '''
         if not isinstance(p[1], ast.ExprList):
             p[1] = ast.ExprList([p[1]], p[1].coord)
-            
         p[1].exprs.append(p[3])
         p[0] = p[1]
 
@@ -229,7 +230,6 @@ class uCParser():
         '''postfix_expr : postfix_expr PLUSPLUS
                         | postfix_expr MINUSMINUS
         '''
-        # NOTE: 'p' as in 'postfix' (t1.ast)
         p[0] = ast.UnaryOp('p' + p[2], p[1], p[1].coord) 
 
     # Primary Expressios #
@@ -283,8 +283,8 @@ class uCParser():
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
-        coord = self.get_coord(p,1)
-        coord.column = 1
+        coord = self.get_coord(p, 1)
+        coord.column = 1 
         p[0] = ast.Compound(p[2], p[3], coord) if p[2] or p[3] else None
 
     # Selection Staments #    
@@ -343,8 +343,6 @@ class uCParser():
         p[0] = self._build_declarations(p[1], [dict(decl=p[2])])[0]
 
     # Listable Productions #
-    # NOTE: SOME LISTING ALREADY HAVE A LIST AS A RETURN TYPE
-    # If this is the case, there's no need to put the values in brackets ([val])
 
     def p_global_declaration_list_1(self, p) :
         ''' global_declaration_list : global_declaration_list global_declaration '''
@@ -378,11 +376,10 @@ class uCParser():
 
     def p_initializer_list_1(self, p):
         ''' initializer_list : initializer_list ',' initializer '''
-        p[1].exprs.append(p[3]) # Appends elements while retuning from leftside recursion
-        p[0] = p[1]             # Return appended list
+        p[1].exprs.append(p[3]) 
+        p[0] = p[1]             
     def p_initializer_list_2(self, p):
         ''' initializer_list : initializer '''
-        # Base Case: Ends left recursion and returns single element InitList
         p[0] = ast.InitList([p[1]], p[1].coord)
 
     def p_id_list_1(self, p):
@@ -455,11 +452,6 @@ class uCParser():
     
     def _build_declarations(self, spec, decls):
         """ Builds a list of declarations all sharing the given specifiers.
-        
-            When a list of declarations is defined (such as int a, b, c=0, d[];),
-            the type specifier (spec) apears only once with an undetermined number
-            of declarations, which can cause issues instanciating nodes.
-            This function handles this issue.
         """
         declarations = []
 
@@ -511,39 +503,31 @@ class uCParser():
     def _type_modify_decl(self, decl, modifier):
         """ Tacks a type modifier on a declarator, and returns
             the modified declarator.
-            Note: the declarator and modifier may be modified
         """
-        modifier_head = modifier
-        modifier_tail = modifier
+        head = modifier
+        tail = modifier
 
-        # The modifier may be a nested list. Reach its tail.
         # Necessary if int cube[][][]; 
-        while modifier_tail.type:
-            modifier_tail = modifier_tail.type
+        while tail.type:
+            tail = tail.type
 
-        # If the decl is a basic type, just tack the modifier onto it
-        # 'decl' has the type int, now propagate to ArrayDecl
         # int x[] => int ID(x) ArrDecl(None) => int ID(x) ArrDecl(int)
         if isinstance(decl, ast.VarDecl):
-            modifier_tail.type = decl
+            tail.type = decl
             return modifier
         else: # int x[][][]
-            # Otherwise, the decl is a list of modifiers. Reach
-            # its tail and splice the modifier onto the tail,
-            # pointing to the underlying basic type.
             decl_tail = decl
 
             while not isinstance(decl_tail.type, ast.VarDecl):
                 decl_tail = decl_tail.type
 
-            modifier_tail.type = decl_tail.type
-            decl_tail.type = modifier_head
+            tail.type = decl_tail.type
+            decl_tail.type = head
             return decl
 
     # Get coordinates for token.
     def get_coord(self, p, token_idx):
         last_cr = p.lexer.lexdata.rfind('\n', 0, p.lexpos(token_idx))
-        if last_cr < 0:
-            last_cr = -1
+        if last_cr < 0: last_cr = -1
         column = (p.lexpos(token_idx) - (last_cr))
         return ast.Coord(p.lineno(token_idx), column)
