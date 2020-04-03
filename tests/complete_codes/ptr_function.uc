@@ -1,4 +1,3 @@
-////// POINTERS WONT BE IMPLEMENTED //////
 // The following program shows use of a function pointer
 // for selecting between addition and subtraction:
     
@@ -19,3 +18,4 @@ int main() {
    operation = subtract;
    print(foo, " - ", bar, " = ", operation(foo, bar), "\n");
    return 0;
+}

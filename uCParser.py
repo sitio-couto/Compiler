@@ -105,9 +105,25 @@ class uCParser():
         '''
         p[0] = p[2]
 
-    def p_declarator(self, p):
+    def p_declarator_1(self, p):
+        ''' declarator : pointer direct_declarator '''
+        p[0] = self._type_modify_decl(p[2], p[1])
+        
+    def p_declarator_2(self, p):
         ''' declarator : direct_declarator '''
         p[0] = p[1]
+            
+    def p_pointer_1(self, p):
+        ''' pointer : '*' pointer '''
+        ptr = p[2]
+        while ptr.type:                # Get the last pointer and nest.
+            ptr = ptr.type
+        ptr.type = ast.PtrDecl(None, self.get_coord(p,1))
+        p[0] = p[2]
+    
+    def p_pointer_2(self, p):
+        ''' pointer : '*' '''
+        p[0] = ast.PtrDecl(None, self.get_coord(p,1))
         
     def p_direct_declarator_1(self, p):
         ''' direct_declarator : identifier '''
