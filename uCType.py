@@ -38,7 +38,11 @@ float_type = uCType("float",
          'LE', '<', 'EQ', 'UNEQ', '>', 'GE')),
     set(('+', '-')),
     )
-string_type = uCType("char",
+string_type = uCType("string",
+    set(('+',)),
+    set(),
+    )
+char_type = uCType("char",
     set(('+',)),
     set(),
     )

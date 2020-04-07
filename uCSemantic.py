@@ -41,6 +41,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.symtab.add("int",uCType.int_type)
         self.symtab.add("float",uCType.float_type)
         self.symtab.add("char",uCType.char_type)
+        self.symtab.add("string",uCType.string_type)
         self.symtab.add("bool",uCType.boolean_type)
 
     def visit_Program(self, node):
@@ -68,19 +69,26 @@ class CheckProgramVisitor(ast.NodeVisitor):
         assert node.lvalue.type == node.rvalue.type, "Type mismatch in binary operation"
         
         # 2. Make sure the operation is supported
-        ty = self.symtab.lookup(node.lvalue.type)
-        assert ty, "Unknown type in binary operation."
+        ty = node.lvalue.type.name
         assert node.op in ty.bin_ops, "Unsupported operator %s in binary operation for type %s." % (node.op, ty.name)
         
         # 3. Assign the result type
         node.type = node.lvalue.type
 
     def visit_Break(self, node):
-        # TODO: check if is inside a for/while?
+        # TODO: check if is inside a for/while? For parser, break can be outside a loop.
 
     def visit_Constant(self, node):
         # 1. Check constant type.
-        assert node.type == type(node.value).__name__
+        visit(node.type)
+        
+        # 2. Convert to respective type. String by default.
+        ty = node.type.name
+        if ty.name == 'int':
+            node.value = int(node.value)
+        elif ty.name == 'float':
+            node.value = float(node.value)
+        # TODO: char?
         
     def visit_FuncCall(self, node):
         # 1. Check if identifier was declared.
@@ -88,7 +96,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         assert sym, "Unknown identifier in function call."
         
         # 2. Check if identifier is a function.
-        assert isinstance(sym, ast.FuncDef), "Identifier in function call is not a function."
+        assert isinstance(sym, ast.FuncDecl), "Identifier in function call is not a function."
         
         # 3. Visit arguments.
         self.visit(node.args)
@@ -101,7 +109,6 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 1. Check if identifier is in symbol table.
         sym = self.symtab.lookup(node.name)
         assert sym, "Identifier %s not defined." % node.name
-        
         # TODO: ID in declaration enters this function?
 
     def visit_Print(self, node):
@@ -117,20 +124,23 @@ class CheckProgramVisitor(ast.NodeVisitor):
     def visit_Return(self, node):
         # 1. Visit the expression.
         self.visit(node.expr)
-        # TODO: check if expression is of the function type.
+        # TODO: check if expression is of the function type? Or is this done in FuncDef?
 
     def visit_Type(self, node):
-        # 1. Check if type is in symbol table.
-        ty = self.symtab.lookup(node.name)
-        assert ty, "Unsupported type."
+        # 1. Change the string to uCType.
+        # TODO: simplify for one name? Just delete the for and do if for node.name[0].
+        for i, name in enumerate(node.name or []):
+            if not isinstance(name, uCType):
+                ty = self.symtab.lookup(name)
+                assert ty, "Unsupported type %s." % name
+                node.name[i] = ty
         
     def visit_UnaryOp(self, node):
         # 1. Visit the expression.
         self.visit(node.expr)
         
         # 2. Make sure the operation is supported.
-        ty = self.symtab.lookup(node.expr.type)
-        assert ty, "Unknown type in unary operation."
+        ty = node.expr.type.name
         assert node.op in ty.un_ops, "Unsupported operator %s in unary operation for type %s." % (node.op, ty.name)
         
         # 3. Assign the result type.
