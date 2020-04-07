@@ -13,7 +13,7 @@ Last Modified: 07/04/2020.
 '''
 
 import uCType
-from uCAST import NodeVisitor
+import uCAST as ast
 
 class SymbolTable(object):
     '''
@@ -27,7 +27,7 @@ class SymbolTable(object):
     def add(self, a, v):
         self.symtab[a] = v
 
-class CheckProgramVisitor(NodeVisitor):
+class CheckProgramVisitor(ast.NodeVisitor):
     '''
     Program checking class. This class uses the visitor pattern. You need to define methods
     of the form visit_NodeName() for each kind of AST node that you want to process.
@@ -43,23 +43,95 @@ class CheckProgramVisitor(NodeVisitor):
         self.symtab.add("char",uCType.char_type)
         self.symtab.add("bool",uCType.boolean_type)
 
-    def visit_Program(self,node):
+    def visit_Program(self, node):
         # 1. Visit all of the statements
         # 2. Record the associated symbol table
-        self.visit(node.program)
+        self.visit(node.program)                # TODO: what should be done here?
+
+    def visit_Assignment(self, node):
+        ## 1. Make sure the location of the assignment is defined
+        sym = self.symtab.lookup(node.lvalue)
+        assert sym, "Assigning to unknown sym"
+        
+        ## 2. Check that the types match
+        self.visit(node.rvalue)
+        assert sym.type == node.rvalue.type, "Type mismatch in assignment"
+        
+    def visit_Assert(self, node):
+        # 1. Visit the expression.
+        self.visit(node.expr)
 
     def visit_BinaryOp(self, node):
         # 1. Make sure left and right operands have the same type
+        self.visit(node.lvalue)
+        self.visit(node.rvalue)
+        assert node.lvalue.type == node.rvalue.type, "Type mismatch in binary operation"
+        
         # 2. Make sure the operation is supported
+        ty = self.symtab.lookup(node.lvalue.type)
+        assert ty, "Unknown type in binary operation."
+        assert node.op in ty.bin_ops, "Unsupported operator %s in binary operation for type %s." % (node.op, ty.name)
+        
         # 3. Assign the result type
-        self.visit(node.left)
-        self.visit(node.right)
-        node.type = node.left.type
+        node.type = node.lvalue.type
 
-    def visit_Assignment(self,node):
-        ## 1. Make sure the location of the assignment is defined
-        sym = self.symtab.lookup(node.location)
-        assert sym, "Assigning to unknown sym"
-        ## 2. Check that the types match
-        self.visit(node.value)
-        assert sym.type == node.value.type, "Type mismatch in assignment"
+    def visit_Break(self, node):
+        # TODO: check if is inside a for/while?
+
+    def visit_Constant(self, node):
+        # 1. Check constant type.
+        assert node.type == type(node.value).__name__
+        
+    def visit_FuncCall(self, node):
+        # 1. Check if identifier was declared.
+        sym = self.symtab.lookup(node.name)
+        assert sym, "Unknown identifier in function call."
+        
+        # 2. Check if identifier is a function.
+        assert isinstance(sym, ast.FuncDef), "Identifier in function call is not a function."
+        
+        # 3. Visit arguments.
+        self.visit(node.args)
+    
+    def visit_FuncDef(self, node):
+        # 1. Visit declaration. (TODO)
+        # 2. Visit function. (TODO)
+        
+    def visit_ID(self, node):
+        # 1. Check if identifier is in symbol table.
+        sym = self.symtab.lookup(node.name)
+        assert sym, "Identifier %s not defined." % node.name
+        
+        # TODO: ID in declaration enters this function?
+
+    def visit_Print(self, node):
+        # 1. Visit the expression.
+        self.visit(node.expr)
+        # TODO: check if expression is a string?
+
+    def visit_Read(self, node):
+        # 1. Visit the expression.
+        self.visit(node.expr)
+        # TODO: check if expression is a string?
+
+    def visit_Return(self, node):
+        # 1. Visit the expression.
+        self.visit(node.expr)
+        # TODO: check if expression is of the function type.
+
+    def visit_Type(self, node):
+        # 1. Check if type is in symbol table.
+        ty = self.symtab.lookup(node.name)
+        assert ty, "Unsupported type."
+        
+    def visit_UnaryOp(self, node):
+        # 1. Visit the expression.
+        self.visit(node.expr)
+        
+        # 2. Make sure the operation is supported.
+        ty = self.symtab.lookup(node.expr.type)
+        assert ty, "Unknown type in unary operation."
+        assert node.op in ty.un_ops, "Unsupported operator %s in unary operation for type %s." % (node.op, ty.name)
+        
+        # 3. Assign the result type.
+        node.type = node.expr.type      # TODO: check if type is the same as operand.
