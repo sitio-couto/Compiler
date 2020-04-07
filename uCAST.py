@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 03/04/2020.
+Last Modified: 07/04/2020.
 '''
 
 import sys
@@ -527,19 +527,6 @@ class Type(Node):
         
     attr_names = ('name',)
 
-class VarDecl(Node):
-    __slots__ = ('declname', 'type', 'coord')
-
-    def __init__(self, declname, type, coord=None):
-        self.declname = declname
-        self.type = type
-        self.coord = coord 
-
-    def children(self):
-        children = []
-        if self.type: children += [('type', self.type)]
-        return tuple(children)
-
 class UnaryOp(Node):
     __slots__ = ('op', 'expr', 'coord')
     
@@ -554,6 +541,19 @@ class UnaryOp(Node):
         return tuple(children)
     
     attr_names = ('op', )
+
+class VarDecl(Node):
+    __slots__ = ('declname', 'type', 'coord')
+
+    def __init__(self, declname, type, coord=None):
+        self.declname = declname
+        self.type = type
+        self.coord = coord 
+
+    def children(self):
+        children = []
+        if self.type: children += [('type', self.type)]
+        return tuple(children)
 
 class While(Node):
     __slots__ = ('cond', 'body', 'coord')

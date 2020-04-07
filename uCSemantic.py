@@ -51,7 +51,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
 
     def visit_Assignment(self, node):
         ## 1. Make sure the location of the assignment is defined
-        sym = self.symtab.lookup(node.lvalue)
+        sym = self.symtab.lookup(node.lvalue)   # TODO: not getting name?
         assert sym, "Assigning to unknown sym"
         
         ## 2. Check that the types match
@@ -88,11 +88,53 @@ class CheckProgramVisitor(ast.NodeVisitor):
             node.value = int(node.value)
         elif ty.name == 'float':
             node.value = float(node.value)
-        # TODO: char?
+        # TODO: char? Anything else?
         
+    def visit_Decl(self, node):
+        # 1. Visit type
+        self.visit(node.type)
+        
+        # 2. Check if variable is defined.
+        assert self.symtab.lookup(node.name.name), "Symbol %s not defined" % node.name.name
+        
+        # 3. Visit initial value, if defined.
+        if node.init:
+            self.visit(node.init)
+            
+            # Check instance of initializer.
+            # Constant
+            if isinstance(node.init, ast.Constant):
+                assert node.type.type.name[0] == node.init.type, "Initialization type mismatch in declaration."
+            
+            # InitList
+            elif isinstance(node.init, ast.InitList):
+                exprs = node.init.exprs
+                
+                # Variable
+                if isinstance(node.type, ast.VarDecl):
+                    assert len(exprs) == 1, "Too many elements for variable initialization"
+                    assert node.type.type == exprs[0].type, "Initialization type mismatch in declaration."
+                
+                # Array
+                elif isinstance(node.type, ast.ArrayDecl):
+                    
+                    # If not explicit size of array, use initialization as size.
+                    if node.type.dims is None:
+                        node.type.dims = ast.Constant('int', len(exprs))
+                        self.visit_Constant(node.type.dims)
+                    else:
+                        assert node.type.dims.value == len(exprs), "Size mismatch in variable initialization"
+                
+                # Pointer (TODO)
+                elif isinstance(node.type, ast.PtrDecl):
+                    assert True
+        
+        # 4. ???
+    
     def visit_FuncCall(self, node):
         # 1. Check if identifier was declared.
-        sym = self.symtab.lookup(node.name)
+        self.visit(node.name)
+        sym = self.symtab.lookup(node.name.name)
         assert sym, "Unknown identifier in function call."
         
         # 2. Check if identifier is a function.
@@ -106,10 +148,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 2. Visit function. (TODO)
         
     def visit_ID(self, node):
-        # 1. Check if identifier is in symbol table.
-        sym = self.symtab.lookup(node.name)
-        assert sym, "Identifier %s not defined." % node.name
-        # TODO: ID in declaration enters this function?
+        # TODO: What to do? Insert in symbol table (VarDecl does that)?
 
     def visit_Print(self, node):
         # 1. Visit the expression.
@@ -145,3 +184,27 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
         # 3. Assign the result type.
         node.type = node.expr.type      # TODO: check if type is the same as operand.
+
+    def visit_VarDecl(self, node):
+        # 1. Visit type.
+        self.visit(node.type)
+        
+        # 2. Visit name.
+        self.visit(node.declname)
+        
+        # 3. Check scope and insert in symbol table.
+        if isinstance(node.declname, ast.ID):
+            sym = self.symtab.lookup(node.declname.name)
+            # TODO: check scope
+            # If not in scope, add IN SCOPE (how? TODO):
+            self.symtab.add(node.declname, node)
+            node.declname.type = node.type
+
+    def visit_While(self, node):
+        # 1. Visit condition.
+        self.visit(node.cond)
+
+        # 2. Visit body.
+        self.visit(node.body)
+        
+        # 3. TODO
