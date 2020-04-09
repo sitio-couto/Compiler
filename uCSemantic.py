@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/04/2020.
+Last Modified: 09/04/2020.
 '''
 
 import uCType
@@ -49,6 +49,21 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 2. Record the associated symbol table
         self.visit(node.program)                # TODO: what should be done here?
 
+    def visit_ArrayDecl(self, node):
+        # 1. Visit type.
+        self.visit(node.type)
+        
+        # 2. Visit dims expression.
+        self.visit(node.dims)
+        
+        # 3. Check if array size is nonnegative (how? If "-1" or similar, just check UnaryOp. And if not? TODO).
+
+    def visit_ArrayRef(self, node):
+        # 1. Visit identifier.
+        self.visit(node.name)
+        
+        # 2. ???
+
     def visit_Assignment(self, node):
         ## 1. Make sure the location of the assignment is defined
         sym = self.symtab.lookup(node.lvalue)   # TODO: not getting name?
@@ -77,6 +92,29 @@ class CheckProgramVisitor(ast.NodeVisitor):
 
     def visit_Break(self, node):
         # TODO: check if is inside a for/while? For parser, break can be outside a loop.
+
+    def visit_Cast(self, node):
+        # 1. Visit type.
+        self.visit(node.type)
+        
+        # 2. Visit Expression
+        self.visit(node.expr)
+        
+        # 3. Check if the expression type is castable to "type".
+        ty = node.expr.type
+        while not isinstance(ty, uCType.uCType):
+            ty = ty.type
+            
+        assert node.type.name in ty.cast_types, "Type %s can't be casted to type %s." % (ty.name, node.type.name)
+        
+    def visit_Compound(self, node):
+        # 1. Visit all declarations
+        for decl in node.decls:
+            self.visit(decl)
+            
+        # 2. Visit all statements
+        for stat in node.stats:
+            self.visit(stat)
 
     def visit_Constant(self, node):
         # 1. Check constant type.
@@ -131,6 +169,34 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
         # 4. ???
     
+    def visit_DeclList(self, node):
+        # 1. Visit all decls.
+        for decl in node.decls:
+            self.visit(decl)
+    
+    def visit_EmptyStatement(self, node):
+        return
+    
+    def visit_ExprList(self, node):
+        # 1. Visit all expressions
+        for expr in node.exprs:
+            self.visit(expr)
+            
+    def visit_For(self, node):
+        # 1. Visit initializer.
+        self.visit(node.init)
+        
+        # 2. Visit condition.
+        self.visit(node.cond)
+        
+        # 3. Visit next.
+        self.visit(node.next)
+        
+        # 4. Visit body.
+        self.visit(node.body)
+        
+        # 5. ???
+    
     def visit_FuncCall(self, node):
         # 1. Check if identifier was declared.
         self.visit(node.name)
@@ -143,13 +209,51 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 3. Visit arguments.
         self.visit(node.args)
     
-    def visit_FuncDef(self, node):
-        # 1. Visit declaration. (TODO)
-        # 2. Visit function. (TODO)
+    def visit_FuncDecl(self, node):
+        # 1. Visit type.
+        self.visit(node.type)
         
+        # 2. Visit params.
+        self.visit(node.params)
+        
+        # 3. ???
+    
+    def visit_FuncDef(self, node):
+        # 1. Visit declaration.
+        self.visit(node.decl)
+        
+        # 2. Visit parameter list
+        self.visit(node.params)
+        
+        # 2. Visit function. (TODO)
+    
+    def visit_GlobalDecl(self, node):
+        # 1. Visit every global declaration.
+        for decl in node.decls:
+            self.visit(decl)
+    
     def visit_ID(self, node):
         # TODO: What to do? Insert in symbol table (VarDecl does that)?
-
+    
+    def visit_If(self, node):
+        # 1. Visit the condition
+        self.visit(node.cond)
+        # 2. TODO: ???
+    
+    def visit_InitList(self, node):
+        # 1. Visit expressions
+        for expr in node.exprs:
+            self.visit(expr)
+        
+        # 2. ???
+            
+    def visit_ParamList(self, node):
+        # 1. Visit parameters.
+        for param in node.params:
+            self.visit(param)
+        
+        # 2. ???
+    
     def visit_Print(self, node):
         # 1. Visit the expression.
         self.visit(node.expr)

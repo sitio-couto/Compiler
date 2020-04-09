@@ -169,7 +169,6 @@ class ArrayDecl(Node):
         if self.dims: children += [("dims", self.dims)]
         return tuple(children)
 
-
 class ArrayRef(Node):
     __slots__ = ('name', 'subsc', 'coord')
     
