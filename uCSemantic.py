@@ -139,11 +139,15 @@ class CheckProgramVisitor(ast.NodeVisitor):
             self.visit(stat)
 
     def visit_Constant(self, node):
-        # 1. Check constant type.
-        visit(node.type)
-        
+        # 1. Constant type to uCType.
+        # TODO: same as visit_Type. Maybe there should be a type here? AST doesn't support that, but...
+        if not isinstance(node.type, uCType.uCType):
+            ty = self.symtab.lookup(node.type)
+            assert ty, "Unsupported type %s." % node.type
+            node.type = ty
+
         # 2. Convert to respective type. String by default.
-        ty = node.type.name
+        ty = node.type
         if ty.name == 'int':
             node.value = int(node.value)
         elif ty.name == 'float':
