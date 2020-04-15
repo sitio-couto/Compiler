@@ -240,7 +240,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.type)
         
         # 2. Visit params.
-        self.visit(node.params)
+        if node.params:
+            self.visit(node.params)
         
         # 3. ???
     
@@ -249,7 +250,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.decl)
         
         # 2. Visit parameter list
-        self.visit(node.params)
+        if node.params:
+            self.visit(node.params)
         
         # 2. Visit function. (TODO)
     
