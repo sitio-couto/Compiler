@@ -9,11 +9,12 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 09/04/2020.
+Last Modified: 15/04/2020.
 '''
 
 import uCType
 import uCAST as ast
+from os.path import exists, splitext
 
 class SymbolTable(object):
     '''
@@ -33,7 +34,11 @@ class CheckProgramVisitor(ast.NodeVisitor):
     of the form visit_NodeName() for each kind of AST node that you want to process.
     Note: You will need to adjust the names of the AST nodes if you picked different names.
     '''
-    def __init__(self):
+    def __init__(self, parser):
+        
+        # Include parser
+        self.parser = parser
+        
         # Initialize the symbol table
         self.symtab = SymbolTable()
 
@@ -43,11 +48,27 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.symtab.add("char",uCType.char_type)
         self.symtab.add("string",uCType.string_type)
         self.symtab.add("bool",uCType.boolean_type)
-
+    
+    def test(self, data):
+        self.parser.lexer.reset_line_num()
+        if exists(data):
+            _,ext = splitext(data)
+            with open(data, 'r') as content_file :
+                data = content_file.read()
+            if ext != 'ast':
+                ast = self.parser.parse(data, False)
+        else:
+            ast = self.parser.parse(data, False)
+        self.visit_Program(ast)
+        print("Done with semantic check!")
+    
     def visit_Program(self, node):
         # 1. Visit all of the statements
+        for gdecl in node.gdecls:
+            self.visit(gdecl)
+        
         # 2. Record the associated symbol table
-        self.visit(node.program)                # TODO: what should be done here?
+        # TODO: what should be done here?
 
     def visit_ArrayDecl(self, node):
         # 1. Visit type.
@@ -92,6 +113,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
 
     def visit_Break(self, node):
         # TODO: check if is inside a for/while? For parser, break can be outside a loop.
+        return
 
     def visit_Cast(self, node):
         # 1. Visit type.
@@ -234,6 +256,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
     
     def visit_ID(self, node):
         # TODO: What to do? Insert in symbol table (VarDecl does that)?
+        return
     
     def visit_If(self, node):
         # 1. Visit the condition
@@ -273,7 +296,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 1. Change the string to uCType.
         # TODO: simplify for one name? Just delete the for and do if for node.name[0].
         for i, name in enumerate(node.name or []):
-            if not isinstance(name, uCType):
+            if not isinstance(name, uCType.uCType):
                 ty = self.symtab.lookup(name)
                 assert ty, "Unsupported type %s." % name
                 node.name[i] = ty
@@ -301,8 +324,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
             sym = self.symtab.lookup(node.declname.name)
             # TODO: check scope
             # If not in scope, add IN SCOPE (how? TODO):
-            self.symtab.add(node.declname, node)
-            node.declname.type = node.type
+            self.symtab.add(node.declname.name, node)
+            # TODO (not working because ID has no type): node.declname.type = node.type
 
     def visit_While(self, node):
         # 1. Visit condition.

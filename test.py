@@ -12,6 +12,7 @@ University of Campinas - UNICAMP - 2020
 
 from uCLexer import uCLexer as Lexer
 from uCParser import uCParser as Parser
+from uCSemantic import CheckProgramVisitor
 from os.path import exists
 from sys import argv
 
@@ -28,13 +29,15 @@ if __name__ == '__main__':
     parser = Parser(tokenizer)
     parser.build()
     
+    semantic = CheckProgramVisitor(parser)
+    
     while True:
         # quick testing input file
         if len(argv) > 1 :
             parser.test(argv[1])
             exit(1)
 
-        print("\nSend 'l' for lexer test, and 'p' for parser test ('q' to quit)")
+        print("\nSend 'l' for lexer test, 'p' for parser test and 's' for semantic test ('q' to quit)")
         mode = input("Mode: ")
 
         if mode == 'l':
@@ -48,6 +51,12 @@ if __name__ == '__main__':
             while True:
                 try:
                     parser.test(input("Filename or expression for Parser: "))
+                except EOFError:
+                    break
+        elif mode == 's':
+            while True:
+                try:
+                    semantic.test(input("Filename or expression for Semantic Check: "))
                 except EOFError:
                     break
         elif mode == 'q':
