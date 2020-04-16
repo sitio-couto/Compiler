@@ -17,46 +17,52 @@ class uCType(object):
     Class that represents a type in the uC language.  Types 
     are declared as singleton instances of this type.
     '''
-    def __init__(self, name, bin_ops=set(), un_ops=set(), cast_types=set()):
+    def __init__(self, name, bin_ops=set(), un_ops=set(), rel_ops=set(), assign_ops=set(), cast_types=set()):
         '''
         You must implement yourself and figure out what to store.
         '''
         self.name = name
         self.bin_ops = bin_ops
         self.un_ops = un_ops
+        self.rel_ops = rel_ops
+        self.assign_ops = assign_ops
         self.cast_types = cast_types
 
 
 int_type = uCType("int",
-    set(('+', '-', '*', '/', '%',
-         'LE', '<', 'EQ', 'UNEQ', '>', 'GE')),
-    set(('+', '-')),
-    set(('int', 'float', 'char'))
+    bin_ops = {'+', '-', '*', '/', '%'},
+    un_ops = {'+', '-', '--', '++', 'p--', 'p++', '*', '&'},
+    rel_ops = {'LE', '<', 'EQ', 'UNEQ', '>', 'GE'},
+    assign_ops = {'+=', '-='. '*=', '/=', '%='},
+    cast_types = {'int', 'float'}
     )
 float_type = uCType("float",
-    set(('+', '-', '*', '/', '%',
-         'LE', '<', 'EQ', 'UNEQ', '>', 'GE')),
-    set(('+', '-')),
-    set(('int', 'float', 'char'))
-    )
-string_type = uCType("string",
-    set(('+',)),
-    set(),
-    set()
+    bin_ops = {'+', '-', '*', '/', '%'},
+    un_ops = {'+', '-', '&', '*'},
+    rel_ops = {'LE', '<', 'EQ', 'UNEQ', '>', 'GE'},
+    assign_ops = {'+=', '-='. '*=', '/=', '%='},
+    cast_types = {'int', 'float'}
     )
 char_type = uCType("char",
-    set(('+',)),
-    set(),
-    set(('int', 'float', 'char'))
+    un_ops = {'*', '&'},
+    rel_ops = {'EQ', 'UNEQ', 'AND', 'OR'},
+    cast_types = {'char'}
+    )
+string_type = uCType("string",
+    rel_ops = {'EQ', 'UNEQ'}
     )
 boolean_type = uCType("bool",
-    set(('AND', 'OR', 'EQ', 'UNEQ')),
-    set(('!',)),
-    set()
+    un_ops = {'!', '*', '&'},
+    rel_ops = {'AND', 'OR', 'EQ', 'UNEQ'}
     )
-    
 void_type = uCType("void",
-    set(),
-    set(),
-    set()
+    un_ops = {'*', '&'}
+    )
+array_type = uCType("array",
+    un_ops = {'*', '&'},
+    rel_ops = {'EQ', 'UNEQ'}
+    )
+ptr_type = uCType('ptr',
+    un_ops = {'*', '&'},
+    rel_ops = {'EQ', 'UNEQ'}
     )

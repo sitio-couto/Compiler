@@ -49,6 +49,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.symtab.add("string",uCType.string_type)
         self.symtab.add("bool",uCType.boolean_type)
         self.symtab.add("void",uCType.void_type)
+        self.symtab.add("array",uCType.array_type)
+        self.symtab.add("ptr",uCType.ptr_type)
     
     def test(self, data, show_ast):
         self.parser.lexer.reset_line_num()
