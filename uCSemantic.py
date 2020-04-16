@@ -403,7 +403,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # TODO: check if ty is the function type.
 
     def visit_Type(self, node):
-        # 1. Change the string to uCType.
+        # 1. Change the strings to uCType.
+        # NOTE: because of the array and ptr types, node.name can have more than one item.
         for i, name in enumerate(node.name or []):
             if not isinstance(name, uCType.uCType):
                 ty = self.symtab.lookup(name)
