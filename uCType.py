@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 15/04/2020.
+Last Modified: 16/04/2020.
 '''
 
 class uCType(object):
@@ -32,37 +32,37 @@ class uCType(object):
 int_type = uCType("int",
     bin_ops = {'+', '-', '*', '/', '%'},
     un_ops = {'+', '-', '--', '++', 'p--', 'p++', '*', '&'},
-    rel_ops = {'LE', '<', 'EQ', 'UNEQ', '>', 'GE'},
-    assign_ops = {'+=', '-='. '*=', '/=', '%='},
+    rel_ops = {'<=', '<', '==', '!=', '>', '>='},
+    assign_ops = {'+=', '-=', '*=', '/=', '%='},
     cast_types = {'int', 'float'}
     )
 float_type = uCType("float",
     bin_ops = {'+', '-', '*', '/', '%'},
     un_ops = {'+', '-', '&', '*'},
-    rel_ops = {'LE', '<', 'EQ', 'UNEQ', '>', 'GE'},
-    assign_ops = {'+=', '-='. '*=', '/=', '%='},
+    rel_ops = {'<=', '<', '==', '!=', '>', '>='},
+    assign_ops = {'+=', '-=', '*=', '/=', '%='},
     cast_types = {'int', 'float'}
     )
 char_type = uCType("char",
     un_ops = {'*', '&'},
-    rel_ops = {'EQ', 'UNEQ', 'AND', 'OR'},
+    rel_ops = {'==', '!=', '&&', '||'},
     cast_types = {'char'}
     )
 string_type = uCType("string",
-    rel_ops = {'EQ', 'UNEQ'}
+    rel_ops = {'==', '!='}
     )
 boolean_type = uCType("bool",
     un_ops = {'!', '*', '&'},
-    rel_ops = {'AND', 'OR', 'EQ', 'UNEQ'}
+    rel_ops = {'&&', '||', '==', '!='}
     )
 void_type = uCType("void",
     un_ops = {'*', '&'}
     )
 array_type = uCType("array",
     un_ops = {'*', '&'},
-    rel_ops = {'EQ', 'UNEQ'}
+    rel_ops = {'==', '!='}
     )
 ptr_type = uCType('ptr',
     un_ops = {'*', '&'},
-    rel_ops = {'EQ', 'UNEQ'}
+    rel_ops = {'==', '!='}
     )

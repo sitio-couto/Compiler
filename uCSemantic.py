@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 15/04/2020.
+Last Modified: 16/04/2020.
 '''
 
 import uCType
@@ -27,6 +27,10 @@ class SymbolTable(object):
         return self.symtab.get(a)
     def add(self, a, v):
         self.symtab[a] = v
+
+# MAJOR TODO: SCOPE, ENVIRONMENT (func_type, for instance), NEW ATTRIBUTES IN NODES, COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
+# MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups, convert boolean checks to function.
+# MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
 
 class CheckProgramVisitor(ast.NodeVisitor):
     '''
@@ -81,45 +85,102 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 1. Visit type.
         self.visit(node.type)
         
-        # 2. Visit dims expression.
-        self.visit(node.dims)
+        # 2. Add array type to array.
+        var = node.type
+        while not isinstance(var, ast.VarDecl):
+            var = var.type
         
-        # 3. Check if array size is nonnegative (how? If "-1" or similar, just check UnaryOp. And if not? TODO).
+        # TODO: correct?
+        arr_type = self.symtab.lookup('array')
+        var.type.name.insert(0, arr_type)
+        
+        # 3. Check dimensions.
+        if node.dims:
+            # 3.1. Visit dims.
+            self.visit(node.dims)
+        
+            # 3.2. Check if array size is nonnegative.
+            if isinstance(node.dims, ast.UnaryOp):
+                assert node.dims.op != '-', "%s declared as an array with a negative size." % var.declname
 
     def visit_ArrayRef(self, node):
-        # 1. Visit identifier.
+        # 1. Visit subscript.
+        self.visit(node.subsc)
+        
+        # 2. Check if subscript is a valid ID, if ID.
+        # TODO: scope and ID type (must be variable)
+        if isinstance(node.subsc, ast.ID):
+            name = self.symtab.lookup(node.subsc.name)
+            assert name, "ID %s is not defined." % node.subsc.name
+            ty = name.type.name[-1]
+        else:
+            ty = node.subsc.type.name[-1]
+        
+        # 3. Check subscript type.
+        type_int = self.symtab.lookup('int')
+        assert ty == type_int, "Subscript must be an integer." # TODO: constant value or id name.
+        
+        # 4. Visit name
         self.visit(node.name)
         
-        # 2. ???
-
+        # 5. Assign node type
+        # TODO: how? how does the type.name list work at this point?
+        
     def visit_Assignment(self, node):
-        ## 1. Make sure the location of the assignment is defined
-        sym = self.symtab.lookup(node.lvalue)   # TODO: not getting name?
+        # 1. Make sure the location of the assignment is defined
+        sym = self.symtab.lookup(node.lvalue)   # TODO: not getting ID?
         assert sym, "Assigning to unknown sym"
         
-        ## 2. Check that the types match
+        # 2. Check if assignment is valid.
+        if node.op != '=':
+            ty = node.lvalue.type.name[0]      # TODO: name[-1]? Not necessary?
+            assert node.op in ty.assign_ops, "Assignment not valid for type %s." % ty.name
+        
+        # 3. Check that the types match
         self.visit(node.rvalue)
-        assert sym.type == node.rvalue.type, "Type mismatch in assignment"
+        assert sym.type.name[0] == node.rvalue.type.name[0], "Type mismatch in assignment"
         
     def visit_Assert(self, node):
         # 1. Visit the expression.
         self.visit(node.expr)
+        
+        # 2. Expression must be boolean
+        ty = self.symtab.lookup('bool')
+        if hasattr(node.expr, 'type'):
+            assert node.expr.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.expr.type.name[0].name
+        else:
+            assert False, "Expression must be boolean."
 
     def visit_BinaryOp(self, node):
         # 1. Make sure left and right operands have the same type
         self.visit(node.lvalue)
-        self.visit(node.rvalue)         # TODO: check if rvalue is a known ID.
-        assert node.lvalue.type == node.rvalue.type, "Type mismatch in binary operation"
+        self.visit(node.rvalue)
+        
+        # TODO: Maybe change this, or add more things to ID inside visit.
+        if isinstance(node.lvalue, ast.ID):
+            lvalue = self.symtab.lookup(node.lvalue.name)
+        else:
+            lvalue = node.lvalue
+        
+        if isinstance(node.rvalue, ast.ID):
+            rvalue = self.symtab.lookup(node.rvalue.name)
+        else:
+            rvalue = node.rvalue
+        assert lvalue.type.name[0] == rvalue.type.name[0], "Type mismatch in binary operation"
         
         # 2. Make sure the operation is supported
-        ty = node.lvalue.type.name
-        assert node.op in ty.bin_ops, "Unsupported operator %s in binary operation for type %s." % (node.op, ty.name)
+        ty = lvalue.type.name[0]                     # TODO: name[-1]? Not necessary?
+        assert node.op in ty.bin_ops.union(ty.rel_ops), "Unsupported operator %s in binary operation for type %s." % (node.op, ty.name)
         
         # 3. Assign the result type
-        node.type = node.lvalue.type
+        # TODO: BinaryOp has no type.
+        if node.op in ty.bin_ops:
+            node.type = node.lvalue.type
+        else:
+            node.type = self.symtab.lookup('bool')
 
     def visit_Break(self, node):
-        # TODO: check if is inside a for/while? For parser, break can be outside a loop.
+        # TODO: check if is inside a for/while.
         return
 
     def visit_Cast(self, node):
@@ -131,27 +192,29 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
         # 3. Check if the expression type is castable to "type".
         ty = node.expr.type
-        while not isinstance(ty, uCType.uCType):
+        while not isinstance(ty, ast.Type):
             ty = ty.type
-            
-        assert node.type.name in ty.cast_types, "Type %s can't be casted to type %s." % (ty.name, node.type.name)
+        ty = ty.name[0]
+        
+        assert node.type.name[0].name in ty.cast_types, "Type %s can't be casted to type %s." % (ty.name, node.type.name[0].name)
         
     def visit_Compound(self, node):
         # 1. Visit all declarations
-        for decl in node.decls:
-            self.visit(decl)
+        if node.decls:
+            for decl in node.decls:
+                self.visit(decl)
             
         # 2. Visit all statements
-        for stat in node.stats:
-            self.visit(stat)
+        if node.stats:
+            for stat in node.stats:
+                self.visit(stat)
 
     def visit_Constant(self, node):
-        # 1. Constant type to uCType.
-        # TODO: same as visit_Type. Maybe there should be a type here? AST doesn't support that, but...
-        if not isinstance(node.type, uCType.uCType):
+        # 1. Constant type to Type, with an uCType.
+        if isinstance(node.type, str):
             ty = self.symtab.lookup(node.type)
             assert ty, "Unsupported type %s." % node.type
-            node.type = ty
+            node.type = ast.Type([ty], node.coord)
 
         # 2. Convert to respective type. String by default.
         ty = node.type
@@ -168,16 +231,21 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 2. Check if variable is defined.
         assert self.symtab.lookup(node.name.name), "Symbol %s not defined" % node.name.name
         
-        # 3. Visit initial value, if defined.
+        # 3. Check if ArrayDecl has InitList if no dimensions.
+        if isinstance(node.type, ast.ArrayDecl) and node.type.dims is None:
+            assert isinstance(node.init, ast.InitList), "Array declaration without explicit size needs an initializer list."
+        
+        # 4. Visit initializers, if defined.
         if node.init:
             self.visit(node.init)
             
             # Check instance of initializer.
             # Constant
             if isinstance(node.init, ast.Constant):
-                assert node.type.type.name[0] == node.init.type, "Initialization type mismatch in declaration."
+                assert node.type.type.name[0] == node.init.type.name[0], "Initialization type mismatch in declaration."
             
             # InitList
+            # TODO: if node.type is ArrayDecl and there is no InitList or dims, wrong
             elif isinstance(node.init, ast.InitList):
                 exprs = node.init.exprs
                 
@@ -199,8 +267,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
                 # Pointer (TODO)
                 elif isinstance(node.type, ast.PtrDecl):
                     assert True
-        
-        # 4. ???
+            
+        # 5. ???
     
     def visit_DeclList(self, node):
         # 1. Visit all decls.
@@ -217,19 +285,29 @@ class CheckProgramVisitor(ast.NodeVisitor):
             
     def visit_For(self, node):
         # 1. Visit initializer.
-        self.visit(node.init)
+        if node.init:
+            self.visit(node.init)
         
-        # 2. Visit condition.
-        self.visit(node.cond)
+        # 2. Check condition.
+        if node.cond:
+            
+            # 2.1. Visit condition.
+            self.visit(node.cond)
+            
+            # 2.2 Condition must be boolean
+            ty = self.symtab.lookup('bool')
+            if hasattr(node.cond, 'type'):
+                assert node.cond.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.cond.type.name[0].name
+            else:
+                assert False, "Expression must be boolean."
         
         # 3. Visit next.
-        self.visit(node.next)
+        if node.next:
+            self.visit(node.next)
         
         # 4. Visit body.
         self.visit(node.body)
-        
-        # 5. ???
-    
+
     def visit_FuncCall(self, node):
         # 1. Check if identifier was declared.
         self.visit(node.name)
@@ -249,18 +327,23 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 2. Visit params.
         if node.params:
             self.visit(node.params)
-        
-        # 3. ???
     
     def visit_FuncDef(self, node):
-        # 1. Visit declaration.
+        # 1. Visit type.
+        self.visit(node.type)
+        
+        # 2. Visit declaration.
         self.visit(node.decl)
         
-        # 2. Visit parameter list
+        # 3. Define SCOPE (TODO).
+
+        # 4. Visit parameter list
         if node.params:
             self.visit(node.params)
-        
-        # 2. Visit function. (TODO)
+                
+        # 5. Visit function.
+        if node.body:
+            self.visit(node.body)
     
     def visit_GlobalDecl(self, node):
         # 1. Visit every global declaration.
@@ -277,46 +360,62 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 1. Visit the condition
         self.visit(node.cond)
         
-        # 2. Visit statements
+        # 2. Condition must be boolean
+        ty = self.symtab.lookup('bool')
+        if hasattr(node.cond, 'type'):
+            assert node.cond.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.cond.type.name[0].name
+        else:
+            assert False, "Expression must be boolean."
+        
+        # 3. Visit statements
         self.visit(node.if_stat)
-        self.visit(node.else_stat)
+        if node.else_stat:
+            self.visit(node.else_stat)
     
     def visit_InitList(self, node):
         # 1. Visit expressions
         for expr in node.exprs:
             self.visit(expr)
-        
-        # 2. ???
-            
+                    
     def visit_ParamList(self, node):
         # 1. Visit parameters.
         for param in node.params:
             self.visit(param)
-        
-        # 2. ???
     
     def visit_Print(self, node):
-        # 1. Visit the expression.
-        self.visit(node.expr)
-        # TODO: check if expression is a string?
+        # 1. Visit the expressions.
+        for expr in node.expr:
+            self.visit(expr)
 
     def visit_PtrDecl(self, node):
         # 1. Visit pointer
-        self.visit(node.type)
+        ty = node.type
+        self.visit(ty)
+        
+        # 2. Add ptr type to Type
+        while not isinstance(ty, ast.VarDecl):
+            ty = ty.type
+        
+        # TODO: correct?
+        ptr_type = self.symtab.lookup('ptr')
+        ty.type.name.insert(0, ptr_type)
         
     def visit_Read(self, node):
-        # 1. Visit the expression.
-        self.visit(node.expr)
-        # TODO: check if expression is a string?
+        # 1. Visit the expressions.
+        for expr in node.expr:
+            self.visit(node.expr)
 
     def visit_Return(self, node):
         # 1. Visit the expression.
-        self.visit(node.expr)
-        # TODO: check if expression is of the function type? Or is this done in FuncDef?
+        if node.expr:
+            self.visit(node.expr)
+            ty = node.expr.type.name
+        else:
+            ty = [self.symtab.lookup('void')]
+        # TODO: check if ty is the function type.
 
     def visit_Type(self, node):
         # 1. Change the string to uCType.
-        # TODO: simplify for one name? Just delete the for and do if for node.name[0].
         for i, name in enumerate(node.name or []):
             if not isinstance(name, uCType.uCType):
                 ty = self.symtab.lookup(name)
@@ -328,10 +427,11 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.expr)
         
         # 2. Make sure the operation is supported.
-        ty = node.expr.type.name
+        ty = node.expr.type.name[0]
         assert node.op in ty.un_ops, "Unsupported operator %s in unary operation for type %s." % (node.op, ty.name)
         
         # 3. Assign the result type.
+        # TODO: UnaryOp has no type.
         node.type = node.expr.type      # TODO: check if type is the same as operand.
 
     def visit_VarDecl(self, node):
@@ -353,7 +453,12 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # 1. Visit condition.
         self.visit(node.cond)
 
-        # 2. Visit body.
+        # 2. Condition must be boolean
+        ty = self.symtab.lookup('bool')
+        if hasattr(node.cond, 'type'):
+            assert node.cond.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.cond.type.name[0].name
+        else:
+            assert False, "Expression must be boolean."
+
+        # 3. Visit body.
         self.visit(node.body)
-        
-        # 3. TODO
