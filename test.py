@@ -34,7 +34,9 @@ if __name__ == '__main__':
     while True:
         # quick testing input file
         if len(argv) > 1 :
-            parser.test(argv[1])
+            for i in range(1,len(argv)):
+                semantic.test(argv[i], False)
+                print("Done with semantic check!")
             exit(1)
 
         print("\nSend 'l' for lexer test, 'p' for parser test and 's' for semantic test ('q' to quit)")
@@ -44,7 +46,7 @@ if __name__ == '__main__':
             while True: 
                 try:
                     tokenizer.reset_line_num()
-                    tokenizer.test(input("Filename or expression: "))
+                    tokenizer.test(input("Filename or expression for Lexer: "))
                 except EOFError:
                     break
         elif mode == 'p':
@@ -56,7 +58,8 @@ if __name__ == '__main__':
         elif mode == 's':
             while True:
                 try:
-                    semantic.test(input("Filename or expression for Semantic Check: "))
+                    semantic.test(input("Filename or expression for Semantic Check: "), True)
+                    print("Done with semantic check!")
                 except EOFError:
                     break
         elif mode == 'q':

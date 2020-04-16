@@ -48,19 +48,24 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.symtab.add("char",uCType.char_type)
         self.symtab.add("string",uCType.string_type)
         self.symtab.add("bool",uCType.boolean_type)
+        self.symtab.add("void",uCType.void_type)
     
-    def test(self, data):
+    def test(self, data, show_ast):
         self.parser.lexer.reset_line_num()
+        
         if exists(data):
-            _,ext = splitext(data)
             with open(data, 'r') as content_file :
                 data = content_file.read()
-            if ext != 'ast':
-                ast = self.parser.parse(data, False)
+            ast = self.parser.parse(data, False)
         else:
             ast = self.parser.parse(data, False)
+        
+        # Show AST
+        if show_ast:
+            ast.show()
+            
+        # Semantic test
         self.visit_Program(ast)
-        print("Done with semantic check!")
     
     def visit_Program(self, node):
         # 1. Visit all of the statements
@@ -101,7 +106,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
     def visit_BinaryOp(self, node):
         # 1. Make sure left and right operands have the same type
         self.visit(node.lvalue)
-        self.visit(node.rvalue)
+        self.visit(node.rvalue)         # TODO: check if rvalue is a known ID.
         assert node.lvalue.type == node.rvalue.type, "Type mismatch in binary operation"
         
         # 2. Make sure the operation is supported
@@ -262,12 +267,17 @@ class CheckProgramVisitor(ast.NodeVisitor):
     
     def visit_ID(self, node):
         # TODO: What to do? Insert in symbol table (VarDecl does that)?
+        # Check if ID is in table? But vardecl creates the variable name afterwards.
+        # Missing errors in int a=c; with no c declared, and a=3; with no a declared.
         return
     
     def visit_If(self, node):
         # 1. Visit the condition
         self.visit(node.cond)
-        # 2. TODO: ???
+        
+        # 2. Visit statements
+        self.visit(node.if_stat)
+        self.visit(node.else_stat)
     
     def visit_InitList(self, node):
         # 1. Visit expressions
@@ -288,6 +298,10 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.expr)
         # TODO: check if expression is a string?
 
+    def visit_PtrDecl(self, node):
+        # 1. Visit pointer
+        self.visit(node.type)
+        
     def visit_Read(self, node):
         # 1. Visit the expression.
         self.visit(node.expr)

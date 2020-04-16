@@ -54,3 +54,9 @@ boolean_type = uCType("bool",
     set(('!',)),
     set()
     )
+    
+void_type = uCType("void",
+    set(),
+    set(),
+    set()
+    )
