@@ -29,7 +29,7 @@ class SymbolTable(object):
         self.symtab[a] = v
 
 # MAJOR TODO: SCOPE, ENVIRONMENT (func_type, for instance), NEW ATTRIBUTES IN NODES, COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
-# MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups, convert boolean checks to function.
+# MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
 # MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
 
 class CheckProgramVisitor(ast.NodeVisitor):
@@ -145,11 +145,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.expr)
         
         # 2. Expression must be boolean
-        ty = self.symtab.lookup('bool')
-        if hasattr(node.expr, 'type'):
-            assert node.expr.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.expr.type.name[0].name
-        else:
-            assert False, "Expression must be boolean."
+        self.boolean_check(node.expr)
 
     def visit_BinaryOp(self, node):
         # 1. Make sure left and right operands have the same type
@@ -295,11 +291,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
             self.visit(node.cond)
             
             # 2.2 Condition must be boolean
-            ty = self.symtab.lookup('bool')
-            if hasattr(node.cond, 'type'):
-                assert node.cond.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.cond.type.name[0].name
-            else:
-                assert False, "Expression must be boolean."
+            self.boolean_check(node.cond)
         
         # 3. Visit next.
         if node.next:
@@ -361,11 +353,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.cond)
         
         # 2. Condition must be boolean
-        ty = self.symtab.lookup('bool')
-        if hasattr(node.cond, 'type'):
-            assert node.cond.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.cond.type.name[0].name
-        else:
-            assert False, "Expression must be boolean."
+        self.boolean_check(node.cond)
         
         # 3. Visit statements
         self.visit(node.if_stat)
@@ -454,11 +442,17 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.cond)
 
         # 2. Condition must be boolean
-        ty = self.symtab.lookup('bool')
-        if hasattr(node.cond, 'type'):
-            assert node.cond.type.name[0] == ty, "Expression must be boolean, and is %s instead." % node.cond.type.name[0].name
-        else:
-            assert False, "Expression must be boolean."
+        self.boolean_check(node.cond)
 
         # 3. Visit body.
         self.visit(node.body)
+
+    ## AUXILIARY FUNCTIONS ##
+    def boolean_check(self, cond):
+        ''' Check if a condition is boolean.'''
+        boolean = self.symtab.lookup('bool')
+        ty = cond.type.name[0]
+        if hasattr(cond, 'type'):
+            assert ty == boolean, "Expression must be boolean, and is %s instead." % ty.name
+        else:
+            assert False, "Expression must be boolean."
