@@ -28,53 +28,108 @@ class SymbolTable(object):
     def add(self, a, v):
         self.symtab[a] = v
 
-#### SCOPE ####
-# NOTE: Variables declarations only seems to be acceptable if right after a function declaration.
-# NOTE: We are considering only global function declarations (no nested funcs allowed)
-# When declaring a new function a new table will be added. it will consist an item as such: {'func_name':(return_type, {'var_name':value, ... }), ...}
-# we will use a stack, since the AST will pass through functions as they are declared. This will allow us to know which
-# scope we are currently at (top of the stack is the current scope) and access symbols correctly. There well keep only the
-# variables declared within the scope and the function's return type to assert it's correct
-# The scopes will also be sequentially saved in the symbols table to be accessed after the semantic check.
-class ScopesTable():
-    # The scope attribute itself are the global declarations
+
+class SignaturesTable():
+    '''
+    Class responsible for keeping funcions signatures (type, name and parameters).
+    Atributes:
+        - sign: dictionary with func names as keys, and dictionary as values.
+                Each value containes the following 
+                    ret:ast.Type - Type class for function return type 
+                    name:string - function name 
+                    params:List - List of parameters
+                Each item in params contains: 
+                    type:ast.Type - Type class for the variable
+                    name:string - variable name
+    '''
     def __init__(self):
-        self.globals = dict() # Special list for global variables
-        self.scopes = dict()  # Dictionary of scopes: keys are funcion names and values are return type and variables in scope
-        self.stack = [] # last element is the top of the stack
+        self.sign    = dict()  # Check which functions were declared (signatures: int main(float f);)
     
-    # Add new scope and stack it on the top (if a function def started)
-    def add_scope(self, name, return_type): 
-        # Here we will save two pointers to the same dictionary. 
-        # This way, when altering the stack, the scope will also be updated
-        new_scope = dict(ret=return_type, vars=dict()) # define: {func_name:('ret':return_type, 'vars':{})}
-        self.scopes[name] = new_scope 
+    # Register function signature (when Decl is declaring a FuncDecl)
+    # NOTE: function calls will be validate using self.sign table
+    # Params: 
+    #   node - a Decl (of a FuncDef) class form the uCAST
+    def sign_func(self, node):
+        name   = node.name      # get func name
+        ty     = node.type.type # get func type (Decl.VarDecl.Type)
+        params = [] # Get functions parameters types and names
+        
+        for p in node.param:
+            if isinstance(p.type, ast.VarDecl):
+                # Append to params: {type:ast.Type, name:'f'}
+                params.append(dict(type=p.type.type, name=p.type.name))
+            # TODO: array declarations
+        new = dict(type=ty, params=params)
+
+        # If function was already signed, validate signature
+        if name in self.sign.keys() :
+            check = (ty == self.sign[name]['type']) # Check return type
+            for (sign, new) in zip(new['params'], sign[name]['params']):
+                check *= (sign.type == new.type)    # Check param type
+                sign.name = new.name # this overrides paramenters names (Decl: int main(float a); | Def: int main(float f) => overrides to f)        
+            assert check, "Function %s has multiple declarations" % name
+        else : # Not signed yet? 
+            self.sign[name] = new
+
+    
+    # Fetches the function's return type
+    def check_return(self, name):
+        return self.sign[name]['ret']
+
+
+
+class ScopesTable():
+    def __init__(self):
+        self.sign    = dict()  # Check which functions were declared (signatures: int main(float f);)
+        self.funcs   = dict()  # Defined functions and their scopes
+        self.globals = []      # Special list for global variables
+        self.stack   = []      # last element is the top of the stack
+    
+    # Add new scope (if a function definition started)
+    def add_scope(self, name, params): 
+        assert not name in self.funcs.keys(), "Fuction %s is being declared twice!!" % name
+        # {func_name:[vars in scope])}
+        #  - Every function definition is considered a new scope
+        #  - The element consists of list of names (Strings)
+        #  - 'vars' keeps the variables names declared within the function's scope 
+        # Here we will save two pointers to the same 'new_scope' list. 
+        # This way, when altering the stack, self.scopes will also be updated
+        new_scope = [x['name'] for x in params[:]] # Copy parameters to scope
+        self.funcs[name] = new_scope # Add function's scope to list
         self.stack.append(new_scope) # The function's name is not relevant on the stack (we only access the top item)
-   
+
     # Add a new variable to the current function's scope (when variables are declared)
-    # NOTE: should work for func declarations: name is func name and values the return type and params
-    def add_to_scope(self, name, value):
+    def add_to_scope(self, name):
         if self.stack : # Stack not emtpy? then not on the global scope
-            current = self.stack[-1]      # Get current function
-            current['vars'][name] = value # Add declaration to function
+            self.stack[-1].append(name) # Add declaration to current scope (top of the stack)
         else : # if global
-            self.globals[name] = value    # Add var to global scope
+            self.globals.append(name)   # Add var to global scope
     
     # remove current scope from stack (if a function def has ended)
     def pop_scope(self):
-        self.stack.pop()
+        self.stack.pop() # scopes remain in self.funcs
     
-    # Check if name is a declared variable in the stack (when variable is used)
-    # NOTE: Should work to check if function was declared: name will can be kept in global scope
-    def is_defined(self, name):
-        local = name in self.stack[-1].keys() # Check if in current scope
-        glob = name in self.globals.keys()    # Check if in global scope
+    # Check if ID name is within the current scope
+    def in_scope(self, name):
+        local = name in self.stack[-1] # Check if in current scope
+        glob  = name in self.globals   # Check if in global scope
         return glob or local
 
-    # Fetches the current function's return type
-    def check_return(self):
-        return self.stack[-1]['ret']
+    # # Print current scopes
+    # def __str__(self):
+    #     text = "globals:\n" 
+    #     for v in self.globals:
+    #         text += f"  {v}"
+            
+    #     text = "\nFunctions:\n" 
+    #     for f in self.funcs.keys():
+    #         ty = self.funcs[f]['ret']
+    #         params = self.funcs[f]['params']
+    #         text += f"\n  {ty} {f} {params}:\n"
+    #         for v in self.funcs[f]['vars']:
+    #             text += f"      {v}\n"    
 
+    #     return text
 
 # MAJOR TODO: SCOPE, ENVIRONMENT (func_type, for instance), NEW ATTRIBUTES IN NODES, COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
@@ -94,7 +149,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # Initialize the symbol table
         self.symtab = SymbolTable()
 
-        # Initialize the scopes table (keep declared funcs/vars types and scopes)
+        # Initialize scopes table
         self.scopes = ScopesTable()
 
         # Add built-in type names (int, float, char) to the symbol table
@@ -272,6 +327,10 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # TODO: char? Anything else?
         
     def visit_Decl(self, node):
+        # 0. If function, sign it
+        if isinstance(node.type, ast.FuncDecl): 
+            self.scopes.sign_func(node)
+
         # 1. Visit type
         self.visit(node.type)
         
@@ -364,6 +423,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.args)
     
     def visit_FuncDecl(self, node):
+    
         # 1. Visit type.
         self.visit(node.type)
         
@@ -372,22 +432,17 @@ class CheckProgramVisitor(ast.NodeVisitor):
             self.visit(node.params)
     
     def visit_FuncDef(self, node):
-        # 0. Added function's scope
-        # TODO: insert function definition on global scope
-
         # 1. Visit type.
         self.visit(node.type)
         
         # 2. Visit declaration.
         self.visit(node.decl)
-        
-        # 3. Define SCOPE (TODO).
 
-        # 4. Visit parameter list
+        # 3. Visit parameter list
         if node.params:
             self.visit(node.params)
                 
-        # 5. Visit function.
+        # 4. Visit function.
         if node.body:
             self.visit(node.body)
     
