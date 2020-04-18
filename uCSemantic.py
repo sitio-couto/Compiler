@@ -28,6 +28,54 @@ class SymbolTable(object):
     def add(self, a, v):
         self.symtab[a] = v
 
+#### SCOPE ####
+# NOTE: Variables declarations only seems to be acceptable if right after a function declaration.
+# NOTE: We are considering only global function declarations (no nested funcs allowed)
+# When declaring a new function a new table will be added. it will consist an item as such: {'func_name':(return_type, {'var_name':value, ... }), ...}
+# we will use a stack, since the AST will pass through functions as they are declared. This will allow us to know which
+# scope we are currently at (top of the stack is the current scope) and access symbols correctly. There well keep only the
+# variables declared within the scope and the function's return type to assert it's correct
+# The scopes will also be sequentially saved in the symbols table to be accessed after the semantic check.
+class ScopesTable():
+    # The scope attribute itself are the global declarations
+    def __init__(self):
+        self.globals = dict() # Special list for global variables
+        self.scopes = dict()  # Dictionary of scopes: keys are funcion names and values are return type and variables in scope
+        self.stack = [] # last element is the top of the stack
+    
+    # Add new scope and stack it on the top (if a function def started)
+    def add_scope(self, name, return_type): 
+        # Here we will save two pointers to the same dictionary. 
+        # This way, when altering the stack, the scope will also be updated
+        new_scope = dict(ret=return_type, vars=dict()) # define: {func_name:('ret':return_type, 'vars':{})}
+        self.scopes[name] = new_scope 
+        self.stack.append(new_scope) # The function's name is not relevant on the stack (we only access the top item)
+   
+    # Add a new variable to the current function's scope (when variables are declared)
+    # NOTE: should work for func declarations: name is func name and values the return type and params
+    def add_to_scope(self, name, value):
+        if self.stack : # Stack not emtpy? then not on the global scope
+            current = self.stack[-1]      # Get current function
+            current['vars'][name] = value # Add declaration to function
+        else : # if global
+            self.globals[name] = value    # Add var to global scope
+    
+    # remove current scope from stack (if a function def has ended)
+    def pop_scope(self):
+        self.stack.pop()
+    
+    # Check if name is a declared variable in the stack (when variable is used)
+    # NOTE: Should work to check if function was declared: name will can be kept in global scope
+    def is_defined(self, name):
+        local = name in self.stack[-1].keys() # Check if in current scope
+        glob = name in self.globals.keys()    # Check if in global scope
+        return glob or local
+
+    # Fetches the current function's return type
+    def check_return(self):
+        return self.stack[-1]['ret']
+
+
 # MAJOR TODO: SCOPE, ENVIRONMENT (func_type, for instance), NEW ATTRIBUTES IN NODES, COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
 # MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
@@ -45,6 +93,9 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
         # Initialize the symbol table
         self.symtab = SymbolTable()
+
+        # Initialize the scopes table (keep declared funcs/vars types and scopes)
+        self.scopes = ScopesTable()
 
         # Add built-in type names (int, float, char) to the symbol table
         self.symtab.add("int",uCType.int_type)
@@ -321,6 +372,9 @@ class CheckProgramVisitor(ast.NodeVisitor):
             self.visit(node.params)
     
     def visit_FuncDef(self, node):
+        # 0. Added function's scope
+        # TODO: insert function definition on global scope
+
         # 1. Visit type.
         self.visit(node.type)
         
@@ -452,7 +506,12 @@ class CheckProgramVisitor(ast.NodeVisitor):
     def boolean_check(self, cond):
         ''' Check if a condition is boolean.'''
         boolean = self.symtab.lookup('bool')
-        ty = cond.type.name[0]
+        
+        if isinstance(cond.type, uCType.uCType) :
+            ty = cond.type
+        else:
+            ty = cond.type.name[0]
+        
         if hasattr(cond, 'type'):
             assert ty == boolean, "Expression must be boolean, and is %s instead." % ty.name
         else:

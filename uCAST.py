@@ -213,13 +213,15 @@ class Assignment(Node):
     attr_names = ('op', ) 
 
 class BinaryOp(Node):
-    __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
+    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'coord')
     
     def __init__(self, op, left, right, coord=None):
         self.op = op
         self.lvalue = left
         self.rvalue = right
         self.coord = coord
+        # Semantic only
+        self.type = None
 
     def children(self):
         children = []
