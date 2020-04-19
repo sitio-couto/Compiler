@@ -12,7 +12,7 @@ University of Campinas - UNICAMP - 2020
 
 from uCLexer import uCLexer as Lexer
 from uCParser import uCParser as Parser
-from uCSemantic import SemanticCheck as Semantic
+from uCSemantic import uCSemanticCheck as Semantic
 from os.path import exists
 from sys import argv
 
