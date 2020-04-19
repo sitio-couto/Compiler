@@ -421,7 +421,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 1. Visit type
         self.visit(node.type)
         ty = node.type
-        
+
         # 2. Check if variable is defined in scope.
         self.scopes.in_scope(node.name)
         
@@ -463,7 +463,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                 # Variable
                 if isinstance(ty, ast.VarDecl):
                     assert len(exprs) == 1, "Too many elements for variable initialization"
-                    assert ty.type == exprs[0].type, "Initialization type mismatch in declaration."
+                    assert ty.type.name == exprs[0].type.name, "Initialization type mismatch in declaration."
                     if isinstance(exprs[0], ast.ID):
                         assert self.scopes.in_scope(exprs[0]), "ID %s is not defined." % exprs[0].name
                 
@@ -508,6 +508,16 @@ class uCSemanticCheck(ast.NodeVisitor):
                         init = exprs[0]
                     assert ty.type.name == init.type.name, "Initialization type mismatch in declaration."
                     
+            # ID
+            elif isinstance(node.init, ast.ID):
+                init = self.scopes.in_scope(node.init)
+                assert init, "ID %s is not defined." % node.init.name
+                assert ty.type.name == init.type.name, "Initialization type mismatch in declaration."
+            
+            # Any other expression.
+            else:
+                assert ty.type.name == node.init.type.name, "Initialization type mismatch in declaration."
+            
         elif isinstance(ty, ast.ArrayDecl):
             assert ty.dims, "An array has to have a size or initializer."
     
