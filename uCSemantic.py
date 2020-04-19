@@ -283,7 +283,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 6. Check subscript type.
         type_int = self.symtab.lookup('int')
-        assert ty == type_int, "Subscript must be an integer." # TODO: constant value or id name.
+        assert ty == type_int, "Subscript must be an integer." 
         
         # 7. Assign node type
         node.type = ast.Type([name.type.name[-1]])
@@ -297,13 +297,11 @@ class uCSemanticCheck(ast.NodeVisitor):
             lvalue = self.scopes.in_scope(node.lvalue)
             assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
             
-            # TODO: assign to function is allowed, if it's the same type (maybe?).
+            # TODO: assign to function is allowed, if it's the same type.
             assert not self.signatures.get_function(lvalue.declname), "Assigning to function %s." % node.lvalue.name
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
             lvalue = node.lvalue
-        
-        # TODO: unaryOp can too, as can binaryOp
         else:
             assert False, "Expression is not assignable."
         
@@ -326,8 +324,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.rvalue.name), "ID %s is not defined." % node.rvalue.name.name
             rvalue = node.rvalue
-        
-        # TODO: unaryOp can too, as can binaryOp. See how many else.
         else:
             rvalue = node.rvalue
 
@@ -374,7 +370,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             else:
                 node.type = node.lvalue.type
         else:
-            node.type = self.symtab.lookup('bool')
+            node.type = ast.Type([self.symtab.lookup('bool')])
 
     def visit_Break(self, node):
         # TODO: check if is inside a for/while.
@@ -423,9 +419,9 @@ class uCSemanticCheck(ast.NodeVisitor):
         # TODO: char? Anything else?
         
     def visit_Decl(self, node):
-
         # 1. Visit type
         self.visit(node.type)
+        ty = node.type
         
         # 2. Check if variable is defined in scope.
         self.scopes.in_scope(node.name)
@@ -438,7 +434,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             # Constant
             if isinstance(node.init, ast.Constant):
                 const = node.init
-                ty = node.type.type
+                ty = ty.type
                 strng = self.symtab.lookup('string')
 
                 # If constant is string
@@ -462,29 +458,48 @@ class uCSemanticCheck(ast.NodeVisitor):
                     assert ty.name[0] == const.type.name[0], "Initialization type mismatch in declaration."
             
             # InitList
-            # TODO: if node.type is ArrayDecl and there is no InitList or dims, wrong
             elif isinstance(node.init, ast.InitList):
                 exprs = node.init.exprs
                 
                 # Variable
-                if isinstance(node.type, ast.VarDecl):
+                if isinstance(ty, ast.VarDecl):
                     assert len(exprs) == 1, "Too many elements for variable initialization"
-                    assert node.type.type == exprs[0].type, "Initialization type mismatch in declaration."
+                    assert ty.type == exprs[0].type, "Initialization type mismatch in declaration."
                 
                 # Array
-                elif isinstance(node.type, ast.ArrayDecl):
+                elif isinstance(ty, ast.ArrayDecl):
                     
                     # If not explicit size of array, use initialization as size.
-                    if node.type.dims is None:
-                        node.type.dims = ast.Constant('int', len(exprs))
-                        self.visit_Constant(node.type.dims)
+                    if ty.dims is None:
+                        ty.dims = ast.Constant('int', len(exprs))
+                        self.visit_Constant(ty.dims)
                     else:
                         # TODO: dims can be unOp or other expression...
-                        assert node.type.dims.value == len(exprs), "Size mismatch in variable initialization"
+                        assert ty.dims.value == len(exprs), "Size mismatch in variable initialization"
+                    
+                    # Basic type has to be VarDecl
+                    while not isinstance(ty, ast.VarDecl):
+                        assert hasattr(ty, 'type'), "ArrayDecl does not have innermost VarDecl."
+                        ty = ty.type
+                    
+                    # Check type.
+                    for expr in exprs:
+                        assert ty.type.name[-1] == expr.type.name[-1], "Initialization type mismatch in declaration."
                 
-                # Pointer (TODO)
-                elif isinstance(node.type, ast.PtrDecl):
-                    assert True
+                # Pointer
+                elif isinstance(ty, ast.PtrDecl):
+                    assert len(exprs) == 1, "Too many elements for variable initialization"
+
+                    # Basic type has to be VarDecl
+                    while not isinstance(ty, ast.VarDecl):
+                        assert hasattr(ty, 'type'), "PtrDecl does not have innermost VarDecl."
+                        ty = ty.type
+                    
+                    # Initializer has to be of same type
+                    assert ty.type.name == exprs[0].type.name
+                    
+        elif isinstance(ty, ast.ArrayDecl):
+            assert ty.dims, "An array has to have a size or initializer."
     
     def visit_DeclList(self, node):
         # 1. Visit all decls.
@@ -546,17 +561,13 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.scopes.add_func(node.type)
         
         # 3. Visit params.
-        # TODO: need to visit params for type. If FuncDef has different params as the prototype, checking won't work.
-        if self.flags['inFDef'] and node.params:
+        if node.params:
             self.visit(node.params)
         
         # 4. Sign function.
         self.signatures.sign_func(node)
     
     def visit_FuncDef(self, node):
-        # 0. Set flags
-        self.flags['inFDef'] = True
-
         # 1. Add scope
         self.scopes.add_scope()
 
@@ -574,15 +585,20 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.body)
     
         # 6. Remove scope
+        # TODO: before this, check if there was a "return" during the function. If not, check if void.
         self.scopes.pop_scope()
-
-        # Set flags
-        self.flags['inFDef'] = False
     
     def visit_GlobalDecl(self, node):
         # 1. Visit every global declaration.
         for decl in node.decls:
-            self.visit(decl)
+            
+            # 1.1. If function declaration, create temporary scope.
+            if isinstance(decl, ast.FuncDecl):
+                self.scopes.add_scope()
+                self.visit(decl)
+                self.scopes.pop_scope()
+            else:
+                self.visit(decl)
     
     def visit_ID(self, node):
         # TODO: What to do? Insert in symbol table (VarDecl does that)?
@@ -681,12 +697,15 @@ class uCSemanticCheck(ast.NodeVisitor):
         # & => integer (returns address)
         # ! => Bool (logical negation)
         # *,++,--,-,+ => same type of the nearby variable 
+        # TODO: after '*', variable loses 'ptr'.
         if isinstance(node.expr, ast.ID):
             ty = [self.scopes.in_scope(node.expr).type.name[0].name]
         else:
             ty = [node.expr.type.name[0].name]
-        ty = {'&':['int'], '!':['bool']}.get(node.op, ty)
+            
+        ty = {'&':['ptr','int'], '!':['bool']}.get(node.op, ty)
         node.type = ast.Type(ty)
+        self.visit(node.type)
         
     def visit_VarDecl(self, node):
         # 1. Visit type.
@@ -697,9 +716,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 3. Check scope and insert in symbol table.
         if isinstance(node.declname, ast.ID):
-            # sym = self.symtab.lookup(node.declname.name)
             self.scopes.add_to_scope(node)
-            # TODO (not working because ID has no type): node.declname.type = node.type
 
     def visit_While(self, node):
         # 1. Visit condition.
