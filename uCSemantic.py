@@ -243,7 +243,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         while not isinstance(var, ast.VarDecl):
             var = var.type
         
-        arr_type = self.symtab.lookup('array')
+        arr_type = self.symtab.lookup('ptr')
         var.type.name.insert(0, arr_type)
         
         # 3. Check dimensions.
@@ -264,9 +264,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         assert name, "ID %s is not defined." % node.name.name
         
         # 3. Check if ID is array or ptr.
-        ty = self.symtab.lookup('array')
-        ty2 = self.symtab.lookup('ptr')
-        assert name.type.name[0] == ty or name.type.name[0] == ty2, "ID %s is not an array or pointer." % node.name.name
+        ptr = self.symtab.lookup('ptr')
+        assert name.type.name[0] == ptr, "ID %s is not an array or pointer." % node.name.name
 
         # 4. Visit subscript.
         self.visit(node.subsc)
@@ -721,12 +720,13 @@ class uCSemanticCheck(ast.NodeVisitor):
         # *,++,--,-,+ => same type of the nearby variable 
         # TODO: after '*', variable loses 'ptr'.
         if isinstance(node.expr, ast.ID):
-            ty = self.scopes.in_scope(node.expr).type.name
+            ty = self.scopes.in_scope(node.expr).type
         else:
-            ty = node.expr.type.name
+            ty = node.expr.type
         
         if node.op == '*':
-            node.type = ty[1:]
+            node.type = ast.Type(ty.name[1:])
+            self.visit(node.type)
         elif node.op == '&' or node.op == '!':
             ty = {'&':['ptr','int'], '!':['bool']}.get(node.op, ty)
             node.type = ast.Type(ty)

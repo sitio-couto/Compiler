@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 16/04/2020.
+Last Modified: 19/04/2020.
 '''
 
 class uCType(object):
@@ -63,6 +63,6 @@ array_type = uCType("array",
     rel_ops = {'==', '!='}
     )
 ptr_type = uCType('ptr',
-    un_ops = {'*', '&'},
+    un_ops = {'*', '&', '++', 'p++', '--', 'p--'},
     rel_ops = {'==', '!='}
     )
