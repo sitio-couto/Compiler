@@ -170,7 +170,7 @@ class ScopeStack():
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
 # MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
 
-class CheckProgramVisitor(ast.NodeVisitor):
+class SemanticCheck(ast.NodeVisitor):
     '''
     Program checking class. This class uses the visitor pattern. You need to define methods
     of the form visit_NodeName() for each kind of AST node that you want to process.

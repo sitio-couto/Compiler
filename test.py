@@ -12,7 +12,7 @@ University of Campinas - UNICAMP - 2020
 
 from uCLexer import uCLexer as Lexer
 from uCParser import uCParser as Parser
-from uCSemantic import CheckProgramVisitor
+from uCSemantic import SemanticCheck as Semantic
 from os.path import exists
 from sys import argv
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser = Parser(tokenizer)
     parser.build()
     
-    semantic = CheckProgramVisitor(parser)
+    semantic = Semantic(parser)
     
     while True:
         # quick testing input file
