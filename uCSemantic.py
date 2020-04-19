@@ -274,13 +274,13 @@ class uCSemanticCheck(ast.NodeVisitor):
             sub = self.scopes.in_scope(node.subsc)
             assert sub, "ID %s is not defined." % node.subsc.name
             assert not self.signatures.get_function(sub.declname), "ID %s is a function, can't be used as subscript." %  node.subsc.name
-            ty = name.type.name[-1]
+            ty = sub.type.name[-1]
         else:
             ty = node.subsc.type.name[-1]
         
         # 6. Check subscript type.
         type_int = self.symtab.lookup('int')
-        assert ty == type_int, "Subscript must be an integer." 
+        assert ty == type_int, "Array index must be of type int." 
         
         # 7. Assign node type
         node.type = ast.Type([name.type.name[-1]])
@@ -318,7 +318,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             # TODO: assign function ADDRESS is allowed, if it has the same signature types.
             assert not self.signatures.get_function(rvalue.declname), "Assigning function %s." % node.rvalue.name
 
-        elif isinstance(node.lvalue, ast.ArrayRef):
+        elif isinstance(node.rvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.rvalue.name), "ID %s is not defined." % node.rvalue.name.name
             rvalue = node.rvalue
         else:
@@ -734,10 +734,14 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 1. Visit type.
         self.visit(node.type)
         
-        # 2. Visit name.
+        # 2. Check type.
+        void = self.symtab.lookup('void')
+        assert node.type.name[0] != void, "Void variables are not allowed."
+        
+        # 3. Visit name.
         self.visit(node.declname)
         
-        # 3. Check scope and insert in symbol table.
+        # 4. Check scope and insert in symbol table.
         if isinstance(node.declname, ast.ID):
             self.scopes.add_to_scope(node)
 
