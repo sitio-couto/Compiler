@@ -106,7 +106,7 @@ class SignaturesTable():
         text = '\n'
         funcs = self.sign
         for f in funcs.keys():
-            ret = funcs[f]['type'].type.name[0].name
+            ret = funcs[f]['type'].name[0].name
             params = [x.name[0].name for x in funcs[f]['params']]
             text += f"{ret} {f.name} ("
             for arg in params: text +=f"{arg}, "
@@ -155,10 +155,12 @@ class ScopeStack():
         # node arg mus be a str (var name) or one of these classes: Decl, ID
         if isinstance(node, ast.ID) : name = node.name
         else : raise Exception(f"Cannot lookup {type(node)} in scope.")
-        # TODO: check all scopes from last to global.
-        local = self.stack[-1].lookup(name) # Check current scope
-        glob  = self.stack[0].lookup(name)  # Check global scope
-        return local or glob # Check if in any (local is prioritized)
+        
+        # Check all scopes from last to global.
+        for scope in self.stack[::-1]:
+            var = scope.lookup(name)
+            if var: break                       # Prioritize local
+        return var
 
     def __str__(self):
         text = '\n'
@@ -166,7 +168,7 @@ class ScopeStack():
             text += f"Level {i} => {list(sym.symtab.keys())}\n"
         return text
 
-# MAJOR TODO: SCOPE, ENVIRONMENT (func_type, for instance), NEW ATTRIBUTES IN NODES, COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
+# MAJOR TODO: COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
 # MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
 
@@ -261,24 +263,29 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 2. Check if ID is valid
         name = self.scopes.in_scope(node.name)
         assert name, "ID %s is not defined." % node.name.name
+        
+        # 3. Check if ID is array or ptr.
+        ty = self.symtab.lookup('array')
+        ty2 = self.symtab.lookup('ptr')
+        assert name.type.name[0] == ty or name.type.name[0] == ty2, "ID %s is not an array or pointer." % node.name.name
 
-        # 3. Visit subscript.
+        # 4. Visit subscript.
         self.visit(node.subsc)
                 
-        # 3. Check if subscript is a valid ID, if ID.
-        # TODO: scope and ID type (must be variable)
+        # 5. Check if subscript is a valid ID, if ID.
         if isinstance(node.subsc, ast.ID):
             sub = self.scopes.in_scope(node.subsc)
             assert sub, "ID %s is not defined." % node.subsc.name
+            assert not self.signatures.get_function(sub.declname), "ID %s is a function, can't be used as subscript." %  node.subsc.name
             ty = name.type.name[-1]
         else:
             ty = node.subsc.type.name[-1]
         
-        # 4. Check subscript type.
+        # 6. Check subscript type.
         type_int = self.symtab.lookup('int')
         assert ty == type_int, "Subscript must be an integer." # TODO: constant value or id name.
         
-        # 5. Assign node type
+        # 7. Assign node type
         node.type = ast.Type([name.type.name[-1]])
         
     def visit_Assignment(self, node):
@@ -286,13 +293,17 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.lvalue)
         
         # 2. Is the variable defined in the scope (global/local).
-        # TODO: check if ID is not function.
         if isinstance(node.lvalue, ast.ID):
-            lvalue = self.scopes.in_scope(node.lvalue)   # TODO: not getting ID?
+            lvalue = self.scopes.in_scope(node.lvalue)
             assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
+            
+            # TODO: assign to function is allowed, if it's the same type (maybe?).
+            assert not self.signatures.get_function(lvalue.declname), "Assigning to function %s." % node.lvalue.name
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
             lvalue = node.lvalue
+        
+        # TODO: unaryOp can too, as can binaryOp
         else:
             assert False, "Expression is not assignable."
         
@@ -308,9 +319,15 @@ class uCSemanticCheck(ast.NodeVisitor):
         if isinstance(node.rvalue, ast.ID):
             rvalue = self.scopes.in_scope(node.rvalue)
             assert rvalue, "ID %s is not defined." % node.rvalue.name
+            
+            # TODO: assign to function is allowed, if it's the same type (maybe?).
+            assert not self.signatures.get_function(rvalue.declname), "Assigning function %s." % node.rvalue.name
+
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.rvalue.name), "ID %s is not defined." % node.rvalue.name.name
             rvalue = node.rvalue
+        
+        # TODO: unaryOp can too, as can binaryOp. See how many else.
         else:
             rvalue = node.rvalue
 
@@ -330,23 +347,24 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.lvalue)
         self.visit(node.rvalue)
         
-        # TODO: Maybe change this, or add more things to ID inside visit.
         if isinstance(node.lvalue, ast.ID):
             lvalue = self.scopes.in_scope(node.lvalue)
             assert lvalue, "ID %s not defined in binary operation." % node.lvalue.name
+            assert not self.signatures.get_function(lvalue.declname), "Function %s in binary operation." % node.lvalue.name
         else:
             lvalue = node.lvalue
         
         if isinstance(node.rvalue, ast.ID):
             rvalue = self.scopes.in_scope(node.rvalue)
             assert rvalue, "ID %s not defined in binary operation." % node.rvalue.name
+            assert not self.signatures.get_function(rvalue.declname), "Function %s in binary operation." % node.rvalue.name
         else:
             rvalue = node.rvalue
 
         assert lvalue.type.name == rvalue.type.name, "Type mismatch in binary operation"
         
         # 2. Make sure the operation is supported
-        ty = lvalue.type.name[0]                     # TODO: name[-1]? Not necessary?
+        ty = lvalue.type.name[0]
         assert node.op in ty.bin_ops.union(ty.rel_ops), "Unsupported operator %s in binary operation for type %s." % (node.op, ty.name)
         
         # 3. Assign the result type
@@ -397,7 +415,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             node.type = ast.Type([ty], node.coord)
 
         # 2. Convert to respective type. String by default.
-        ty = node.type
+        ty = node.type.name[0]
         if ty.name == 'int':
             node.value = int(node.value)
         elif ty.name == 'float':
@@ -432,7 +450,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                     
                     # Check length.
                     if node.type.dims:
-                        # TODO: dims can be BinOp or other expression...
+                        # TODO: dims can be UnOp or other expression...
                         assert len(const.value) <= node.type.dims.value, "Initializer-string for char array is too long."
                     else:
                         node.type.dims = ast.Constant('int', len(const.value))
@@ -461,7 +479,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                         node.type.dims = ast.Constant('int', len(exprs))
                         self.visit_Constant(node.type.dims)
                     else:
-                        # TODO: dims can be binOp or other expression...
+                        # TODO: dims can be unOp or other expression...
                         assert node.type.dims.value == len(exprs), "Size mismatch in variable initialization"
                 
                 # Pointer (TODO)
@@ -514,7 +532,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 3. Visit arguments.
         # TODO: check arguments
-        self.visit(node.args)
+        if node.args:
+            self.visit(node.args)
         
         # 4. Add type
         node.type = self.signatures.check_return(sym.declname)
@@ -527,6 +546,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.scopes.add_func(node.type)
         
         # 3. Visit params.
+        # TODO: need to visit params for type. If FuncDef has different params as the prototype, checking won't work.
         if self.flags['inFDef'] and node.params:
             self.visit(node.params)
         
