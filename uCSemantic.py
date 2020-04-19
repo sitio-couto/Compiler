@@ -297,6 +297,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
             rvalue = node.rvalue
 
         # 6. Check types
+        # TODO: array can be assigned to ptr and vice-versa. Problem in simple5.uc
         assert lvalue.type.name == rvalue.type.name, "Type mismatch in assignment"
         
     def visit_Assert(self, node):
