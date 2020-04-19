@@ -12,6 +12,12 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 19/04/2020.
 '''
 
+# TODO: 
+# check for and while loops scopes      
+# type check de funcoes
+# return void se keyword return
+ 
+
 import uCType
 import uCAST as ast
 from os.path import exists
@@ -112,7 +118,6 @@ class SignaturesTable():
             text = text[:-2]+')\n'
         return str(text)
 
-
 class ScopeStack():
     '''
     Class responsible for keeping variables scopes.
@@ -125,9 +130,12 @@ class ScopeStack():
         self.stack = [] # last element is the top of the stack
     
     # Add new scope (if a function definition started)
-    def add_scope(self):
+    def add_scope(self, node=None):
         # Every function definition is considered a new scope (new symboltable)
-        self.stack.append(SymbolTable()) 
+        sym_tab = SymbolTable()
+        if node : node = node.decl.name # Get funcs name (None if loop)
+        sym_tab.add(0, node)            # Add scope name to table with key 0 (only numeric)
+        self.stack.append(sym_tab) 
 
     # Add a new variable to the current function's scope (in node VarDecl)
     def add_to_scope(self, node):
@@ -149,6 +157,11 @@ class ScopeStack():
         print(self)
         self.stack.pop() 
     
+    # Check the current enclosure
+    def enclosure(self):
+        scope = self.stack[-1]
+        return scope.lookup(0)
+
     # Check if ID name is within the current scope, return it's type
     def in_scope(self, node):
         # node arg mus be a str (var name) or one of these classes: Decl, ID
@@ -163,8 +176,10 @@ class ScopeStack():
 
     def __str__(self):
         text = '\n'
-        for (i,sym) in enumerate(self.stack): 
-            text += f"Level {i} => {list(sym.symtab.keys())}\n"
+        for (i,sym) in enumerate(self.stack):
+            ids = list(sym.symtab.keys())
+            ids.remove(0) # Remove enclosure
+            text += f"Level {i} => {ids}\n"
         return text
 
 # MAJOR TODO: COORDS IN ASSERTION ERRORS, THE ID PROBLEM, OTHER SEMANTIC RULES.
@@ -178,9 +193,6 @@ class uCSemanticCheck(ast.NodeVisitor):
     Note: You will need to adjust the names of the AST nodes if you picked different names.
     '''
     def __init__(self, parser):
-        
-        # Define flags
-        self.flags = dict(inFDef=False)
 
         # Include parser
         self.parser = parser
@@ -369,8 +381,8 @@ class uCSemanticCheck(ast.NodeVisitor):
             node.type = ast.Type([self.symtab.lookup('bool')])
 
     def visit_Break(self, node):
-        # TODO: check if is inside a for/while.
-        return
+        # 0. Check if enclosure is a loop, error if not
+        assert not self.scopes.enclosure(), "'break' can only be used inside a loop"
 
     def visit_Cast(self, node):
         # 1. Visit type.
@@ -533,7 +545,9 @@ class uCSemanticCheck(ast.NodeVisitor):
             self.visit(expr)
             
     def visit_For(self, node):
-        # TODO: A scope should be created here, but a nested one (must check top and second on top)
+        # 0. Create scope 
+        self.scopes.add_scope()
+        
         # 1. Visit initializer.
         if node.init:
             self.visit(node.init)
@@ -553,6 +567,9 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 4. Visit body.
         self.visit(node.body)
+
+        # 0. Remove scope
+        self.scopes.pop_scope()
 
     def visit_FuncCall(self, node):
         # 1. Check if identifier was declared.
@@ -587,7 +604,7 @@ class uCSemanticCheck(ast.NodeVisitor):
     
     def visit_FuncDef(self, node):
         # 1. Add scope
-        self.scopes.add_scope()
+        self.scopes.add_scope(node=node)
 
         # 2. Visit type.
         self.visit(node.type)
@@ -747,6 +764,9 @@ class uCSemanticCheck(ast.NodeVisitor):
             self.scopes.add_to_scope(node)
 
     def visit_While(self, node):
+        # 0. Create Scope
+        self.scopes.add_scope()
+
         # 1. Visit condition.
         self.visit(node.cond)
 
@@ -755,6 +775,9 @@ class uCSemanticCheck(ast.NodeVisitor):
 
         # 3. Visit body.
         self.visit(node.body)
+
+        # 4. Create Scope
+        self.scopes.pop_scope()
 
     ## AUXILIARY FUNCTIONS ##
     def boolean_check(self, cond):
