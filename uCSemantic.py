@@ -56,14 +56,14 @@ class SignaturesTable():
     # Register function signature (when Decl is declaring a FuncDecl)
     # NOTE: function calls will be validate using self.sign table
     # Params: 
-    #   node - a Decl (of a FuncDef) class form the uCAST
+    #   node - a FuncDecl class from the uCAST
     def sign_func(self, node):
-        name      = node.name               # Get function's name
-        ty        = node.type.type.type     # get func type (Decl.FuncDecl.VarDecl.Type)
-        params    = [] # Use to keep function params types
+        name      = node.type.declname    # Get function's name
+        ty        = node.type.type        # get func type (FuncDecl.VarDecl.Type)
+        params    = []                    # Use to keep function params types
 
-        if node.type.params:
-            paramlist = node.type.params.params # From Decl get FuncDecl Params attribute
+        if node.params:
+            paramlist = node.params.params 
         else:
             paramlist = []
 
@@ -155,6 +155,7 @@ class ScopeStack():
         # node arg mus be a str (var name) or one of these classes: Decl, ID
         if isinstance(node, ast.ID) : name = node.name
         else : raise Exception(f"Cannot lookup {type(node)} in scope.")
+        # TODO: check all scopes from last to global.
         local = self.stack[-1].lookup(name) # Check current scope
         glob  = self.stack[0].lookup(name)  # Check global scope
         return local or glob # Check if in any (local is prioritized)
@@ -297,7 +298,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
         # 3. Check if assignment is valid.
         if node.op != '=':
-            ty = lvalue.type.name[0]      # TODO: name[-1]? Not necessary?
+            ty = lvalue.type.name[0]
             assert node.op in ty.assign_ops, "Assignment not valid for type %s." % ty.name
         
         # 4. Visit right value.
@@ -314,7 +315,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
             rvalue = node.rvalue
 
         # 6. Check types
-        # TODO: array can be assigned to ptr and vice-versa. Problem in simple5.uc
+        # TODO: array can be assigned to ptr and vice-versa. Problem in simple5.uc and ptr_function.uc
         assert lvalue.type.name == rvalue.type.name, "Type mismatch in assignment"
         
     def visit_Assert(self, node):
@@ -404,17 +405,14 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # TODO: char? Anything else?
         
     def visit_Decl(self, node):
-        # 1. If function, sign it.
-        if isinstance(node.type, ast.FuncDecl): 
-            self.signatures.sign_func(node)
 
-        # 2. Visit type
+        # 1. Visit type
         self.visit(node.type)
         
-        # 3. Check if variable is defined in scope.
+        # 2. Check if variable is defined in scope.
         self.scopes.in_scope(node.name)
         
-        # 4. Visit initializers, if defined.
+        # 3. Visit initializers, if defined.
         if node.init:
             self.visit(node.init)
             
@@ -515,31 +513,37 @@ class CheckProgramVisitor(ast.NodeVisitor):
         assert self.signatures.get_function(sym.declname), "Identifier in function call is not a function."
         
         # 3. Visit arguments.
+        # TODO: check arguments
         self.visit(node.args)
         
         # 4. Add type
         node.type = self.signatures.check_return(sym.declname)
     
     def visit_FuncDecl(self, node):
-        # 1. Add to global scope.
+        # 1. Visit type
+        self.visit(node.type)
+        
+        # 2. Add to global scope.
         self.scopes.add_func(node.type)
         
-        # 2. Visit params.
+        # 3. Visit params.
         if self.flags['inFDef'] and node.params:
             self.visit(node.params)
+        
+        # 4. Sign function.
+        self.signatures.sign_func(node)
     
     def visit_FuncDef(self, node):
-        # Set flags
+        # 0. Set flags
         self.flags['inFDef'] = True
 
-        # 3. Add scope
-        # TODO: adding scope here makes so the parameters are added to global scope, and that causes problems in ptr_function.uc
+        # 1. Add scope
         self.scopes.add_scope()
 
-        # 1. Visit type.
+        # 2. Visit type.
         self.visit(node.type)
                         
-        # 2. Visit declaration.
+        # 3. Visit declaration.
         self.visit(node.decl)
 
         # 4. Visit parameter list
