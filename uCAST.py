@@ -529,12 +529,13 @@ class Type(Node):
     attr_names = ('name',)
 
 class UnaryOp(Node):
-    __slots__ = ('op', 'expr', 'coord')
+    __slots__ = ('op', 'expr', 'type', 'coord')
     
     def __init__(self, op, expr, coord=None):
         self.op = op
         self.expr = expr
         self.coord = coord
+        self.type = None
     
     def children(self):
         children = []

@@ -24,14 +24,20 @@ class SymbolTable(object):
     def __init__(self):
         self.symtab = {}
     def lookup(self, a):
-        return self.symtab.get(a)
+        return self.symtab.get(a, None)
     def add(self, a, v):
         self.symtab[a] = v
-
+    
+    def __str__(self, offset=''):
+        text = ''
+        for name in self.symtab.keys():
+            text += f"{offset}    {name}\n"
+        return text
 
 class SignaturesTable():
     '''
     Class responsible for keeping funcions signatures (type, name and parameters).
+    Is also used to keep consistency between functions declaration, definition and calls.S
     Atributes:
         - sign: dictionary with func names as keys, and dictionary as values.
                 Each value containes the following 
@@ -42,94 +48,100 @@ class SignaturesTable():
                     type:ast.Type - Type class for the variable
                     name:string - variable name
     '''
+    # TODO: Insert in nodes | Handle double definition | Handle type checking
+
     def __init__(self):
-        self.sign    = dict()  # Check which functions were declared (signatures: int main(float f);)
+        self.sign = dict()  # Check which functions were declared (signatures: int main(float f);)
     
     # Register function signature (when Decl is declaring a FuncDecl)
     # NOTE: function calls will be validate using self.sign table
     # Params: 
     #   node - a Decl (of a FuncDef) class form the uCAST
     def sign_func(self, node):
-        name   = node.name      # get func name
-        ty     = node.type.type # get func type (Decl.VarDecl.Type)
-        params = [] # Get functions parameters types and names
-        
-        for p in node.param:
+        name      = node.name               # Get function's name
+        ty        = node.type.type          # get func type (Decl.VarDecl.Type)
+        paramlist = node.type.params.params # From Decl get FuncDecl Params attribute
+        params    = [] # Use to keep function params types
+
+        # Getting functions parameters types and names
+        for p in paramlist:
             if isinstance(p.type, ast.VarDecl):
-                # Append to params: {type:ast.Type, name:'f'}
-                params.append(dict(type=p.type.type, name=p.type.name))
-            # TODO: array declarations
+                params.append(p.type.type)
+            # TODO: array declarations (might work this way actually)
         new = dict(type=ty, params=params)
 
         # If function was already signed, validate signature
         if name in self.sign.keys() :
-            check = (ty == self.sign[name]['type']) # Check return type
-            for (sign, new) in zip(new['params'], sign[name]['params']):
-                check *= (sign.type == new.type)    # Check param type
-                sign.name = new.name # this overrides paramenters names (Decl: int main(float a); | Def: int main(float f) => overrides to f)        
-            assert check, "Function %s has multiple declarations" % name
+            passed = new['params']
+            needed = self.sign[name]['params']
+
+            # Check return type and amount of paramters
+            ret_type    = (ty == self.sign[name]['type'])
+            qnt_params  = (len(passed)==len(needed))
+            assert ret_type, "Function %s has multiple declarations: diffrent return types" % name
+            assert qnt_params, "Function %s missing arguments" % name
+            
+            # Check paramter types
+            param_types = True
+            for (new, sign) in zip(new['params'], sign[name]['params']):
+                param_types *= (sign.type == new.type) # Check param type
+            assert param_types, "Function %s has incorrect paramter types" % name
+
         else : # Not signed yet? 
             self.sign[name] = new
 
-    
     # Fetches the function's return type
     def check_return(self, name):
         return self.sign[name]['ret']
 
+    def __str__(self):
+        text = '\n'
+        funcs = self.sign
+        for f in funcs.keys():
+            ret = funcs[f]['type'].type.name[0].name
+            params = [x.name[0].name for x in funcs[f]['params']]
+            text += f"{ret} {f.name} ("
+            for arg in params: text +=f"{arg}, "
+            text = text[:-2]+')\n'
+        return str(text)
 
 
-class ScopesTable():
+class ScopeStack():
+    '''
+    Class responsible for keeping variables scopes.
+    Used for type checking variables as well as checking if they're are defined.
+    Atributes:
+        - stack: stack of SymbolTables. Each item is a different scope ([0] is global [-1] is local)
+    '''
     def __init__(self):
-        self.sign    = dict()  # Check which functions were declared (signatures: int main(float f);)
-        self.funcs   = dict()  # Defined functions and their scopes
-        self.globals = []      # Special list for global variables
-        self.stack   = []      # last element is the top of the stack
+        # Index 0 is the global scope, -1 is the current scope
+        self.stack = [SymbolTable()] # last element is the top of the stack
     
     # Add new scope (if a function definition started)
-    def add_scope(self, name, params): 
-        assert not name in self.funcs.keys(), "Fuction %s is being declared twice!!" % name
-        # {func_name:[vars in scope])}
-        #  - Every function definition is considered a new scope
-        #  - The element consists of list of names (Strings)
-        #  - 'vars' keeps the variables names declared within the function's scope 
-        # Here we will save two pointers to the same 'new_scope' list. 
-        # This way, when altering the stack, self.scopes will also be updated
-        new_scope = [x['name'] for x in params[:]] # Copy parameters to scope
-        self.funcs[name] = new_scope # Add function's scope to list
-        self.stack.append(new_scope) # The function's name is not relevant on the stack (we only access the top item)
+    def add_scope(self):
+        # Every function definition is considered a new scope (new symboltable)
+        self.stack.append(SymbolTable()) 
 
-    # Add a new variable to the current function's scope (when variables are declared)
-    def add_to_scope(self, name):
-        if self.stack : # Stack not emtpy? then not on the global scope
-            self.stack[-1].append(name) # Add declaration to current scope (top of the stack)
-        else : # if global
-            self.globals.append(name)   # Add var to global scope
+    # Add a new variable to the current function's scope (in node VarDecl)
+    def add_to_scope(self, node):
+        # node should be Class ast.VarDecl
+        var_name = node.declname.name       # Get declared variable name
+        scope = self.stack[-1]              # Get current scope (top of the stack)
+        assert not scope.lookup(var_name), "Variable '%s' defined twice in the same scope" % var_name 
+        scope.add(node.declname.name, node) # Add to current scope      
     
-    # remove current scope from stack (if a function def has ended)
+    # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):
-        self.stack.pop() # scopes remain in self.funcs
+        self.stack.pop() 
     
-    # Check if ID name is within the current scope
-    def in_scope(self, name):
-        local = name in self.stack[-1] # Check if in current scope
-        glob  = name in self.globals   # Check if in global scope
-        return glob or local
-
-    # # Print current scopes
-    # def __str__(self):
-    #     text = "globals:\n" 
-    #     for v in self.globals:
-    #         text += f"  {v}"
-            
-    #     text = "\nFunctions:\n" 
-    #     for f in self.funcs.keys():
-    #         ty = self.funcs[f]['ret']
-    #         params = self.funcs[f]['params']
-    #         text += f"\n  {ty} {f} {params}:\n"
-    #         for v in self.funcs[f]['vars']:
-    #             text += f"      {v}\n"    
-
-    #     return text
+    # Check if ID name is within the current scope, return it's type
+    def in_scope(self, node):
+        # node arg mus be a str (var name) or one of these classes: Decl, ID
+        if isinstance(node, ast.ID) : name = node.name
+        else : raise Exception(f"Cannot lookup {type(node)} in scope.")
+        local = self.stack[-1].lookup(name) # Check current scope
+        glob  = self.stack[0].lookup(name)  # Check global scope
+        return local or glob # Check if in any (local is prioritized)
 
 # MAJOR TODO: SCOPE, ENVIRONMENT (func_type, for instance), NEW ATTRIBUTES IN NODES, COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
@@ -149,8 +161,11 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # Initialize the symbol table
         self.symtab = SymbolTable()
 
-        # Initialize scopes table
-        self.scopes = ScopesTable()
+        # Initialize scope stack
+        self.scopes = ScopeStack()
+
+        # Initialize signatures table
+        self.signatures = SignaturesTable()
 
         # Add built-in type names (int, float, char) to the symbol table
         self.symtab.add("int",uCType.int_type)
@@ -178,6 +193,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
             
         # Semantic test
         self.visit_Program(ast)
+        # print(self.signatures)
     
     def visit_Program(self, node):
         # 1. Visit all of the statements
@@ -233,9 +249,9 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # TODO: how? how does the type.name list work at this point?
         
     def visit_Assignment(self, node):
-        # 1. Make sure the location of the assignment is defined
-        sym = self.symtab.lookup(node.lvalue)   # TODO: not getting ID?
-        assert sym, "Assigning to unknown sym"
+        # 1. Is the variable defined in the scope (global/local)
+        sym = self.scopes.in_scope(node.lvalue)   # TODO: not getting ID?
+        assert sym, "Assigning to undefined symbol '%s'" % sym
         
         # 2. Check if assignment is valid.
         if node.op != '=':
@@ -260,14 +276,15 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
         # TODO: Maybe change this, or add more things to ID inside visit.
         if isinstance(node.lvalue, ast.ID):
-            lvalue = self.symtab.lookup(node.lvalue.name)
+            lvalue = self.scopes.in_scope(node.lvalue)
         else:
             lvalue = node.lvalue
         
         if isinstance(node.rvalue, ast.ID):
-            rvalue = self.symtab.lookup(node.rvalue.name)
+            rvalue = self.scopes.in_scope(node.rvalue)
         else:
             rvalue = node.rvalue
+
         assert lvalue.type.name[0] == rvalue.type.name[0], "Type mismatch in binary operation"
         
         # 2. Make sure the operation is supported
@@ -275,9 +292,11 @@ class CheckProgramVisitor(ast.NodeVisitor):
         assert node.op in ty.bin_ops.union(ty.rel_ops), "Unsupported operator %s in binary operation for type %s." % (node.op, ty.name)
         
         # 3. Assign the result type
-        # TODO: BinaryOp has no type.
         if node.op in ty.bin_ops:
-            node.type = node.lvalue.type
+            if isinstance(node.lvalue, ast.ID):
+                node.type = self.scopes.in_scope(node.lvalue).type
+            else:
+                node.type = node.lvalue.type
         else:
             node.type = self.symtab.lookup('bool')
 
@@ -327,15 +346,16 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # TODO: char? Anything else?
         
     def visit_Decl(self, node):
-        # 0. If function, sign it
+        # 0. If function, sign it and add scope
         if isinstance(node.type, ast.FuncDecl): 
-            self.scopes.sign_func(node)
+            self.signatures.sign_func(node)
+            self.scopes.add_scope()
 
         # 1. Visit type
         self.visit(node.type)
         
-        # 2. Check if variable is defined.
-        assert self.symtab.lookup(node.name.name), "Symbol %s not defined" % node.name.name
+        # 2. Check if variable is defined in scope.
+        self.scopes.in_scope(node.name)
         
         # 3. Check if ArrayDecl has InitList if no dimensions.
         if isinstance(node.type, ast.ArrayDecl) and node.type.dims is None:
@@ -374,7 +394,9 @@ class CheckProgramVisitor(ast.NodeVisitor):
                 elif isinstance(node.type, ast.PtrDecl):
                     assert True
             
-        # 5. ???
+        # 5. If function declaration, end it's scope
+        if isinstance(node.type, ast.FuncDecl): 
+            self.scopes.pop_scope()
     
     def visit_DeclList(self, node):
         # 1. Visit all decls.
@@ -390,6 +412,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
             self.visit(expr)
             
     def visit_For(self, node):
+        # TODO: A scope should be created here, but a nested one (must check top and second on top)
         # 1. Visit initializer.
         if node.init:
             self.visit(node.init)
@@ -423,7 +446,6 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.args)
     
     def visit_FuncDecl(self, node):
-    
         # 1. Visit type.
         self.visit(node.type)
         
@@ -525,13 +547,23 @@ class CheckProgramVisitor(ast.NodeVisitor):
         self.visit(node.expr)
         
         # 2. Make sure the operation is supported.
-        ty = node.expr.type.name[0]
+        if isinstance(node.expr, ast.ID):
+            ty = self.scopes.in_scope(node.expr).type.name[0]
+        else:
+            ty = node.expr.type.name[0]
         assert node.op in ty.un_ops, "Unsupported operator %s in unary operation for type %s." % (node.op, ty.name)
         
         # 3. Assign the result type.
-        # TODO: UnaryOp has no type.
-        node.type = node.expr.type      # TODO: check if type is the same as operand.
-
+        # & => integer (returns address)
+        # ! => Bool (logical negation)
+        # *,++,--,-,+ => same type of the nearby variable 
+        if isinstance(node.expr, ast.ID):
+            ty = [self.scopes.in_scope(node.expr).type.name[0].name]
+        else:
+            ty = [node.expr.type.name[0].name]
+        ty = {'&':['int'], '!':['bool']}.get(node.op, ty)
+        node.type = ast.Type(ty)
+        
     def visit_VarDecl(self, node):
         # 1. Visit type.
         self.visit(node.type)
@@ -541,10 +573,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
         # 3. Check scope and insert in symbol table.
         if isinstance(node.declname, ast.ID):
-            sym = self.symtab.lookup(node.declname.name)
-            # TODO: check scope
-            # If not in scope, add IN SCOPE (how? TODO):
-            self.symtab.add(node.declname.name, node)
+            # sym = self.symtab.lookup(node.declname.name)
+            self.scopes.add_to_scope(node)
             # TODO (not working because ID has no type): node.declname.type = node.type
 
     def visit_While(self, node):
