@@ -9,12 +9,12 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 16/04/2020.
+Last Modified: 19/04/2020.
 '''
 
 import uCType
 import uCAST as ast
-from os.path import exists, splitext
+from os.path import exists
 
 class SymbolTable(object):
     '''
@@ -59,9 +59,13 @@ class SignaturesTable():
     #   node - a Decl (of a FuncDef) class form the uCAST
     def sign_func(self, node):
         name      = node.name               # Get function's name
-        ty        = node.type.type          # get func type (Decl.VarDecl.Type)
-        paramlist = node.type.params.params # From Decl get FuncDecl Params attribute
+        ty        = node.type.type.type     # get func type (Decl.FuncDecl.VarDecl.Type)
         params    = [] # Use to keep function params types
+
+        if node.type.params:
+            paramlist = node.type.params.params # From Decl get FuncDecl Params attribute
+        else:
+            paramlist = []
 
         # Getting functions parameters types and names
         for p in paramlist:
@@ -92,8 +96,12 @@ class SignaturesTable():
 
     # Fetches the function's return type
     def check_return(self, name):
-        return self.sign[name]['ret']
+        return self.sign[name]['type']
 
+    # Fetches signature
+    def get_function(self, name):
+        return self.sign.get(name, None)
+    
     def __str__(self):
         text = '\n'
         funcs = self.sign
@@ -115,7 +123,7 @@ class ScopeStack():
     '''
     def __init__(self):
         # Index 0 is the global scope, -1 is the current scope
-        self.stack = [SymbolTable()] # last element is the top of the stack
+        self.stack = [] # last element is the top of the stack
     
     # Add new scope (if a function definition started)
     def add_scope(self):
@@ -196,12 +204,15 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # print(self.signatures)
     
     def visit_Program(self, node):
-        # 1. Visit all of the statements
+        # 1. Add global scope.
+        self.scopes.add_scope()
+        
+        # 2. Visit all of the statements
         for gdecl in node.gdecls:
             self.visit(gdecl)
         
-        # 2. Record the associated symbol table
-        # TODO: what should be done here?
+        # 3. Remove global scope.
+        self.scopes.pop_scope()
 
     def visit_ArrayDecl(self, node):
         # 1. Visit type.
@@ -226,41 +237,67 @@ class CheckProgramVisitor(ast.NodeVisitor):
                 assert node.dims.op != '-', "%s declared as an array with a negative size." % var.declname
 
     def visit_ArrayRef(self, node):
-        # 1. Visit subscript.
-        self.visit(node.subsc)
+        # 1. Visit name
+        self.visit(node.name)
         
-        # 2. Check if subscript is a valid ID, if ID.
+        # 2. Check if ID is valid
+        name = self.scopes.in_scope(node.name)
+        assert name, "ID %s is not defined." % node.name.name
+
+        # 3. Visit subscript.
+        self.visit(node.subsc)
+                
+        # 3. Check if subscript is a valid ID, if ID.
         # TODO: scope and ID type (must be variable)
         if isinstance(node.subsc, ast.ID):
-            name = self.symtab.lookup(node.subsc.name)
-            assert name, "ID %s is not defined." % node.subsc.name
+            sub = self.scopes.in_scope(node.subsc)
+            assert sub, "ID %s is not defined." % node.subsc.name
             ty = name.type.name[-1]
         else:
             ty = node.subsc.type.name[-1]
         
-        # 3. Check subscript type.
+        # 4. Check subscript type.
         type_int = self.symtab.lookup('int')
         assert ty == type_int, "Subscript must be an integer." # TODO: constant value or id name.
         
-        # 4. Visit name
-        self.visit(node.name)
-        
         # 5. Assign node type
-        # TODO: how? how does the type.name list work at this point?
+        node.type = ast.Type([name.type.name[-1]])
         
     def visit_Assignment(self, node):
-        # 1. Is the variable defined in the scope (global/local)
-        sym = self.scopes.in_scope(node.lvalue)   # TODO: not getting ID?
-        assert sym, "Assigning to undefined symbol '%s'" % sym
+        # 1. Visit left value
+        self.visit(node.lvalue)
         
-        # 2. Check if assignment is valid.
+        # 2. Is the variable defined in the scope (global/local).
+        # TODO: check if ID is not function.
+        if isinstance(node.lvalue, ast.ID):
+            lvalue = self.scopes.in_scope(node.lvalue)   # TODO: not getting ID?
+            assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
+        elif isinstance(node.lvalue, ast.ArrayRef):
+            assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
+            lvalue = node.lvalue
+        else:
+            assert False, "Expression is not assignable."
+        
+        # 3. Check if assignment is valid.
         if node.op != '=':
-            ty = node.lvalue.type.name[0]      # TODO: name[-1]? Not necessary?
+            ty = lvalue.type.name[0]      # TODO: name[-1]? Not necessary?
             assert node.op in ty.assign_ops, "Assignment not valid for type %s." % ty.name
         
-        # 3. Check that the types match
+        # 4. Visit right value.
         self.visit(node.rvalue)
-        assert sym.type.name[0] == node.rvalue.type.name[0], "Type mismatch in assignment"
+        
+        # 5. If ID, check if declared.
+        if isinstance(node.rvalue, ast.ID):
+            rvalue = self.scopes.in_scope(node.rvalue)
+            assert rvalue, "ID %s is not defined." % node.rvalue.name
+        elif isinstance(node.lvalue, ast.ArrayRef):
+            assert self.scopes.in_scope(node.rvalue.name), "ID %s is not defined." % node.rvalue.name.name
+            rvalue = node.rvalue
+        else:
+            rvalue = node.rvalue
+
+        # 6. Check types
+        assert lvalue.type.name == rvalue.type.name, "Type mismatch in assignment"
         
     def visit_Assert(self, node):
         # 1. Visit the expression.
@@ -277,15 +314,17 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # TODO: Maybe change this, or add more things to ID inside visit.
         if isinstance(node.lvalue, ast.ID):
             lvalue = self.scopes.in_scope(node.lvalue)
+            assert lvalue, "ID %s not defined in binary operation." % node.lvalue.name
         else:
             lvalue = node.lvalue
         
         if isinstance(node.rvalue, ast.ID):
             rvalue = self.scopes.in_scope(node.rvalue)
+            assert rvalue, "ID %s not defined in binary operation." % node.rvalue.name
         else:
             rvalue = node.rvalue
 
-        assert lvalue.type.name[0] == rvalue.type.name[0], "Type mismatch in binary operation"
+        assert lvalue.type.name == rvalue.type.name, "Type mismatch in binary operation"
         
         # 2. Make sure the operation is supported
         ty = lvalue.type.name[0]                     # TODO: name[-1]? Not necessary?
@@ -306,6 +345,7 @@ class CheckProgramVisitor(ast.NodeVisitor):
 
     def visit_Cast(self, node):
         # 1. Visit type.
+        node.type.name = [node.type.name]
         self.visit(node.type)
         
         # 2. Visit Expression
@@ -346,20 +386,15 @@ class CheckProgramVisitor(ast.NodeVisitor):
         # TODO: char? Anything else?
         
     def visit_Decl(self, node):
-        # 0. If function, sign it and add scope
+        # 1. If function, sign it.
         if isinstance(node.type, ast.FuncDecl): 
             self.signatures.sign_func(node)
-            self.scopes.add_scope()
 
-        # 1. Visit type
+        # 2. Visit type
         self.visit(node.type)
         
-        # 2. Check if variable is defined in scope.
+        # 3. Check if variable is defined in scope.
         self.scopes.in_scope(node.name)
-        
-        # 3. Check if ArrayDecl has InitList if no dimensions.
-        if isinstance(node.type, ast.ArrayDecl) and node.type.dims is None:
-            assert isinstance(node.init, ast.InitList), "Array declaration without explicit size needs an initializer list."
         
         # 4. Visit initializers, if defined.
         if node.init:
@@ -368,7 +403,29 @@ class CheckProgramVisitor(ast.NodeVisitor):
             # Check instance of initializer.
             # Constant
             if isinstance(node.init, ast.Constant):
-                assert node.type.type.name[0] == node.init.type.name[0], "Initialization type mismatch in declaration."
+                const = node.init
+                ty = node.type.type
+                strng = self.symtab.lookup('string')
+
+                # If constant is string
+                if const.type.name[0] == strng:
+                    char = self.symtab.lookup('char')
+                    
+                    # Check if char array.
+                    assert isinstance(node.type, ast.ArrayDecl) and ty.type.name[-1] == char, "A string initializer can only be assigned to a char array."
+                    
+                    # Check length.
+                    if node.type.dims:
+                        # TODO: dims can be BinOp or other expression...
+                        assert len(const.value) <= node.type.dims.value, "Initializer-string for char array is too long."
+                    else:
+                        node.type.dims = ast.Constant('int', len(const.value))
+                        self.visit_Constant(node.type.dims)
+                
+                # Any other constant
+                else:
+                    assert not isinstance(node.type, ast.ArrayDecl), "Array declaration without explicit size needs an initializer list."
+                    assert ty.name[0] == const.type.name[0], "Initialization type mismatch in declaration."
             
             # InitList
             # TODO: if node.type is ArrayDecl and there is no InitList or dims, wrong
@@ -388,15 +445,12 @@ class CheckProgramVisitor(ast.NodeVisitor):
                         node.type.dims = ast.Constant('int', len(exprs))
                         self.visit_Constant(node.type.dims)
                     else:
+                        # TODO: dims can be binOp or other expression...
                         assert node.type.dims.value == len(exprs), "Size mismatch in variable initialization"
                 
                 # Pointer (TODO)
                 elif isinstance(node.type, ast.PtrDecl):
                     assert True
-            
-        # 5. If function declaration, end it's scope
-        if isinstance(node.type, ast.FuncDecl): 
-            self.scopes.pop_scope()
     
     def visit_DeclList(self, node):
         # 1. Visit all decls.
@@ -436,14 +490,17 @@ class CheckProgramVisitor(ast.NodeVisitor):
     def visit_FuncCall(self, node):
         # 1. Check if identifier was declared.
         self.visit(node.name)
-        sym = self.symtab.lookup(node.name.name)
+        sym = self.scopes.in_scope(node.name)
         assert sym, "Unknown identifier in function call."
         
         # 2. Check if identifier is a function.
-        assert isinstance(sym, ast.FuncDecl), "Identifier in function call is not a function."
+        assert self.signatures.get_function(sym.declname), "Identifier in function call is not a function."
         
         # 3. Visit arguments.
         self.visit(node.args)
+        
+        # 4. Add type
+        node.type = self.signatures.check_return(sym.declname)
     
     def visit_FuncDecl(self, node):
         # 1. Visit type.
@@ -456,17 +513,23 @@ class CheckProgramVisitor(ast.NodeVisitor):
     def visit_FuncDef(self, node):
         # 1. Visit type.
         self.visit(node.type)
-        
+                        
         # 2. Visit declaration.
         self.visit(node.decl)
 
-        # 3. Visit parameter list
+        # 3. Add scope
+        # TODO: adding scope here makes so the parameters are added to global scope, and that causes problems in ptr_function.uc
+        self.scopes.add_scope()
+
+        # 4. Visit parameter list
         if node.params:
             self.visit(node.params)
                 
-        # 4. Visit function.
-        if node.body:
-            self.visit(node.body)
+        # 5. Visit function.
+        self.visit(node.body)
+    
+        # 6. Remove scope
+        self.scopes.pop_scope()
     
     def visit_GlobalDecl(self, node):
         # 1. Visit every global declaration.
@@ -503,8 +566,8 @@ class CheckProgramVisitor(ast.NodeVisitor):
     
     def visit_Print(self, node):
         # 1. Visit the expressions.
-        for expr in node.expr:
-            self.visit(expr)
+        if node.expr:
+            self.visit(node.expr)
 
     def visit_PtrDecl(self, node):
         # 1. Visit pointer
@@ -521,17 +584,30 @@ class CheckProgramVisitor(ast.NodeVisitor):
         
     def visit_Read(self, node):
         # 1. Visit the expressions.
-        for expr in node.expr:
-            self.visit(node.expr)
+        self.visit(node.expr)
 
     def visit_Return(self, node):
-        # 1. Visit the expression.
+        # 1. Check expression.
         if node.expr:
+            
+            # 1.1. Only 1 expression is allowed to return.
+            assert not isinstance(node.expr, ast.ExprList), "Only one return expression is allowed."
+            
+            # 1.2. Visit expression.
             self.visit(node.expr)
-            ty = node.expr.type.name
+            
+            # 1.3. Check if ID is declared, if ID.
+            if isinstance(node.expr, ast.ID):
+                expr = self.scopes.in_scope(node.expr)
+            else:
+                expr = node.expr
+                
+            ty = expr.type.name
         else:
             ty = [self.symtab.lookup('void')]
-        # TODO: check if ty is the function type.
+            
+        # 2. Check return type.
+        # TODO: check if ty is the function type. Add return type to scope?
 
     def visit_Type(self, node):
         # 1. Change the strings to uCType.

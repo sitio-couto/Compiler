@@ -9,7 +9,7 @@ int main() {
         Formula for the area of the triangle = (height x base)/2
         Also, typecasting denominator from int to float
     */
-    area = (h*b)/(float)2;
+    area = (float)(h*b)/(float)2;
     print("The area of the triangle is: ", area);
     return 0;
 }

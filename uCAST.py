@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/04/2020.
+Last Modified: 19/04/2020.
 '''
 
 import sys
@@ -170,12 +170,15 @@ class ArrayDecl(Node):
         return tuple(children)
 
 class ArrayRef(Node):
-    __slots__ = ('name', 'subsc', 'coord')
+    __slots__ = ('name', 'subsc', 'type', 'coord')
     
     def __init__(self, name, subsc, coord):
         self.name = name
         self.subsc = subsc
         self.coord = coord
+        
+        # Semantic Only
+        self.type = None
         
     def children(self):
         children = []
@@ -363,12 +366,15 @@ class For(Node):
         return tuple(children)
 
 class FuncCall(Node):
-    __slots__ = ('name', 'args', 'coord')
+    __slots__ = ('name', 'args', 'type', 'coord')
     
     def __init__ (self, name, args, coord=None):
         self.name = name
         self.args = args
         self.coord = coord
+        
+        # Semantic Only
+        self.type = None
         
     def children(self):
         children = []
