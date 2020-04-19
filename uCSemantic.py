@@ -243,7 +243,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         while not isinstance(var, ast.VarDecl):
             var = var.type
         
-        # TODO: correct?
         arr_type = self.symtab.lookup('array')
         var.type.name.insert(0, arr_type)
         
@@ -297,7 +296,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             lvalue = self.scopes.in_scope(node.lvalue)
             assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
             
-            # TODO: assign to function is allowed, if it's the same type.
+            # TODO: assign to function POINTER is allowed, if both have the same signature types.
             assert not self.signatures.get_function(lvalue.declname), "Assigning to function %s." % node.lvalue.name
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
@@ -318,7 +317,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             rvalue = self.scopes.in_scope(node.rvalue)
             assert rvalue, "ID %s is not defined." % node.rvalue.name
             
-            # TODO: assign to function is allowed, if it's the same type (maybe?).
+            # TODO: assign function ADDRESS is allowed, if it has the same signature types.
             assert not self.signatures.get_function(rvalue.declname), "Assigning function %s." % node.rvalue.name
 
         elif isinstance(node.lvalue, ast.ArrayRef):
@@ -465,6 +464,8 @@ class uCSemanticCheck(ast.NodeVisitor):
                 if isinstance(ty, ast.VarDecl):
                     assert len(exprs) == 1, "Too many elements for variable initialization"
                     assert ty.type == exprs[0].type, "Initialization type mismatch in declaration."
+                    if isinstance(exprs[0], ast.ID):
+                        assert self.scopes.in_scope(exprs[0]), "ID %s is not defined." % exprs[0].name
                 
                 # Array
                 elif isinstance(ty, ast.ArrayDecl):
@@ -484,6 +485,10 @@ class uCSemanticCheck(ast.NodeVisitor):
                     
                     # Check type.
                     for expr in exprs:
+                        if isinstance(expr, ast.ID):
+                            init = self.scopes.in_scope(expr)
+                            assert init, "ID %s is not defined." % expr.name
+                            expr = init
                         assert ty.type.name[-1] == expr.type.name[-1], "Initialization type mismatch in declaration."
                 
                 # Pointer
@@ -496,7 +501,12 @@ class uCSemanticCheck(ast.NodeVisitor):
                         ty = ty.type
                     
                     # Initializer has to be of same type
-                    assert ty.type.name == exprs[0].type.name
+                    if isinstance(exprs[0], ast.ID):
+                        init = self.scopes.in_scope(exprs[0])
+                        assert init, "ID %s is not defined." % exprs[0].name
+                    else:
+                        init = exprs[0]
+                    assert ty.type.name == init.type.name, "Initialization type mismatch in declaration."
                     
         elif isinstance(ty, ast.ArrayDecl):
             assert ty.dims, "An array has to have a size or initializer."
@@ -592,8 +602,13 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 1. Visit every global declaration.
         for decl in node.decls:
             
-            # 1.1. If function declaration, create temporary scope.
-            if isinstance(decl, ast.FuncDecl):
+            # 1.1. Check innermost type.
+            ty = decl.type
+            while not isinstance(ty, ast.FuncDecl) and not isinstance(ty, ast.VarDecl):
+                ty = ty.type
+            
+            # 1.2. If function declaration, create temporary scope.
+            if isinstance(ty, ast.FuncDecl):
                 self.scopes.add_scope()
                 self.visit(decl)
                 self.scopes.pop_scope()
@@ -601,9 +616,6 @@ class uCSemanticCheck(ast.NodeVisitor):
                 self.visit(decl)
     
     def visit_ID(self, node):
-        # TODO: What to do? Insert in symbol table (VarDecl does that)?
-        # Check if ID is in table? But vardecl creates the variable name afterwards.
-        # Missing errors in int a=c; with no c declared, and a=3; with no a declared.
         return
     
     def visit_If(self, node):
@@ -699,13 +711,18 @@ class uCSemanticCheck(ast.NodeVisitor):
         # *,++,--,-,+ => same type of the nearby variable 
         # TODO: after '*', variable loses 'ptr'.
         if isinstance(node.expr, ast.ID):
-            ty = [self.scopes.in_scope(node.expr).type.name[0].name]
+            ty = self.scopes.in_scope(node.expr).type.name
         else:
-            ty = [node.expr.type.name[0].name]
-            
-        ty = {'&':['ptr','int'], '!':['bool']}.get(node.op, ty)
-        node.type = ast.Type(ty)
-        self.visit(node.type)
+            ty = node.expr.type.name
+        
+        if node.op == '*':
+            node.type = ty[1:]
+        elif node.op == '&' or node.op == '!':
+            ty = {'&':['ptr','int'], '!':['bool']}.get(node.op, ty)
+            node.type = ast.Type(ty)
+            self.visit(node.type)
+        else:
+            node.type = ty
         
     def visit_VarDecl(self, node):
         # 1. Visit type.
