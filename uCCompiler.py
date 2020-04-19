@@ -9,24 +9,76 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/04/2020.
+Last Modified: 19/04/2020.
 '''
+
+#!/usr/bin/env python3
 # ============================================================
 # uCCompiler.py -- uC (a.k.a. micro C) language compiler
 #
-# This is the main program for the uC compiler, which just
+# This is the main program for the uc compiler, which just
 # parses command-line options, figures out which source files
 # to read and write to, and invokes the different stages of
 # the compiler proper.
 # ============================================================
 
 import sys
+from contextlib import contextmanager
 from uCLexer import uCLexer
 from uCParser import uCParser
-from contextlib import contextmanager
+from uCSemantic import uCSemanticCheck
+
+"""
+One of the most important (and difficult) parts of writing a compiler
+is reliable reporting of error messages back to the user.  This file
+defines some generic functionality for dealing with errors throughout
+the compiler project. Error handling is based on a subscription/logging
+based approach.
+
+To report errors in uc compiler, we use the error() function. For example:
+
+       error(lineno,"Some kind of compiler error message")
+
+where lineno is the line number on which the error occurred.
+
+Error handling is based on a subscription based model using context-managers
+and the subscribe_errors() function. For example, to route error messages to
+standard output, use this:
+
+       with subscribe_errors(print):
+            run_compiler()
+
+To send messages to standard error, you can do this:
+
+       import sys
+       from functools import partial
+       with subscribe_errors(partial(print,file=sys.stderr)):
+            run_compiler()
+
+To route messages to a logger, you can do this:
+
+       import logging
+       log = logging.getLogger("somelogger")
+       with subscribe_errors(log.error):
+            run_compiler()
+
+To collect error messages for the purpose of unit testing, do this:
+
+       errs = []
+       with subscribe_errors(errs.append):
+            run_compiler()
+       # Check errs for specific errors
+
+The utility function errors_reported() returns the total number of
+errors reported so far.  Different stages of the compiler might use
+this to decide whether or not to keep processing or not.
+
+Use clear_errors() to clear the total number of errors.
+"""
 
 _subscribers = []
 _num_errors = 0
+
 
 def error(lineno, message, filename=None):
     """ Report a compiler error to all subscribers """
@@ -86,15 +138,31 @@ class Compiler:
         self.parser = uCParser(self.lexer)
         self.parser.build()
         
-        self.ast = self.parser.parse(self.code, debug)
-        if susy:
-            self.ast.show(showcoord=True)
-        elif ast_file is not None:
-            self.ast.show(buf=ast_file, showcoord=True)
+        self.ast = self.parser.parse(self.code, '', debug)
+        #if susy:
+        #    self.ast.show(showcoord=True)
+        #elif ast_file is not None:
+        #    self.ast.show(buf=ast_file, showcoord=True)
+        
+    def _sema(self, susy, ast_file):
+        """ Decorate AST with semantic actions. If ast_file != None,
+            or running at susy machine,
+            prints out the abstract syntax tree. """
+        try:
+            self.sema = uCSemanticCheck(self.parser)
+            self.sema.visit(self.ast)
+            if susy:
+                self.ast.show(showcoord=True)
+            elif ast_file is not None:
+                self.ast.show(buf=ast_file, showcoord=True)
+        except AssertionError as e:
+           error(None, e)
 
     def _do_compile(self, susy, ast_file, debug):
         """ Compiles the code to the given file object. """
         self._parse(susy, ast_file, debug)
+        if not errors_reported():
+            self._sema(susy, ast_file)
 
     def compile(self, code, susy, ast_file, debug):
         """ Compiles the given code string """
