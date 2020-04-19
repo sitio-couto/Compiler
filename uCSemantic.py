@@ -138,8 +138,16 @@ class ScopeStack():
         assert not scope.lookup(var_name), "Variable '%s' defined twice in the same scope" % var_name 
         scope.add(node.declname.name, node) # Add to current scope      
     
+    def add_func(self, node):
+        # node should be Class ast.VarDecl
+        f_name = node.declname.name  # Get declared variable name
+        glob = self.stack[0]         # Get current scope (top of the stack)
+        if not glob.lookup(f_name):  # Add global ref if func not defined
+            glob.add(f_name, node)   # Add to current scope 
+
     # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):
+        print(self)
         self.stack.pop() 
     
     # Check if ID name is within the current scope, return it's type
@@ -150,6 +158,12 @@ class ScopeStack():
         local = self.stack[-1].lookup(name) # Check current scope
         glob  = self.stack[0].lookup(name)  # Check global scope
         return local or glob # Check if in any (local is prioritized)
+
+    def __str__(self):
+        text = '\n'
+        for (i,sym) in enumerate(self.stack): 
+            text += f"Level {i} => {list(sym.symtab.keys())}\n"
+        return text
 
 # MAJOR TODO: SCOPE, ENVIRONMENT (func_type, for instance), NEW ATTRIBUTES IN NODES, COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
@@ -163,6 +177,9 @@ class CheckProgramVisitor(ast.NodeVisitor):
     '''
     def __init__(self, parser):
         
+        # Define flags
+        self.flags = dict(inFDef=False)
+
         # Include parser
         self.parser = parser
         
@@ -504,23 +521,26 @@ class CheckProgramVisitor(ast.NodeVisitor):
         node.type = self.signatures.check_return(sym.declname)
     
     def visit_FuncDecl(self, node):
-        # 1. Visit type.
-        self.visit(node.type)
+        # 1. Add to global scope.
+        self.scopes.add_func(node.type)
         
         # 2. Visit params.
-        if node.params:
+        if self.flags['inFDef'] and node.params:
             self.visit(node.params)
     
     def visit_FuncDef(self, node):
+        # Set flags
+        self.flags['inFDef'] = True
+
+        # 3. Add scope
+        # TODO: adding scope here makes so the parameters are added to global scope, and that causes problems in ptr_function.uc
+        self.scopes.add_scope()
+
         # 1. Visit type.
         self.visit(node.type)
                         
         # 2. Visit declaration.
         self.visit(node.decl)
-
-        # 3. Add scope
-        # TODO: adding scope here makes so the parameters are added to global scope, and that causes problems in ptr_function.uc
-        self.scopes.add_scope()
 
         # 4. Visit parameter list
         if node.params:
@@ -531,6 +551,9 @@ class CheckProgramVisitor(ast.NodeVisitor):
     
         # 6. Remove scope
         self.scopes.pop_scope()
+
+        # Set flags
+        self.flags['inFDef'] = False
     
     def visit_GlobalDecl(self, node):
         # 1. Visit every global declaration.

@@ -1,4 +1,4 @@
-int test(char c);
+int test(char c, float b);
 // int test();
 
 int main (int a) {
@@ -10,7 +10,13 @@ int main (int a) {
     }
     
     i=0;
+    test('c', 0.0);
     
-
     return 0;
+}
+
+int globtest = 0;
+
+float test2(int s, int v, char g){
+    return 0.0;
 }
