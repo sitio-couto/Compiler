@@ -71,7 +71,6 @@ class SignaturesTable():
         for p in paramlist:
             if isinstance(p.type, ast.VarDecl):
                 params.append(p.type.type)
-            # TODO: array declarations (might work this way actually)
         new = dict(type=ty, params=params)
 
         # If function was already signed, validate signature
@@ -89,7 +88,7 @@ class SignaturesTable():
             param_types = True
             for (new, sign) in zip(new['params'], sign[name]['params']):
                 param_types *= (sign.type == new.type) # Check param type
-            assert param_types, "Function %s has incorrect paramter types" % name
+            assert param_types, "Function %s has incorrect parameter types" % name
 
         else : # Not signed yet? 
             self.sign[name] = new
@@ -168,7 +167,7 @@ class ScopeStack():
             text += f"Level {i} => {list(sym.symtab.keys())}\n"
         return text
 
-# MAJOR TODO: COORDS IN ASSERTION ERRORS, THE ID PROBLEM, CHECK ARRAY AND PTR TYPES, OTHER SEMANTIC RULES.
+# MAJOR TODO: COORDS IN ASSERTION ERRORS, THE ID PROBLEM, OTHER SEMANTIC RULES.
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
 # MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
 
@@ -326,7 +325,6 @@ class uCSemanticCheck(ast.NodeVisitor):
             rvalue = node.rvalue
 
         # 6. Check types
-        # TODO: array can be assigned to ptr and vice-versa. Problem in simple5.uc and ptr_function.uc
         assert lvalue.type.name == rvalue.type.name, "Type mismatch in assignment"
         
     def visit_Assert(self, node):
@@ -663,7 +661,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         while not isinstance(ty, ast.VarDecl):
             ty = ty.type
         
-        # TODO: correct?
         ptr_type = self.symtab.lookup('ptr')
         ty.type.name.insert(0, ptr_type)
         
@@ -718,7 +715,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         # & => integer (returns address)
         # ! => Bool (logical negation)
         # *,++,--,-,+ => same type of the nearby variable 
-        # TODO: after '*', variable loses 'ptr'.
         if isinstance(node.expr, ast.ID):
             ty = self.scopes.in_scope(node.expr).type
         else:
