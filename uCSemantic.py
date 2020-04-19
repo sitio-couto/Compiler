@@ -412,7 +412,8 @@ class uCSemanticCheck(ast.NodeVisitor):
             node.value = int(node.value)
         elif ty.name == 'float':
             node.value = float(node.value)
-        # TODO: char? Anything else?
+        elif ty.name == 'char':
+            node.value = chr(node.value)
         
     def visit_Decl(self, node):
         # 1. Visit type
