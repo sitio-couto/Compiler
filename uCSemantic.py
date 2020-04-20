@@ -112,9 +112,14 @@ class SignaturesTable():
         # Fetch list of passed params
         if fcall.args:
             allowed = [ast.ID, ast.Constant, ast.FuncCall, ast.BinaryOp, ast.UnaryOp]
-            for p in fcall.args.exprs:
+            if not isinstance(fcall.args, ast.ExprList):
+                p = fcall.args
                 assert type(p) in allowed, f"Function call '{f_name}' has invalid argument {p}" 
-            params = [p for p in fcall.args.exprs]
+                params = [fcall.args]
+            else:
+                for p in fcall.args.exprs:
+                    assert type(p) in allowed, f"Function call '{f_name}' has invalid argument {p}" 
+                params = [p for p in fcall.args.exprs]
 
             # Iterate through params checking their classes ans taking measures:
             # ID, Constant, FuncCall, BinOp, UnOp
