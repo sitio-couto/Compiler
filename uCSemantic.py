@@ -276,6 +276,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.types.add("bool",uCType.boolean_type)
         self.types.add("void",uCType.void_type)
         self.types.add("ptr",uCType.ptr_type)
+        self.types.add("array", uCType.arr_type)
     
     def test(self, data, show_ast):
         self.parser.lexer.reset_line_num()
@@ -316,7 +317,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 2. Add array type to array.
         var = self.get_inner_type(node.type)
         
-        arr_type = self.types.lookup('ptr')
+        arr_type = self.types.lookup('array')
         var.name.insert(0, arr_type)
         
         # 3. Check dimensions.
@@ -338,7 +339,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 3. Check if ID is array or ptr.
         ptr = self.types.lookup('ptr')
-        assert name.type.name[0] == ptr, "ID %s is not an array or pointer." % node.name.name
+        arr = self.types.lookup('array')
+        assert name.type.name[0] == ptr or name.type.name[0] == arr, "ID %s is not an array or pointer." % node.name.name
 
         # 4. Visit subscript.
         self.visit(node.subsc)
@@ -371,6 +373,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             # TODO: assign to function POINTER is allowed, if both have the same signature types.
             # Solution: 1- Check if function. 2- Assert ptr. 3-set flag. 4- assert rvalue unaryOp address. 5- Check types.
             assert not self.signatures.get_sign(lvalue.declname), "Assigning to function %s." % node.lvalue.name
+            
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
             lvalue = node.lvalue
@@ -400,7 +403,25 @@ class uCSemanticCheck(ast.NodeVisitor):
             rvalue = node.rvalue
 
         # 6. Check types
-        assert lvalue.type.name == rvalue.type.name, "Type mismatch in assignment"
+        string = self.types.lookup('string')
+        array = self.types.lookup('array')
+        ptr = self.types.lookup('ptr')
+        ltype = lvalue.type.name[0]
+        rtype = rvalue.type.name[0]
+        
+        # 6.1. Special cases.
+        if ltype == array:
+            assert False, "Array is not assignable."
+        elif rtype == string:
+            char = self.types.lookup('char')
+            assert lvalue.type.name == [ptr,char], "Type mismatch in assignment"
+        elif ltype == ptr:
+            assert rtype == ptr or rtype == array, "Pointer can only be assigned array or other pointer."
+            assert lvalue.type.name[1:] == rvalue.type.name[1:], "Type mismatch in assignment"
+        
+        # 6.2. Regular case
+        else:
+            assert lvalue.type.name == rvalue.type.name, "Type mismatch in assignment"
         
     def visit_Assert(self, node):
         # 1. Visit the expression.
@@ -475,14 +496,12 @@ class uCSemanticCheck(ast.NodeVisitor):
             assert ty, "Unsupported type %s." % node.type
             node.type = ast.Type([ty], node.coord)
 
-        # 2. Convert to respective type. String by default.
+        # 2. Convert to respective type. Char by default.
         ty = node.type.name[0]
         if ty.name == 'int':
             node.value = int(node.value)
         elif ty.name == 'float':
             node.value = float(node.value)
-        elif ty.name == 'char':
-            node.value = chr(node.value)
         
     def visit_Decl(self, node):
         # 1. Visit type

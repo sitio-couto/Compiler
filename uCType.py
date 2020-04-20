@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 19/04/2020.
+Last Modified: 20/04/2020.
 '''
 
 class uCType(object):
@@ -59,6 +59,10 @@ void_type = uCType("void",
     un_ops = {'*', '&'}
     )
 ptr_type = uCType('ptr',
+    un_ops = {'*', '&', '++', 'p++', '--', 'p--'},
+    rel_ops = {'==', '!='}
+    )
+arr_type = uCType('array',
     un_ops = {'*', '&', '++', 'p++', '--', 'p--'},
     rel_ops = {'==', '!='}
     )
