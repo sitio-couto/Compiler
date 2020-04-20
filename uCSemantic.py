@@ -11,10 +11,6 @@ University of Campinas - UNICAMP - 2020
 
 Last Modified: 20/04/2020.
 '''
-
-# TODO:
-# Check if void if no return statement.
-# Void variables?
  
 import uCType
 import uCAST as ast
@@ -177,12 +173,26 @@ class ScopeStack():
         scope = self.stack[-1]
         return scope.lookup(0)
     
+    # Get current function scope.
+    def nearest_func_scope(self):
+        for scope in self.stack[::-1]:
+            if scope.lookup(0): return scope
+        return None
+
     # Check the current function
     def nearest_function(self):
-        for scope in self.stack[::-1]:
-            func = scope.lookup(0)
-            if func: return func
-        return None
+        func = self.nearest_func_scope()
+        return func.lookup(0) if func else None
+    
+    # TODO: Needs more testing, but seems to work.
+    def set_returned(self):
+        func = self.nearest_func_scope()
+        if func: func.add('returned', True)
+
+    # Get if function is returned.
+    def check_returned(self):
+        func = self.nearest_func_scope()
+        return func.lookup('returned')
 
     # Check if ID name is within the current scope, return it's type
     def in_scope(self, node):
@@ -204,7 +214,7 @@ class ScopeStack():
             text += f"Level {i} => {ids}\n"
         return text
 
-# MAJOR TODO: COORDS IN ASSERTION ERRORS, THE ID PROBLEM, OTHER SEMANTIC RULES.
+# MAJOR TODO: COORDS IN ASSERTION ERRORS, THE ID PROBLEM.
 # MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
 # MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
 
@@ -268,6 +278,9 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 3. Remove global scope.
         self.scopes.pop_scope()
+        
+        # 4. Clear signatures table for next semantic check.
+        self.signatures = SignaturesTable()
 
     def visit_ArrayDecl(self, node):
         # 1. Visit type.
@@ -472,7 +485,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                     
                     # Check length.
                     if node.type.dims:
-                        # TODO: dims can be UnOp or other expression...
+                        # TODO: dims can be UnOp or other expression... Not worth it?
                         assert len(const.value) <= node.type.dims.value, "Initializer-string for char array is too long."
                     else:
                         node.type.dims = ast.Constant('int', len(const.value))
@@ -502,7 +515,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                         ty.dims = ast.Constant('int', len(exprs))
                         self.visit_Constant(ty.dims)
                     else:
-                        # TODO: dims can be unOp or other expression...
+                        # TODO: dims can be unOp or other expression... Not worth it?
                         assert ty.dims.value == len(exprs), "Size mismatch in variable initialization"
                     
                     # Basic type has to be VarDecl
@@ -641,13 +654,18 @@ class uCSemanticCheck(ast.NodeVisitor):
             self.visit(node.params)
                 
         # 5. Visit function.
-        self.visit(node.body)
+        if node.body:
+            self.visit(node.body)
     
-        # 6. Remove scope
-        # TODO: before this, check if there was a "return" during the function. If not, check if void.
+        # 6. Check if returned.
+        void = self.types.lookup('void')
+        if node.type.name[-1] != void:
+            assert self.scopes.check_returned(), "No return from a non-void function."
+        
+        # 7. Remove scope
         self.scopes.pop_scope()
 
-        # 0. Setdown flags
+        # 8. Setdown flags
         self.flags['inFDef'] = False
     
     def visit_GlobalDecl(self, node):
@@ -736,6 +754,10 @@ class uCSemanticCheck(ast.NodeVisitor):
         # TODO: in most tests, int functions have return with no expression. Mistake?
         ret = self.signatures.get_return(self.scopes.nearest_function())
         assert ty == ret.name, "Incorrect return type."
+        
+        # 3. Set function as returned
+        # TODO: doesn't recognize if return is inside if... Not worth it?
+        self.scopes.set_returned()
 
     def visit_Type(self, node):
         # 1. Change the strings to uCType.
