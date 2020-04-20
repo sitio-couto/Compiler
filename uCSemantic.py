@@ -12,8 +12,7 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 19/04/2020.
 '''
 
-# TODO:     
-# type check de funcoes
+# TODO:
 # return void se keyword return
  
 
@@ -103,13 +102,20 @@ class SignaturesTable():
         else : # Not signed yet? 
             self.sign[name] = new
 
-    # Fetches the function's return type
-    def check_return(self, name):
-        return self.sign[name]['type']
+    # Fetches the function's return type (node must be ast.ID)
+    def get_return(self, node):
+        return self.sign[node.name]['type']
 
-    # Fetches signature
-    def get_function(self, name):
-        return self.sign.get(name, None)
+    # Fetches the functions params types (node must be ast.ID)
+    def check_params(self, scopes, fcall, fid):
+        # NOTE: We must compare names (Type attr has coord which will differ)
+        args = [scopes.in_scope(id).type.name[0] for id in fcall.args.exprs]
+        expects = [ty.name[0] for ty in self.sign[fid.name]['params']]
+        return (args == expects)
+
+    # Fetches signature (node must be ast.ID)
+    def get_sign(self, node):
+        return self.sign.get(node.name, None)
     
     def __str__(self):
         text = '\n'
@@ -291,7 +297,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         if isinstance(node.subsc, ast.ID):
             sub = self.scopes.in_scope(node.subsc)
             assert sub, "ID %s is not defined." % node.subsc.name
-            assert not self.signatures.get_function(sub.declname), "ID %s is a function, can't be used as subscript." %  node.subsc.name
+            assert not self.signatures.get_sign(sub.declname), "ID %s is a function, can't be used as subscript." %  node.subsc.name
             ty = sub.type.name[-1]
         else:
             ty = node.subsc.type.name[-1]
@@ -313,7 +319,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
             
             # TODO: assign to function POINTER is allowed, if both have the same signature types.
-            assert not self.signatures.get_function(lvalue.declname), "Assigning to function %s." % node.lvalue.name
+            assert not self.signatures.get_sign(lvalue.declname), "Assigning to function %s." % node.lvalue.name
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
             lvalue = node.lvalue
@@ -334,7 +340,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             assert rvalue, "ID %s is not defined." % node.rvalue.name
             
             # TODO: assign function ADDRESS is allowed, if it has the same signature types.
-            assert not self.signatures.get_function(rvalue.declname), "Assigning function %s." % node.rvalue.name
+            assert not self.signatures.get_sign(rvalue.declname), "Assigning function %s." % node.rvalue.name
 
         elif isinstance(node.rvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.rvalue.name), "ID %s is not defined." % node.rvalue.name.name
@@ -360,14 +366,14 @@ class uCSemanticCheck(ast.NodeVisitor):
         if isinstance(node.lvalue, ast.ID):
             lvalue = self.scopes.in_scope(node.lvalue)
             assert lvalue, "ID %s not defined in binary operation." % node.lvalue.name
-            assert not self.signatures.get_function(lvalue.declname), "Function %s in binary operation." % node.lvalue.name
+            assert not self.signatures.get_sign(lvalue.declname), "Function %s in binary operation." % node.lvalue.name
         else:
             lvalue = node.lvalue
         
         if isinstance(node.rvalue, ast.ID):
             rvalue = self.scopes.in_scope(node.rvalue)
             assert rvalue, "ID %s not defined in binary operation." % node.rvalue.name
-            assert not self.signatures.get_function(rvalue.declname), "Function %s in binary operation." % node.rvalue.name
+            assert not self.signatures.get_sign(rvalue.declname), "Function %s in binary operation." % node.rvalue.name
         else:
             rvalue = node.rvalue
 
@@ -584,15 +590,18 @@ class uCSemanticCheck(ast.NodeVisitor):
         assert sym, "Unknown identifier in function call."
         
         # 2. Check if identifier is a function.
-        assert self.signatures.get_function(sym.declname), "Identifier in function call is not a function."
+        assert self.signatures.get_sign(sym.declname), "Identifier in function call is not a function."
         
         # 3. Visit arguments.
-        # TODO: check arguments
         if node.args:
             self.visit(node.args)
         
+        # 4. Check args types
+        test = self.signatures.check_params(self.scopes, node, sym.declname)
+        assert test, f"Incorrect arguments passed to '{sym.declname.name}' function"
+
         # 4. Add type
-        node.type = self.signatures.check_return(sym.declname)
+        node.type = self.signatures.get_return(sym.declname)
     
     def visit_FuncDecl(self, node):
         # 1. Visit type
