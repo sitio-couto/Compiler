@@ -561,7 +561,8 @@ class uCSemanticCheck(ast.NodeVisitor):
                     # 3.1.1.1. Check if char array.
                     msg =  "A string initializer can only be assigned to a char array."
                     msg = self.build_error_msg(msg, const.coord)
-                    error = (isinstance(ty, ast.ArrayDecl) and ty.type.name[-1] == char)
+                    inner = self.get_inner_type(ty)
+                    error = (isinstance(ty, ast.ArrayDecl) and inner.name[-1] == char)
                     assert error, msg
                     
                     # 3.1.1.2. Check length.
@@ -882,7 +883,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         elif node.op == '!':
             ty = ast.Type(['bool'], node.coord)
             self.visit(ty)
-
         node.type = ty
         
     def visit_VarDecl(self, node):
