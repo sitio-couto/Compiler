@@ -27,6 +27,12 @@ class uCType(object):
         self.rel_ops = rel_ops
         self.assign_ops = assign_ops
         self.cast_types = cast_types
+    
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return self.__str__()
 
 
 int_type = uCType("int",

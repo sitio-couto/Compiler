@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 19/04/2020.
+Last Modified: 20/04/2020.
 '''
 
 #!/usr/bin/env python3
@@ -138,7 +138,7 @@ class Compiler:
         self.parser = uCParser(self.lexer)
         self.parser.build()
         
-        self.ast = self.parser.parse(self.code, '', debug)
+        self.ast = self.parser.parse(self.code, debug)
         #if susy:
         #    self.ast.show(showcoord=True)
         #elif ast_file is not None:
