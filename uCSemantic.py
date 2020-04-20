@@ -108,8 +108,29 @@ class SignaturesTable():
     def check_params(self, scopes, fcall, fid):
         # NOTE: We must compare names (Type attr has coord which will differ)
         # TODO: BinaryOp can be arg, or constant, or other expression. Doesn't work if so.
-        args = [scopes.in_scope(id).type.name[0] for id in fcall.args.exprs]
+        f_name = fcall.name.name
+
+        # Fetch list of passed params
+        if fcall.args:
+            allowed = [ast.ID, ast.Constant, ast.FuncCall, ast.BinaryOp, ast.UnaryOp]
+            for p in fcall.args.exprs:
+                assert type(p) in allowed, f"Function call '{f_name}' has invalid argument {p}" 
+            params = [p for p in fcall.args.exprs]
+
+            # Iterate through params checking their classes ans taking measures:
+            # ID, Constant, FuncCall, BinOp, UnOp
+            args = []
+            for p in params:
+                if isinstance(p, ast.ID):
+                    args.append(scopes.in_scope(p).type.name[0])
+                else:
+                    args.append(p.type.name[0])
+        else: # It's possible to have no arguments
+            args = []
+
+        # Fetch expected params from signatures
         expects = [ty.name[0] for ty in self.sign[fid.name]['params']]
+
         return (args == expects)
 
     # Fetches signature (node must be ast.ID)
@@ -198,6 +219,8 @@ class ScopeStack():
     def in_scope(self, node):
         # node arg mus be a str (var name) or one of these classes: Decl, ID
         if isinstance(node, ast.ID) : name = node.name
+        # NOTE: There's a situation where a constant is looked up as a symbol for some reason
+        elif isinstance(node, ast.Constant) : return node.type
         else : raise Exception(f"Cannot lookup {type(node)} in scope.")
         
         # Check all scopes from last to global.
