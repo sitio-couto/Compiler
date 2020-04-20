@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 19/04/2020.
+Last Modified: 20/04/2020.
 '''
 
 import sys
@@ -428,11 +428,14 @@ class GlobalDecl(Node):
         return tuple(children)
 
 class ID(Node):
-    __slots__ = ('name', 'coord')
+    __slots__ = ('name', 'type', 'coord')
 
     def __init__(self, name, coord=None):
         self.name = name
         self.coord = coord 
+        
+        # Semantic only
+        self.type = None
 
     attr_names = ('name', )
 

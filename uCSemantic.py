@@ -50,7 +50,6 @@ class SignaturesTable():
                     type:ast.Type - Type class for the variable
                     name:string - variable name
     '''
-    # TODO: Insert in nodes | Handle double definition | Handle type checking
 
     def __init__(self):
         self.sign = dict()  # Check which functions were declared (signatures: int main(float f);)
@@ -105,7 +104,7 @@ class SignaturesTable():
         return self.sign[node.name]['type']
 
     # Fetches the functions params types (node must be ast.ID)
-    def check_params(self, scopes, fcall, fid):
+    def check_params(self, fcall, fid):
         # NOTE: We must compare names (Type attr has coord which will differ)
         f_name = fcall.name.name
 
@@ -126,10 +125,7 @@ class SignaturesTable():
             # ID, Constant, FuncCall, BinOp, UnOp
             args = []
             for p in params:
-                if isinstance(p, ast.ID):
-                    args.append(scopes.in_scope(p).type.name[0])
-                else:
-                    args.append(p.type.name[0])
+                args.append(p.type.name[0])
         else: # It's possible to have no arguments
             args = []
 
@@ -165,8 +161,8 @@ class ScopeStack():
         self.stack = [] # last element is the top of the stack
     
     # Add new scope (if a function definition started)
+    # Every function definition is considered a new scope (new symboltable)
     def add_scope(self, node=None):
-        # Every function definition is considered a new scope (new symboltable)
         sym_tab = SymbolTable()
         if node : node = node.decl.name # Get funcs name (None if loop)
         sym_tab.add(0, node)            # Add scope name to table with key 0 (only numeric)
@@ -175,8 +171,8 @@ class ScopeStack():
     # Add a new variable to the current function's scope (in node VarDecl)
     def add_to_scope(self, node):
         # node should be Class ast.VarDecl
-        var_name = node.declname.name       # Get declared variable name
         scope = self.stack[-1]              # Get current scope (top of the stack)
+        var_name = node.declname.name       # Get declared variable name
         assert not scope.lookup(var_name), "Variable '%s' defined twice in the same scope" % var_name 
         scope.add(node.declname.name, node) # Add to current scope      
     
@@ -221,12 +217,9 @@ class ScopeStack():
         return func.lookup('returned')
 
     # Check if ID name is within the current scope, return it's type
+    # Must be of type ast.ID
     def in_scope(self, node):
-        # node arg mus be a str (var name) or one of these classes: Decl, ID
-        if isinstance(node, ast.ID) : name = node.name
-        # NOTE: There's a situation where a constant is looked up as a symbol for some reason
-        elif isinstance(node, ast.Constant) : return node.type
-        else : raise Exception(f"Cannot lookup {type(node)} in scope.")
+        name = node.name
         
         # Check all scopes from last to global.
         for scope in self.stack[::-1]:
@@ -242,8 +235,8 @@ class ScopeStack():
             text += f"Level {i} => {ids}\n"
         return text
 
-# MAJOR TODO: COORDS IN ASSERTION ERRORS, THE ID PROBLEM.
-# MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description, reduce lookups.
+# MAJOR TODO: COORDS IN ASSERTION ERRORS.
+# MINOR TODO: code organization (variable names and accessing attributes), improving assertion error message organization and description.
 # MICRO TODO: more details about minor and major todos and other small issues can be found in their respective spots in code.
 
 class uCSemanticCheck(ast.NodeVisitor):
@@ -331,35 +324,28 @@ class uCSemanticCheck(ast.NodeVisitor):
                 assert node.dims.op != '-', "%s declared as an array with a negative size." % var.declname
 
     def visit_ArrayRef(self, node):
-        # 1. Visit name
+        # 1. Visit name (ID)
         self.visit(node.name)
+        name = node.name
         
-        # 2. Check if ID is valid
-        name = self.scopes.in_scope(node.name)
-        assert name, "ID %s is not defined." % node.name.name
-        
-        # 3. Check if ID is array or ptr.
+        # 2. Check if ID is array or ptr.
         ptr = self.types.lookup('ptr')
         arr = self.types.lookup('array')
-        assert name.type.name[0] == ptr or name.type.name[0] == arr, "ID %s is not an array or pointer." % node.name.name
+        assert name.type.name[0] == ptr or name.type.name[0] == arr, "ID %s is not an array or pointer." % name.name
 
-        # 4. Visit subscript.
+        # 3. Visit subscript.
         self.visit(node.subsc)
                 
-        # 5. Check if subscript is a valid ID, if ID.
+        # 4. Check if subscript is a valid ID, if ID.
         if isinstance(node.subsc, ast.ID):
-            sub = self.scopes.in_scope(node.subsc)
-            assert sub, "ID %s is not defined." % node.subsc.name
-            assert not self.signatures.get_sign(sub.declname), "ID %s is a function, can't be used as subscript." %  node.subsc.name
-            ty = sub.type.name[-1]
-        else:
-            ty = node.subsc.type.name[-1]
-        
-        # 6. Check subscript type.
+            assert not self.signatures.get_sign(node.subsc), "ID %s is a function, can't be used as subscript." %  node.subsc.name
+
+        # 5. Check subscript type.
         type_int = self.types.lookup('int')
+        ty = node.subsc.type.name[-1]
         assert ty == type_int, "Array index must be of type int." 
         
-        # 7. Assign node type
+        # 6. Assign node type
         node.type = ast.Type(name.type.name[1:])
         
     def visit_Assignment(self, node):
@@ -367,19 +353,13 @@ class uCSemanticCheck(ast.NodeVisitor):
 
         # 1. Visit left value
         self.visit(node.lvalue)
+        lvalue = node.lvalue
         
-        # 2. Is the variable defined in the scope (global/local).
-        if isinstance(node.lvalue, ast.ID):
-            lvalue = self.scopes.in_scope(node.lvalue)
-            assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
-            
-            func = self.signatures.get_sign(lvalue.declname)
-            assert func['type'].name[0] == ptr, "Assigning to function %s." % node.lvalue.name
-            
-        elif isinstance(node.lvalue, ast.ArrayRef):
-            assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
-            lvalue = node.lvalue
-        else:
+        # 2. Check if ID or ArrayRef.
+        if isinstance(lvalue, ast.ID):
+            func = self.signatures.get_sign(lvalue)
+            if func: assert func['type'].name[0] == ptr, "Assigning to function %s." % lvalue.name
+        elif not isinstance(lvalue, ast.ArrayRef):
             assert False, "Expression is not assignable."
         
         # 3. Check if assignment is valid.
@@ -389,38 +369,31 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 4. Visit right value.
         self.visit(node.rvalue)
-        
-        # 5. If ID, check if declared.
-        if isinstance(node.rvalue, ast.ID):
-            rvalue = self.scopes.in_scope(node.rvalue)
-            assert rvalue, "ID %s is not defined." % node.rvalue.name
-            assert not self.signatures.get_sign(rvalue.declname), "Assigning function %s." % node.rvalue.name
+        rvalue = node.rvalue
 
-        elif isinstance(node.rvalue, ast.ArrayRef):
-            assert self.scopes.in_scope(node.rvalue.name), "ID %s is not defined." % node.rvalue.name.name
-            rvalue = node.rvalue
-        else:
-            rvalue = node.rvalue
+        # 5. If ID, check if function.
+        if isinstance(rvalue, ast.ID):
+            assert not self.signatures.get_sign(rvalue), "Assigning function %s." % rvalue.name
 
         # 6. Check types
         string = self.types.lookup('string')
         array = self.types.lookup('array')
-        ltype = lvalue.type.name[0]
-        rtype = rvalue.type.name[0]
+        ltype = lvalue.type.name
+        rtype = rvalue.type.name
         
         # 6.1. Special cases.
-        if ltype == array:
+        if ltype[0] == array:
             assert False, "Array is not assignable."
-        elif rtype == string:
+        elif rtype[0] == string:
             char = self.types.lookup('char')
-            assert lvalue.type.name == [ptr,char], "Type mismatch in assignment"
-        elif ltype == ptr:
-            assert rtype == ptr or rtype == array, "Pointer can only be assigned array or other pointer."
-            assert lvalue.type.name[1:] == rvalue.type.name[1:], "Type mismatch in assignment"
+            assert ltype == [ptr,char], "Type mismatch in assignment"
+        elif ltype[0] == ptr:
+            assert rtype[0] == ptr or rtype[0] == array, "Pointer can only be assigned array or other pointer."
+            assert ltype[1:] == rtype[1:], "Type mismatch in assignment"
         
         # 6.2. Regular case
         else:
-            assert lvalue.type.name == rvalue.type.name, "Type mismatch in assignment"
+            assert ltype == rtype, "Type mismatch in assignment"
         
     def visit_Assert(self, node):
         # 1. Visit the expression.
@@ -430,31 +403,30 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.boolean_check(node.expr)
 
     def visit_BinaryOp(self, node):
-        # 1. Make sure left and right operands have the same type
+        # 1. Visit left value
         self.visit(node.lvalue)
-        self.visit(node.rvalue)
-        
-        if isinstance(node.lvalue, ast.ID):
-            lvalue = self.scopes.in_scope(node.lvalue)
-            assert lvalue, "ID %s not defined in binary operation." % node.lvalue.name
-            assert not self.signatures.get_sign(lvalue.declname), "Function %s in binary operation." % node.lvalue.name
-        else:
-            lvalue = node.lvalue
-        
-        if isinstance(node.rvalue, ast.ID):
-            rvalue = self.scopes.in_scope(node.rvalue)
-            assert rvalue, "ID %s not defined in binary operation." % node.rvalue.name
-            assert not self.signatures.get_sign(rvalue.declname), "Function %s in binary operation." % node.rvalue.name
-        else:
-            rvalue = node.rvalue
+        lvalue = node.lvalue
 
+        # 2. If ID, check if function
+        if isinstance(lvalue, ast.ID):
+            assert not self.signatures.get_sign(lvalue), "Function %s in binary operation." % lvalue.name
+        
+        # 3. Visit right value
+        self.visit(node.rvalue)
+        rvalue = node.rvalue
+        
+        # 4. If ID, check if function        
+        if isinstance(rvalue, ast.ID):
+            assert not self.signatures.get_sign(rvalue), "Function %s in binary operation." % rvalue.name
+
+        # 5. Check types.
         assert lvalue.type.name == rvalue.type.name, "Type mismatch in binary operation"
         
-        # 2. Make sure the operation is supported
+        # 6. Make sure the operation is supported
         ty = lvalue.type.name[0]
         assert node.op in ty.bin_ops.union(ty.rel_ops), "Unsupported operator %s in binary operation for type %s." % (node.op, ty.name)
         
-        # 3. Assign the result type
+        # 7. Assign the result type
         if node.op in ty.bin_ops:
             node.type = lvalue.type
         else:
@@ -474,8 +446,9 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 3. Check if the expression type is castable to "type".
         ty = self.get_inner_type(node.expr).name[0]
+        cast = node.type.name[0].name
         
-        assert node.type.name[0].name in ty.cast_types, "Type %s can't be casted to type %s." % (ty.name, node.type.name[0].name)
+        assert cast in ty.cast_types, "Type %s can't be casted to type %s." % (ty.name, cast)
         
     def visit_Compound(self, node):
         # 1. Visit all declarations
@@ -507,29 +480,28 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.type)
         ty = node.type
 
-        # 2. Check if variable is defined in scope.
+        # 2. Visit name ID.
         self.visit(node.name)
-        assert self.scopes.in_scope(node.name), "ID %s is not defined in scope." % node.name.name 
         
         # 3. Visit initializers, if defined.
         if node.init:
             self.visit(node.init)
             
             # Check instance of initializer.
-            # Constant
+            # 3.1. Constant
             if isinstance(node.init, ast.Constant):
                 const = node.init
                 ty = ty.type
                 strng = self.types.lookup('string')
 
-                # If constant is string
+                # 3.1.1. If constant is string
                 if const.type.name[0] == strng:
                     char = self.types.lookup('char')
                     
-                    # Check if char array.
+                    # 3.1.1.1. Check if char array.
                     assert isinstance(node.type, ast.ArrayDecl) and ty.type.name[-1] == char, "A string initializer can only be assigned to a char array."
                     
-                    # Check length.
+                    # 3.1.1.2. Check length.
                     if node.type.dims:
                         # TODO: dims can be UnOp or other expression... Not worth it?
                         assert len(const.value) <= node.type.dims.value, "Initializer-string for char array is too long."
@@ -537,26 +509,24 @@ class uCSemanticCheck(ast.NodeVisitor):
                         node.type.dims = ast.Constant('int', len(const.value))
                         self.visit_Constant(node.type.dims)
                 
-                # Any other constant
+                # 3.1.2. Any other constant
                 else:
                     assert not isinstance(node.type, ast.ArrayDecl), "Array declaration without explicit size needs an initializer list."
                     assert ty.name[0] == const.type.name[0], "Initialization type mismatch in declaration."
             
-            # InitList
+            # 3.2. InitList
             elif isinstance(node.init, ast.InitList):
                 exprs = node.init.exprs
                 
-                # Variable
+                # 3.2.1. Variable
                 if isinstance(ty, ast.VarDecl):
                     assert len(exprs) == 1, "Too many elements for variable initialization"
                     assert ty.type.name == exprs[0].type.name, "Initialization type mismatch in declaration."
-                    if isinstance(exprs[0], ast.ID):
-                        assert self.scopes.in_scope(exprs[0]), "ID %s is not defined." % exprs[0].name
                 
-                # Array
+                # 3.2.2. Array
                 elif isinstance(ty, ast.ArrayDecl):
                     
-                    # If not explicit size of array, use initialization as size.
+                    # 3.2.2.1. If not explicit size of array, use initialization as size.
                     if ty.dims is None:
                         ty.dims = ast.Constant('int', len(exprs))
                         self.visit_Constant(ty.dims)
@@ -564,46 +534,32 @@ class uCSemanticCheck(ast.NodeVisitor):
                         # TODO: dims can be unOp or other expression... Not worth it?
                         assert ty.dims.value == len(exprs), "Size mismatch in variable initialization"
                     
-                    # Basic type has to be VarDecl
-                    while not isinstance(ty, ast.VarDecl):
-                        assert hasattr(ty, 'type'), "ArrayDecl does not have innermost VarDecl."
-                        ty = ty.type
+                    # 3.2.2.2. Get basic type.
+                    ty = self.get_inner_type(ty)
+                    assert ty, "No basic type in array declaration."
                     
-                    # Check type.
+                    # 3.2.2.3. Check type.
                     for expr in exprs:
-                        if isinstance(expr, ast.ID):
-                            init = self.scopes.in_scope(expr)
-                            assert init, "ID %s is not defined." % expr.name
-                            expr = init
-                        assert ty.type.name[-1] == expr.type.name[-1], "Initialization type mismatch in declaration."
+                        assert ty.name[-1] == expr.type.name[-1], "Initialization type mismatch in declaration."
                 
-                # Pointer
+                # 3.2.3. Pointer
                 elif isinstance(ty, ast.PtrDecl):
+                    
+                    # 3.2.3.1. Check length.
                     assert len(exprs) == 1, "Too many elements for variable initialization"
 
-                    # Basic type has to be VarDecl (TODO: can it be replaced by get_inner_type?)
-                    while not isinstance(ty, ast.VarDecl):
-                        assert hasattr(ty, 'type'), "PtrDecl does not have innermost VarDecl."
-                        ty = ty.type
+                    # 3.2.3.2. Get basic type.
+                    ty = self.get_inner_type(ty)
+                    assert ty, "No basic type in ptr declaration."
                     
-                    # Initializer has to be of same type
-                    if isinstance(exprs[0], ast.ID):
-                        init = self.scopes.in_scope(exprs[0])
-                        assert init, "ID %s is not defined." % exprs[0].name
-                    else:
-                        init = exprs[0]
-                    assert ty.type.name == init.type.name, "Initialization type mismatch in declaration."
-                    
-            # ID
-            elif isinstance(node.init, ast.ID):
-                init = self.scopes.in_scope(node.init)
-                assert init, "ID %s is not defined." % node.init.name
-                assert ty.type.name == init.type.name, "Initialization type mismatch in declaration."
-            
-            # Any other expression.
+                    # 3.2.3.3. Initializer has to be of same type
+                    assert ty.name == exprs[0].type.name, "Initialization type mismatch in declaration."
+
+            # 3.3. Any other expression.
             else:
                 assert ty.type.name == node.init.type.name, "Initialization type mismatch in declaration."
-            
+        
+        # 4. If array declaration has no init.    
         elif isinstance(ty, ast.ArrayDecl):
             assert ty.dims, "An array has to have a size or initializer."
     
@@ -649,24 +605,23 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.scopes.pop_scope()
 
     def visit_FuncCall(self, node):
-        # 1. Check if identifier was declared.
+        # 1. Visit name ID.
         self.visit(node.name)
-        sym = self.scopes.in_scope(node.name)
-        assert sym, "Unknown identifier in function call."
+        name = node.name
         
         # 2. Check if identifier is a function.
-        assert self.signatures.get_sign(sym.declname), "Identifier in function call is not a function."
+        assert self.signatures.get_sign(name), "Identifier in function call is not a function."
         
         # 3. Visit arguments.
         if node.args:
             self.visit(node.args)
         
         # 4. Check args types
-        test = self.signatures.check_params(self.scopes, node, sym.declname)
-        assert test, f"Incorrect arguments passed to '{sym.declname.name}' function"
+        test = self.signatures.check_params(node, name)
+        assert test, f"Incorrect arguments passed to '{name.name}' function"
 
-        # 4. Add type
-        node.type = self.signatures.get_return(sym.declname)
+        # 5. Add type
+        node.type = self.signatures.get_return(name)
     
     def visit_FuncDecl(self, node):
         # 1. Visit type
@@ -684,35 +639,35 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.signatures.sign_func(node, define)
     
     def visit_FuncDef(self, node):
-        # 0. Setup flags
+        # 1. Setup flags
         self.flags['inFDef'] = True
 
-        # 1. Add scope
+        # 2. Add scope
         self.scopes.add_scope(node=node)
 
-        # 2. Visit type.
+        # 3. Visit type.
         self.visit(node.type)
                         
-        # 3. Visit declaration.
+        # 4. Visit declaration.
         self.visit(node.decl)
 
-        # 4. Visit parameter list
+        # 5. Visit parameter list
         if node.params:
             self.visit(node.params)
                 
-        # 5. Visit function.
+        # 6. Visit function.
         if node.body:
             self.visit(node.body)
     
-        # 6. Check if returned.
+        # 7. Check if returned.
         void = self.types.lookup('void')
         if node.type.name[-1] != void:
             assert self.scopes.check_returned(), "No return from a non-void function."
         
-        # 7. Remove scope
+        # 8. Remove scope
         self.scopes.pop_scope()
 
-        # 8. Setdown flags
+        # 9. Setdown flags
         self.flags['inFDef'] = False
     
     def visit_GlobalDecl(self, node):
@@ -733,7 +688,12 @@ class uCSemanticCheck(ast.NodeVisitor):
                 self.visit(decl)
     
     def visit_ID(self, node):
-        return
+        # 1. Check if ID was defined.
+        decl = self.scopes.in_scope(node)
+        assert decl, "ID %s is not defined." % node.name
+        
+        # 2. Assign type
+        node.type = decl.type
     
     def visit_If(self, node):
         # 1. Visit the condition
@@ -770,7 +730,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 2. Add ptr type to Type
         ty = self.get_inner_type(node.type)
-        
         ptr_type = self.types.lookup('ptr')
         ty.name.insert(0, ptr_type)
         
@@ -787,15 +746,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             
             # 1.2. Visit expression.
             self.visit(node.expr)
-            
-            # 1.3. Check if ID is declared, if ID.
-            if isinstance(node.expr, ast.ID):
-                expr = self.scopes.in_scope(node.expr)
-                assert expr, "ID %s is not defined." % node.expr.name
-            else:
-                expr = node.expr
-            
-            ty = expr.type.name
+            ty = node.expr.type.name
         else:
             ty = [self.types.lookup('void')]
             
@@ -822,12 +773,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.expr)
         
         # 2. Make sure the operation is supported.
-        if isinstance(node.expr, ast.ID):
-            ty = self.scopes.in_scope(node.expr)
-            assert ty, "ID %s is not defined." % node.expr.name
-            ty = ty.type
-        else:
-            ty = node.expr.type
+        ty = node.expr.type
         assert node.op in ty.name[0].un_ops, "Unsupported operator %s in unary operation for type %s." % (node.op, ty.name[0].name)
         
         # 3. Assign the result type.
@@ -837,7 +783,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         if node.op == '*':
             ty = ast.Type(ty.name[1:])
             self.visit(ty)
-        # TODO: untested
         elif node.op == '&':
             ptr = self.types.lookup('ptr')
             ty.name.insert(0, ptr)
