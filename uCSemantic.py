@@ -363,6 +363,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         node.type = ast.Type(name.type.name[1:])
         
     def visit_Assignment(self, node):
+        ptr = self.types.lookup('ptr')
+
         # 1. Visit left value
         self.visit(node.lvalue)
         
@@ -371,9 +373,8 @@ class uCSemanticCheck(ast.NodeVisitor):
             lvalue = self.scopes.in_scope(node.lvalue)
             assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
             
-            # TODO: assign to function POINTER is allowed, if both have the same signature types.
-            # Solution: 1- Check if function. 2- Assert ptr. 3-set flag. 4- assert rvalue unaryOp address. 5- Check types.
-            assert not self.signatures.get_sign(lvalue.declname), "Assigning to function %s." % node.lvalue.name
+            func = self.signatures.get_sign(lvalue.declname)
+            assert func['type'].name[0] == ptr, "Assigning to function %s." % node.lvalue.name
             
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
@@ -404,7 +405,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 6. Check types
         string = self.types.lookup('string')
         array = self.types.lookup('array')
-        ptr = self.types.lookup('ptr')
         ltype = lvalue.type.name[0]
         rtype = rvalue.type.name[0]
         
