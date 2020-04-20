@@ -107,7 +107,6 @@ class SignaturesTable():
     # Fetches the functions params types (node must be ast.ID)
     def check_params(self, scopes, fcall, fid):
         # NOTE: We must compare names (Type attr has coord which will differ)
-        # TODO: BinaryOp can be arg, or constant, or other expression. Doesn't work if so.
         f_name = fcall.name.name
 
         # Fetch list of passed params
@@ -353,7 +352,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         assert ty == type_int, "Array index must be of type int." 
         
         # 7. Assign node type
-        node.type = ast.Type([name.type.name[-1]])
+        node.type = ast.Type(name.type.name[1:])
         
     def visit_Assignment(self, node):
         # 1. Visit left value
