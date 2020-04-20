@@ -31,5 +31,5 @@ int main() {
       print(n, " is an Armstrong number.\n");
     else
       print(n, " is not an Armstrong number.\n");
-    return;
+    return 0;
 }

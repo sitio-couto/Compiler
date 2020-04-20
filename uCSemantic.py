@@ -30,6 +30,8 @@ class SymbolTable(object):
         return self.symtab.get(a, None)
     def add(self, a, v):
         self.symtab[a] = v
+    def pop(self, a):
+        self.symtab.pop(a)
     
     def __str__(self, offset=''):
         text = ''
@@ -157,9 +159,12 @@ class ScopeStack():
     def add_func(self, node):
         # node should be Class ast.VarDecl
         f_name = node.declname.name  # Get declared variable name
-        glob = self.stack[0]         # Get current scope (top of the stack)
+        glob = self.stack[0]         # Get global scope
+        loc = self.stack[-1]         # Get current scope (top of the stack)
         if not glob.lookup(f_name):  # Add global ref if func not defined
-            glob.add(f_name, node)   # Add to current scope 
+            glob.add(f_name, node)   # Add to global scope 
+        if loc.lookup(f_name):       # if in current scope
+            loc.pop(f_name)          # Remove from current scope.
 
     # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):
@@ -215,8 +220,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         # Include parser
         self.parser = parser
         
-        # Initialize the symbol table
-        self.symtab = SymbolTable()
+        # Initialize the types table
+        self.types = SymbolTable()
 
         # Initialize scope stack
         self.scopes = ScopeStack()
@@ -225,13 +230,13 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.signatures = SignaturesTable()
 
         # Add built-in type names (int, float, char) to the symbol table
-        self.symtab.add("int",uCType.int_type)
-        self.symtab.add("float",uCType.float_type)
-        self.symtab.add("char",uCType.char_type)
-        self.symtab.add("string",uCType.string_type)
-        self.symtab.add("bool",uCType.boolean_type)
-        self.symtab.add("void",uCType.void_type)
-        self.symtab.add("ptr",uCType.ptr_type)
+        self.types.add("int",uCType.int_type)
+        self.types.add("float",uCType.float_type)
+        self.types.add("char",uCType.char_type)
+        self.types.add("string",uCType.string_type)
+        self.types.add("bool",uCType.boolean_type)
+        self.types.add("void",uCType.void_type)
+        self.types.add("ptr",uCType.ptr_type)
     
     def test(self, data, show_ast):
         self.parser.lexer.reset_line_num()
@@ -271,7 +276,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         while not isinstance(var, ast.VarDecl):
             var = var.type
         
-        arr_type = self.symtab.lookup('ptr')
+        arr_type = self.types.lookup('ptr')
         var.type.name.insert(0, arr_type)
         
         # 3. Check dimensions.
@@ -292,7 +297,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         assert name, "ID %s is not defined." % node.name.name
         
         # 3. Check if ID is array or ptr.
-        ptr = self.symtab.lookup('ptr')
+        ptr = self.types.lookup('ptr')
         assert name.type.name[0] == ptr, "ID %s is not an array or pointer." % node.name.name
 
         # 4. Visit subscript.
@@ -308,7 +313,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             ty = node.subsc.type.name[-1]
         
         # 6. Check subscript type.
-        type_int = self.symtab.lookup('int')
+        type_int = self.types.lookup('int')
         assert ty == type_int, "Array index must be of type int." 
         
         # 7. Assign node type
@@ -395,7 +400,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             else:
                 node.type = node.lvalue.type
         else:
-            node.type = ast.Type([self.symtab.lookup('bool')])
+            node.type = ast.Type([self.types.lookup('bool')])
 
     def visit_Break(self, node):
         # 0. Check if enclosure is a loop, error if not
@@ -431,7 +436,7 @@ class uCSemanticCheck(ast.NodeVisitor):
     def visit_Constant(self, node):
         # 1. Constant type to Type, with an uCType.
         if isinstance(node.type, str):
-            ty = self.symtab.lookup(node.type)
+            ty = self.types.lookup(node.type)
             assert ty, "Unsupported type %s." % node.type
             node.type = ast.Type([ty], node.coord)
 
@@ -461,11 +466,11 @@ class uCSemanticCheck(ast.NodeVisitor):
             if isinstance(node.init, ast.Constant):
                 const = node.init
                 ty = ty.type
-                strng = self.symtab.lookup('string')
+                strng = self.types.lookup('string')
 
                 # If constant is string
                 if const.type.name[0] == strng:
-                    char = self.symtab.lookup('char')
+                    char = self.types.lookup('char')
                     
                     # Check if char array.
                     assert isinstance(node.type, ast.ArrayDecl) and ty.type.name[-1] == char, "A string initializer can only be assigned to a char array."
@@ -706,7 +711,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         while not isinstance(ty, ast.VarDecl):
             ty = ty.type
         
-        ptr_type = self.symtab.lookup('ptr')
+        ptr_type = self.types.lookup('ptr')
         ty.type.name.insert(0, ptr_type)
         
     def visit_Read(self, node):
@@ -726,14 +731,16 @@ class uCSemanticCheck(ast.NodeVisitor):
             # 1.3. Check if ID is declared, if ID.
             if isinstance(node.expr, ast.ID):
                 expr = self.scopes.in_scope(node.expr)
+                assert expr, "ID %s is not defined." % node.expr.name
             else:
                 expr = node.expr
-                
+            
             ty = expr.type.name
         else:
-            ty = [self.symtab.lookup('void')]
+            ty = [self.types.lookup('void')]
             
         # 2. Check return type.
+        # TODO: in most tests, int functions have return with no expression. Mistake?
         ret = self.signatures.get_return(self.scopes.nearest_function())
         assert ty == ret.name, "Incorrect return type."
 
@@ -742,7 +749,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         # NOTE: because of the array and ptr types, node.name can have more than one item.
         for i, name in enumerate(node.name or []):
             if not isinstance(name, uCType.uCType):
-                ty = self.symtab.lookup(name)
+                ty = self.types.lookup(name)
                 assert ty, "Unsupported type %s." % name
                 node.name[i] = ty
         
@@ -781,7 +788,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.type)
         
         # 2. Check type.
-        void = self.symtab.lookup('void')
+        void = self.types.lookup('void')
         assert node.type.name[0] != void, "Void variables are not allowed."
         
         # 3. Visit name.
@@ -810,7 +817,7 @@ class uCSemanticCheck(ast.NodeVisitor):
     ## AUXILIARY FUNCTIONS ##
     def boolean_check(self, cond):
         ''' Check if a condition is boolean.'''
-        boolean = self.symtab.lookup('bool')
+        boolean = self.types.lookup('bool')
         
         if isinstance(cond.type, uCType.uCType) :
             ty = cond.type
