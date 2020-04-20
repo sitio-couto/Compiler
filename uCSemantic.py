@@ -12,8 +12,7 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 19/04/2020.
 '''
 
-# TODO: 
-# check for and while loops scopes      
+# TODO:     
 # type check de funcoes
 # return void se keyword return
  
@@ -63,12 +62,12 @@ class SignaturesTable():
     # NOTE: function calls will be validate using self.sign table
     # Params: 
     #   node - a FuncDecl class from the uCAST
-    def sign_func(self, node):
-        name      = node.type.declname    # Get function's name
-        ty        = node.type.type        # get func type (FuncDecl.VarDecl.Type)
-        params    = []                    # Use to keep function params types
+    def sign_func(self, node, defining):
+        name      = node.type.declname.name # Get function's name
+        ty        = node.type.type          # get func type (FuncDecl.VarDecl.Type)
+        params    = []                      # Use to keep function params types
 
-        if node.params:
+        if node.params: 
             paramlist = node.params.params 
         else:
             paramlist = []
@@ -76,24 +75,29 @@ class SignaturesTable():
         # Getting functions parameters types and names
         for p in paramlist:
             if isinstance(p.type, ast.VarDecl):
-                params.append(p.type.type)
-        new = dict(type=ty, params=params)
+                params.append(p.type.type) # Append ast.Type instances
+        new = dict(type=ty, params=params, defined=defining)
 
         # If function was already signed, validate signature
         if name in self.sign.keys() :
-            passed = new['params']
-            needed = self.sign[name]['params']
+            signature = self.sign[name]
+            
+            # Check if this function was defined twice
+            defined = signature['defined']
+            condition = not defining or (defining and not defined)
+            assert condition, f"Function {name} was defined twice"
+            signature['defined'] = defining # Update flag if defining and not defined
 
             # Check return type and amount of paramters
-            ret_type    = (ty == self.sign[name]['type'])
-            qnt_params  = (len(passed)==len(needed))
+            ret_type   = (ty.name[0] == signature['type'].name[0])
+            qnt_params = (len(new['params']) == len(signature['params']))
             assert ret_type, "Function %s has multiple declarations: diffrent return types" % name
-            assert qnt_params, "Function %s missing arguments" % name
+            assert qnt_params, "Function %s has exceding/missing arguments" % name
             
             # Check paramter types
-            param_types = True
-            for (new, sign) in zip(new['params'], sign[name]['params']):
-                param_types *= (sign.type == new.type) # Check param type
+            param_types = True # Assume their types match
+            for (new, sign) in zip(new['params'], self.sign[name]['params']):
+                param_types *= (sign.name[0] == new.name[0]) # Check if all params match
             assert param_types, "Function %s has incorrect parameter types" % name
 
         else : # Not signed yet? 
@@ -113,7 +117,7 @@ class SignaturesTable():
         for f in funcs.keys():
             ret = funcs[f]['type'].name[0].name
             params = [x.name[0].name for x in funcs[f]['params']]
-            text += f"{ret} {f.name} ("
+            text += f"{ret} {f} ("
             for arg in params: text +=f"{arg}, "
             text = text[:-2]+')\n'
         return str(text)
@@ -154,7 +158,6 @@ class ScopeStack():
 
     # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):
-        print(self)
         self.stack.pop() 
     
     # Check the current enclosure
@@ -193,6 +196,9 @@ class uCSemanticCheck(ast.NodeVisitor):
     Note: You will need to adjust the names of the AST nodes if you picked different names.
     '''
     def __init__(self, parser):
+
+        # Set flags
+        self.flags = dict(inFDef=False)
 
         # Include parser
         self.parser = parser
@@ -600,9 +606,13 @@ class uCSemanticCheck(ast.NodeVisitor):
             self.visit(node.params)
         
         # 4. Sign function.
-        self.signatures.sign_func(node)
+        define = (True if self.flags['inFDef'] else False)
+        self.signatures.sign_func(node, define)
     
     def visit_FuncDef(self, node):
+        # 0. Setup flags
+        self.flags['inFDef'] = True
+
         # 1. Add scope
         self.scopes.add_scope(node=node)
 
@@ -622,6 +632,9 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 6. Remove scope
         # TODO: before this, check if there was a "return" during the function. If not, check if void.
         self.scopes.pop_scope()
+
+        # 0. Setdown flags
+        self.flags['inFDef'] = False
     
     def visit_GlobalDecl(self, node):
         # 1. Visit every global declaration.
