@@ -112,14 +112,15 @@ class SignaturesTable():
         # Fetch list of passed params
         if fcall.args:
             allowed = [ast.ID, ast.Constant, ast.FuncCall, ast.BinaryOp, ast.UnaryOp]
+            params = []
             if not isinstance(fcall.args, ast.ExprList):
                 p = fcall.args
                 assert type(p) in allowed, f"Function call '{f_name}' has invalid argument {p}" 
-                params = [fcall.args]
+                params = [p]
             else:
                 for p in fcall.args.exprs:
                     assert type(p) in allowed, f"Function call '{f_name}' has invalid argument {p}" 
-                params = [p for p in fcall.args.exprs]
+                    params.append(p)
 
             # Iterate through params checking their classes ans taking measures:
             # ID, Constant, FuncCall, BinOp, UnOp
@@ -392,8 +393,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         if isinstance(node.rvalue, ast.ID):
             rvalue = self.scopes.in_scope(node.rvalue)
             assert rvalue, "ID %s is not defined." % node.rvalue.name
-            
-            # TODO: assign function ADDRESS is allowed, if it has the same signature types.
             assert not self.signatures.get_sign(rvalue.declname), "Assigning function %s." % node.rvalue.name
 
         elif isinstance(node.rvalue, ast.ArrayRef):
