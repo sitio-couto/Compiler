@@ -13,9 +13,8 @@ Last Modified: 19/04/2020.
 '''
 
 # TODO:
-# return void se keyword return
+# Check if void if no return statement.
  
-
 import uCType
 import uCAST as ast
 from os.path import exists
@@ -170,6 +169,13 @@ class ScopeStack():
     def enclosure(self):
         scope = self.stack[-1]
         return scope.lookup(0)
+    
+    # Check the current function
+    def nearest_function(self):
+        for scope in self.stack[::-1]:
+            func = scope.lookup(0)
+            if func: return func
+        return None
 
     # Check if ID name is within the current scope, return it's type
     def in_scope(self, node):
@@ -225,7 +231,6 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.symtab.add("string",uCType.string_type)
         self.symtab.add("bool",uCType.boolean_type)
         self.symtab.add("void",uCType.void_type)
-        self.symtab.add("array",uCType.array_type)
         self.symtab.add("ptr",uCType.ptr_type)
     
     def test(self, data, show_ast):
@@ -729,7 +734,8 @@ class uCSemanticCheck(ast.NodeVisitor):
             ty = [self.symtab.lookup('void')]
             
         # 2. Check return type.
-        # TODO: check if ty is the function type. Add return type to scope?
+        ret = self.signatures.get_return(self.scopes.nearest_function())
+        assert ty == ret.name, "Incorrect return type."
 
     def visit_Type(self, node):
         # 1. Change the strings to uCType.

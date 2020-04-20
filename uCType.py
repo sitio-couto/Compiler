@@ -58,10 +58,6 @@ boolean_type = uCType("bool",
 void_type = uCType("void",
     un_ops = {'*', '&'}
     )
-array_type = uCType("array",
-    un_ops = {'*', '&'},
-    rel_ops = {'==', '!='}
-    )
 ptr_type = uCType('ptr',
     un_ops = {'*', '&', '++', 'p++', '--', 'p--'},
     rel_ops = {'==', '!='}
