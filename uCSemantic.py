@@ -9,11 +9,12 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 19/04/2020.
+Last Modified: 20/04/2020.
 '''
 
 # TODO:
 # Check if void if no return statement.
+# Void variables?
  
 import uCType
 import uCAST as ast
@@ -110,6 +111,7 @@ class SignaturesTable():
     # Fetches the functions params types (node must be ast.ID)
     def check_params(self, scopes, fcall, fid):
         # NOTE: We must compare names (Type attr has coord which will differ)
+        # TODO: BinaryOp can be arg, or constant, or other expression. Doesn't work if so.
         args = [scopes.in_scope(id).type.name[0] for id in fcall.args.exprs]
         expects = [ty.name[0] for ty in self.sign[fid.name]['params']]
         return (args == expects)
@@ -272,12 +274,10 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.type)
         
         # 2. Add array type to array.
-        var = node.type
-        while not isinstance(var, ast.VarDecl):
-            var = var.type
+        var = self.get_inner_type(node.type)
         
         arr_type = self.types.lookup('ptr')
-        var.type.name.insert(0, arr_type)
+        var.name.insert(0, arr_type)
         
         # 3. Check dimensions.
         if node.dims:
@@ -395,10 +395,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 3. Assign the result type
         if node.op in ty.bin_ops:
-            if isinstance(node.lvalue, ast.ID):
-                node.type = self.scopes.in_scope(node.lvalue).type
-            else:
-                node.type = node.lvalue.type
+            node.type = lvalue.type
         else:
             node.type = ast.Type([self.types.lookup('bool')])
 
@@ -415,10 +412,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.expr)
         
         # 3. Check if the expression type is castable to "type".
-        ty = node.expr.type
-        while not isinstance(ty, ast.Type):
-            ty = ty.type
-        ty = ty.name[0]
+        ty = self.get_inner_type(node.expr).name[0]
         
         assert node.type.name[0].name in ty.cast_types, "Type %s can't be casted to type %s." % (ty.name, node.type.name[0].name)
         
@@ -455,7 +449,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         ty = node.type
 
         # 2. Check if variable is defined in scope.
-        self.scopes.in_scope(node.name)
+        self.visit(node.name)
+        assert self.scopes.in_scope(node.name), "ID %s is not defined in scope." % node.name.name 
         
         # 3. Visit initializers, if defined.
         if node.init:
@@ -704,15 +699,13 @@ class uCSemanticCheck(ast.NodeVisitor):
 
     def visit_PtrDecl(self, node):
         # 1. Visit pointer
-        ty = node.type
-        self.visit(ty)
+        self.visit(node.type)
         
         # 2. Add ptr type to Type
-        while not isinstance(ty, ast.VarDecl):
-            ty = ty.type
+        ty = self.get_inner_type(node.type)
         
         ptr_type = self.types.lookup('ptr')
-        ty.type.name.insert(0, ptr_type)
+        ty.name.insert(0, ptr_type)
         
     def visit_Read(self, node):
         # 1. Visit the expressions.
@@ -759,20 +752,17 @@ class uCSemanticCheck(ast.NodeVisitor):
         
         # 2. Make sure the operation is supported.
         if isinstance(node.expr, ast.ID):
-            ty = self.scopes.in_scope(node.expr).type.name[0]
+            ty = self.scopes.in_scope(node.expr)
+            assert ty, "ID %s is not defined." % node.expr.name
+            ty = ty.type
         else:
-            ty = node.expr.type.name[0]
-        assert node.op in ty.un_ops, "Unsupported operator %s in unary operation for type %s." % (node.op, ty.name)
+            ty = node.expr.type
+        assert node.op in ty.name[0].un_ops, "Unsupported operator %s in unary operation for type %s." % (node.op, ty.name[0].name)
         
         # 3. Assign the result type.
         # & => integer (returns address)
         # ! => Bool (logical negation)
         # *,++,--,-,+ => same type of the nearby variable 
-        if isinstance(node.expr, ast.ID):
-            ty = self.scopes.in_scope(node.expr).type
-        else:
-            ty = node.expr.type
-        
         if node.op == '*':
             node.type = ast.Type(ty.name[1:])
             self.visit(node.type)
@@ -786,15 +776,11 @@ class uCSemanticCheck(ast.NodeVisitor):
     def visit_VarDecl(self, node):
         # 1. Visit type.
         self.visit(node.type)
-        
-        # 2. Check type.
-        void = self.types.lookup('void')
-        assert node.type.name[0] != void, "Void variables are not allowed."
-        
-        # 3. Visit name.
+                
+        # 2. Visit name.
         self.visit(node.declname)
         
-        # 4. Check scope and insert in symbol table.
+        # 3. Check scope and insert in symbol table.
         if isinstance(node.declname, ast.ID):
             self.scopes.add_to_scope(node)
 
@@ -828,3 +814,10 @@ class uCSemanticCheck(ast.NodeVisitor):
             assert ty == boolean, "Expression must be boolean, and is %s instead." % ty.name
         else:
             assert False, "Expression must be boolean."
+        
+    def get_inner_type(self, node):
+        ''' Get innermost type node. Useful in declarations. '''
+        ty = node
+        while ty and not isinstance(ty, ast.Type):
+            ty = ty.type
+        return ty
