@@ -342,6 +342,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             assert lvalue, "Assigning to undefined symbol '%s'" % node.lvalue.name
             
             # TODO: assign to function POINTER is allowed, if both have the same signature types.
+            # Solution: 1- Check if function. 2- Assert ptr. 3-set flag. 4- assert rvalue unaryOp address. 5- Check types.
             assert not self.signatures.get_sign(lvalue.declname), "Assigning to function %s." % node.lvalue.name
         elif isinstance(node.lvalue, ast.ArrayRef):
             assert self.scopes.in_scope(node.lvalue.name), "Assigning to undefined symbol '%s'" % node.lvalue.name.name
@@ -413,7 +414,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             node.type = ast.Type([self.types.lookup('bool')])
 
     def visit_Break(self, node):
-        # 0. Check if enclosure is a loop, error if not
+        # 1. Check if enclosure is a loop, error if not
         assert not self.scopes.enclosure(), "'break' can only be used inside a loop"
 
     def visit_Cast(self, node):
@@ -535,7 +536,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                 elif isinstance(ty, ast.PtrDecl):
                     assert len(exprs) == 1, "Too many elements for variable initialization"
 
-                    # Basic type has to be VarDecl
+                    # Basic type has to be VarDecl (TODO: can it be replaced by get_inner_type?)
                     while not isinstance(ty, ast.VarDecl):
                         assert hasattr(ty, 'type'), "PtrDecl does not have innermost VarDecl."
                         ty = ty.type
@@ -575,30 +576,31 @@ class uCSemanticCheck(ast.NodeVisitor):
             self.visit(expr)
             
     def visit_For(self, node):
-        # 0. Create scope 
+        # 1. Create scope 
         self.scopes.add_scope()
         
-        # 1. Visit initializer.
+        # 2. Visit initializer.
         if node.init:
             self.visit(node.init)
         
-        # 2. Check condition.
+        # 3. Check condition.
         if node.cond:
             
-            # 2.1. Visit condition.
+            # 3.1. Visit condition.
             self.visit(node.cond)
             
-            # 2.2 Condition must be boolean
+            # 3.2 Condition must be boolean
             self.boolean_check(node.cond)
         
-        # 3. Visit next.
+        # 4. Visit next.
         if node.next:
             self.visit(node.next)
         
-        # 4. Visit body.
-        self.visit(node.body)
+        # 5. Visit body.
+        if node.body:
+            self.visit(node.body)
 
-        # 0. Remove scope
+        # 6. Remove scope
         self.scopes.pop_scope()
 
     def visit_FuncCall(self, node):
@@ -672,7 +674,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 1. Visit every global declaration.
         for decl in node.decls:
             
-            # 1.1. Check innermost type.
+            # 1.1. Check declaration type.
             ty = decl.type
             while not isinstance(ty, ast.FuncDecl) and not isinstance(ty, ast.VarDecl):
                 ty = ty.type
@@ -696,7 +698,9 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.boolean_check(node.cond)
         
         # 3. Visit statements
-        self.visit(node.if_stat)
+        if node.if_stat:
+            self.visit(node.if_stat)
+        
         if node.else_stat:
             self.visit(node.else_stat)
     
@@ -786,40 +790,44 @@ class uCSemanticCheck(ast.NodeVisitor):
         # ! => Bool (logical negation)
         # *,++,--,-,+ => same type of the nearby variable 
         if node.op == '*':
-            node.type = ast.Type(ty.name[1:])
-            self.visit(node.type)
-        elif node.op == '&' or node.op == '!':
-            ty = {'&':['ptr','int'], '!':['bool']}.get(node.op, ty)
-            node.type = ast.Type(ty)
-            self.visit(node.type)
-        else:
-            node.type = ty
+            ty = ast.Type(ty.name[1:])
+            self.visit(ty)
+        # TODO: untested
+        elif node.op == '&':
+            ptr = self.types.lookup('ptr')
+            ty.name.insert(0, ptr)
+        elif node.op == '!':
+            ty = ast.Type(['bool'])
+            self.visit(ty)
+
+        node.type = ty
         
     def visit_VarDecl(self, node):
         # 1. Visit type.
         self.visit(node.type)
-                
-        # 2. Visit name.
-        self.visit(node.declname)
         
-        # 3. Check scope and insert in symbol table.
+        # 2. Check scope and insert in symbol table.
         if isinstance(node.declname, ast.ID):
             self.scopes.add_to_scope(node)
+        
+        # 3. Visit name.
+        self.visit(node.declname)
 
     def visit_While(self, node):
-        # 0. Create Scope
+        # 1. Create Scope
         self.scopes.add_scope()
 
-        # 1. Visit condition.
+        # 2. Visit condition.
         self.visit(node.cond)
 
-        # 2. Condition must be boolean
+        # 3. Condition must be boolean
         self.boolean_check(node.cond)
 
-        # 3. Visit body.
-        self.visit(node.body)
+        # 4. Visit body.
+        if node.body:
+            self.visit(node.body)
 
-        # 4. Create Scope
+        # 5. Create Scope
         self.scopes.pop_scope()
 
     ## AUXILIARY FUNCTIONS ##
