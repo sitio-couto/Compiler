@@ -1,6 +1,7 @@
 // Example 5:
     
 int main() {
+	int MAX = 3;
     int var[] = {100, 200, 300};
     int *ptr;
     ptr = var;
