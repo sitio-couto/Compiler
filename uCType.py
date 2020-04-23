@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 20/04/2020.
+Last Modified: 23/04/2020.
 '''
 
 class uCType(object):
@@ -18,9 +18,6 @@ class uCType(object):
     are declared as singleton instances of this type.
     '''
     def __init__(self, name, bin_ops=set(), un_ops=set(), rel_ops=set(), assign_ops=set(), cast_types=set()):
-        '''
-        You must implement yourself and figure out what to store.
-        '''
         self.name = name
         self.bin_ops = bin_ops
         self.un_ops = un_ops
@@ -29,11 +26,10 @@ class uCType(object):
         self.cast_types = cast_types
     
     def __str__(self):
-        return self.name
+        return f'type({self.name})'
     
     def __repr__(self):
         return self.__str__()
-
 
 int_type = uCType("int",
     bin_ops = {'+', '-', '*', '/', '%'},

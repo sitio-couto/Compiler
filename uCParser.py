@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/04/2020.
+Last Modified: 23/04/2020.
 '''
 
 from ply.yacc import yacc
@@ -297,9 +297,7 @@ class uCParser():
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
-        coord = self.get_coord(p, 1)
-        coord.column = 1 
-        p[0] = ast.Compound(p[2], p[3], coord) if p[2] or p[3] else None
+        p[0] = ast.Compound(p[2], p[3], self.get_coord(p, 1)) if p[2] or p[3] else None
 
     # Selection Staments #    
     # if () {} | if () {} else {}

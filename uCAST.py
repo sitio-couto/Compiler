@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 20/04/2020.
+Last Modified: 23/04/2020.
 '''
 
 import sys
@@ -199,13 +199,16 @@ class Assert(Node):
         return tuple(children)
 
 class Assignment(Node):
-    __slots__ = ('op', 'lvalue', 'rvalue', 'coord')
+    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'coord')
 
     def __init__(self, op, left, right, coord=None):
         self.op = op
         self.lvalue = left
         self.rvalue = right
         self.coord = coord
+        
+        # Semantic only.
+        self.type = None
 
     def children(self):
         children = []
