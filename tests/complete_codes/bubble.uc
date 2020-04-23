@@ -18,5 +18,5 @@ int main() {
     print("Sorted list in ascending order:\n");
     for (c = 0; c < n; c++)
         print(v[c], " ");
-    return;
+    return 0;
 }

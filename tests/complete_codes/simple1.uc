@@ -5,5 +5,5 @@ int main () {
     int k = 3;
     int p = v[k];
     assert p == 4;
-    return;
+    return 0;
 }

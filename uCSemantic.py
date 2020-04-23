@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 22/04/2020.
+Last Modified: 23/04/2020.
 '''
  
 import uCType
@@ -838,7 +838,6 @@ class uCSemanticCheck(ast.NodeVisitor):
             ty = [self.types.lookup('void')]
             
         # 2. Check return type.
-        # TODO: in most tests, int functions have return with no expression. Mistake?
         ret = self.signatures.get_return(self.scopes.nearest_function())
         msg = f"Incorrect return type {ty}, expected {ret.name}."
         msg = self.build_error_msg(msg, node.coord)
