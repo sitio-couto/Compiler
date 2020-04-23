@@ -300,6 +300,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             
         # Semantic test
         self.visit(ast)
+        ast.show()
     
     def visit_Program(self, node):
         # 1. Add global scope.

@@ -199,16 +199,17 @@ class Assert(Node):
         return tuple(children)
 
 class Assignment(Node):
-    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'coord')
+    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'gen_location', 'coord')
 
     def __init__(self, op, left, right, coord=None):
         self.op = op
         self.lvalue = left
         self.rvalue = right
         self.coord = coord
-        
         # Semantic only.
         self.type = None
+        # IR only.
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -219,7 +220,7 @@ class Assignment(Node):
     attr_names = ('op', ) 
 
 class BinaryOp(Node):
-    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'coord')
+    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'gen_location', 'coord')
     
     def __init__(self, op, left, right, coord=None):
         self.op = op
@@ -228,6 +229,8 @@ class BinaryOp(Node):
         self.coord = coord
         # Semantic only
         self.type = None
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -244,12 +247,14 @@ class Break(Node):
         self.coord = coord
 
 class Cast(Node):
-    __slots__ = ('type', 'expr', 'coord')
+    __slots__ = ('type', 'expr', 'gen_location', 'coord')
     
     def __init__(self, type, expr, coord=None):
         self.type = type
         self.expr = expr
         self.coord = coord
+        # IR only
+        self.gen_location = None
         
     def children(self):
         children = []
@@ -274,12 +279,14 @@ class Compound(Node):
         return tuple(children)
 
 class Constant(Node):
-    __slots__ = ('type', 'value', 'coord')
+    __slots__ = ('type', 'value', 'gen_location', 'coord')
     
     def __init__(self, type, value, coord=None):
         self.type = type
         self.value = value
         self.coord = coord
+        # IR only
+        self.gen_location = None
 
     attr_names = ('type', 'value', )
 
@@ -431,14 +438,15 @@ class GlobalDecl(Node):
         return tuple(children)
 
 class ID(Node):
-    __slots__ = ('name', 'type', 'coord')
+    __slots__ = ('name', 'type', 'gen_location', 'coord')
 
     def __init__(self, name, coord=None):
         self.name = name
         self.coord = coord 
-        
         # Semantic only
         self.type = None
+        # IR only
+        self.gen_location = None
 
     attr_names = ('name', )
 
@@ -541,13 +549,16 @@ class Type(Node):
     attr_names = ('name',)
 
 class UnaryOp(Node):
-    __slots__ = ('op', 'expr', 'type', 'coord')
+    __slots__ = ('op', 'expr', 'type', 'gen_location', 'coord')
     
     def __init__(self, op, expr, coord=None):
         self.op = op
         self.expr = expr
         self.coord = coord
+        # Semantic Only
         self.type = None
+        # IR Only
+        self.gen_location = None
     
     def children(self):
         children = []
