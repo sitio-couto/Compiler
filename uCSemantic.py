@@ -437,6 +437,9 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 6.2. Regular case
         else:
             assert ltype == rtype, ty_msg
+            
+        # 7. Assign result type.
+        node.type = lvalue.type
         
     def visit_Assert(self, node):
         # 1. Visit the expression.
