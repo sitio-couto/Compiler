@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 03/04/2020.
+Last Modified: 23/04/2020.
 '''
 
 from ply.yacc import yacc
@@ -69,9 +69,7 @@ class uCParser():
 
     def p_function_definition_1(self, p):
         ''' function_definition : type_specifier declarator declaration_list_opt compound_statement '''
-        declaration = self._build_declarations(p[1], [dict(decl=p[2], init=None)])[0]
-        p[1].name = [p[1].name]
-        p[0] = ast.FuncDef(p[1], declaration, p[3], p[4])
+        p[0] = self._build_function_definition(p[1], p[2], p[3], p[4])
     def p_function_definition_2(self, p): # If return type not defined, defaults to INT
         ''' function_definition : declarator declaration_list_opt compound_statement '''
         p[0] = self._build_function_definition(type, p[1], p[2], p[3])
@@ -133,13 +131,13 @@ class uCParser():
         p[0] = p[2] 
     def p_direct_declarator_3(self, p):
         ''' direct_declarator : direct_declarator '[' const_expr_opt ']' '''
-        aux = ast.ArrayDecl(None, p[3] if len(p) == 5 else 1, p[1].coord)
+        aux = ast.ArrayDecl(None, p[3], p[1].coord)
         p[0] = self._type_modify_decl(p[1], aux)
     def p_direct_declarator_4(self, p):
         ''' direct_declarator : direct_declarator '(' parameter_list ')' 
                               | direct_declarator '(' id_list_opt ')' 
         '''
-        aux = ast.FuncDecl(None, p[3], None) # None type will be overwritten later
+        aux = ast.FuncDecl(None, p[3], None)
         p[0] = self._type_modify_decl(p[1], aux)
 
     #### EXPRESSIONS ####
@@ -299,9 +297,7 @@ class uCParser():
 
     def p_compound_statement(self, p):
         ''' compound_statement : '{' declaration_list_opt statement_list_opt '}' '''
-        coord = self.get_coord(p, 1)
-        coord.column = 1 
-        p[0] = ast.Compound(p[2], p[3], coord) if p[2] or p[3] else None
+        p[0] = ast.Compound(p[2], p[3], self.get_coord(p, 1)) if p[2] or p[3] else None
 
     # Selection Staments #    
     # if () {} | if () {} else {}

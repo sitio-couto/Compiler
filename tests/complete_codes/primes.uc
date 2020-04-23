@@ -16,5 +16,5 @@ int main() {
         if (flag == 1)
             print(i, "  ");
     }
-    return;
+    return 0;
 }

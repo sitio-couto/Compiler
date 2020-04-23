@@ -1,5 +1,6 @@
 // The following program shows use of a function pointer
 // for selecting between addition and subtraction:
+// This program does not work for those who have not implemented pointers
     
 int (*operation)(int x, int y);
 
@@ -13,9 +14,9 @@ int subtract(int x, int y) {
 
 int main() {
    int  foo = 1, bar = 1;
-   operation = add;
+   operation = &add;
    print(foo, " + ", bar, " = ", operation(foo, bar), "\n");
-   operation = subtract;
+   operation = &subtract;
    print(foo, " - ", bar, " = ", operation(foo, bar), "\n");
    return 0;
 }
