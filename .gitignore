@@ -5,3 +5,4 @@ newParse.py
 *.ast
 lextab.py
 parsetab.py
+tests/unittest/test.*
