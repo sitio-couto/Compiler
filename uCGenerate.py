@@ -38,6 +38,9 @@ class uCIRGenerate(ast.NodeVisitor):
 
         # The generated code (list of tuples)
         self.code = []
+        
+        # Useful attributes
+        self.ret = {'label':None, 'value':None}
 
     def new_temp(self):
         ''' Create a new temporary variable of a given scope (function name). '''
@@ -68,7 +71,11 @@ class uCIRGenerate(ast.NodeVisitor):
             
         # Generate IR
         self.visit(ast)
-        print(self.code)
+        self.print_code()
+    
+    def print_code(self):
+        for inst in self.code:
+            print(inst)
 
     def visit_Program(self, node):
         # Define global scope.
@@ -78,6 +85,16 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit all of the statements
         for gdecl in node.gdecls:
             self.visit(gdecl)
+
+    def visit_ArrayDecl(self, node):
+        # TODO: what?
+        ret = self.visit(node.type)
+        node.gen_location = node.type.gen_location
+        return ret
+
+    def visit_ArrayRef(self, node):
+        # TODO: what? Ask for more examples
+        self.visit(node.name)
 
     def visit_Assert(self, node):
         # Visit the assert condition
@@ -92,20 +109,20 @@ class uCIRGenerate(ast.NodeVisitor):
         branch = ('cbranch', node.expr.gen_location, target_true, target_fake)
         
         # Create TRUE
-        true_label = (target_true,)
+        true_label = (target_true[1:],)
         true_jump = ('jump', target_rest)
         
         # Create FALSE
-        fake_label = (target_fake,)
+        fake_label = (target_fake[1:],)
         coord = node.expr.coord
         msg_coord = f'{coord.line}:{coord.column}'
         error = ('print_string', 'assertion_fail on ' + msg_coord)
         
-        # TODO: jump to where? hardcoded atm, probably wrong.
-        fake_jump = ('jump', '%1')
+        # Jump to return
+        fake_jump = ('jump', self.ret['label'])
         
         # Rest of code label
-        rest_label = (target_rest,)
+        rest_label = (target_rest[1:],)
         
         # Append all instructions
         self.code += [branch, true_label, true_jump, fake_label, error, fake_jump, rest_label]
@@ -137,6 +154,10 @@ class uCIRGenerate(ast.NodeVisitor):
 
         # Store location of the result on the node
         node.gen_location = target
+        
+    def visit_Break(self, node):
+        # TODO: find out loop (idea: class attribute with gen_location of label).
+        return
 
     def visit_Cast(self, node):
         # Visit the expression
@@ -177,6 +198,30 @@ class uCIRGenerate(ast.NodeVisitor):
         # Save the name of the temporary variable where the value was placed 
         node.gen_location = target
     
+    def visit_Decl(self, node):
+        # Visit declaration type
+        inst = self.visit(node.type)
+        
+        # Get gen_location
+        if not isinstance(node.type, ast.FuncDecl):
+            node.gen_location = node.type.gen_location
+        
+        # Handle initialization
+        if node.init:
+            # Visit initializers
+            self.visit(node.init)
+            
+            # Create opcode and append to instruction list
+            # TODO: array?
+            if inst:
+                # TODO: this does not get the actual value, but the register. what to do?
+                inst = (inst[0], inst[1], node.init.gen_location)
+            else:
+                ty = node.init.type.name[-1].name
+                inst = ('store_' + ty, node.init.gen_location, node.type.gen_location)
+            
+            self.code.append(inst)
+            
     def visit_DeclList(self, node):
         for decl in node.decls:
             self.visit(decl)
@@ -197,7 +242,7 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Create loop label
         label = self.new_temp()
-        self.code.append((label,))
+        self.code.append((label[1:],))
         
         if node.cond:
             # Visit the condition
@@ -211,7 +256,7 @@ class uCIRGenerate(ast.NodeVisitor):
             inst = ('cbranch', node.cond.gen_location, target_true, target_fake)
             self.code.append(inst)
 
-            self.code.append((target_true,))
+            self.code.append((target_true[1:],))
         else:
             target_fake = self.new_temp()
             
@@ -228,7 +273,7 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code.append(inst)
         
         # Rest of the code
-        self.code.append((target_fake,))
+        self.code.append((target_fake[1:],))
     
     def visit_FuncCall(self, node):
         # Visit arguments.
@@ -237,7 +282,7 @@ class uCIRGenerate(ast.NodeVisitor):
             
             # 1 vs multiple arguments
             if isinstance(node.args, ast.ExprList):
-                args = node.args.expr
+                args = node.args.exprs
             else:
                 args = [node.args]
             
@@ -248,9 +293,73 @@ class uCIRGenerate(ast.NodeVisitor):
                 self.code.append(inst)
         
         # Create opcode and append to list
-        # TODO: check return type of function, and create temporary variable for it if non-void. Also, gen_location if so.
         inst = ('call', node.name.name)
         self.code.append(inst)
+        
+        # TODO: check return type of function, and create temporary variable for it if non-void. Also, gen_location if so.
+        node.gen_location = self.new_temp()
+    
+    def visit_FuncDecl(self, node):
+        # TODO: what? Anything? Ask for more examples.
+        # TODO: not including signatures
+        if node.params:
+            self.visit(node.params)
+    
+    def visit_FuncDef(self, node):
+        # Find out function name.
+        var = node.decl
+        while not isinstance(var, ast.VarDecl):
+            var = var.type
+        name = var.declname.name
+        
+        # Create opcode and append to list.
+        inst = ('define', name)
+        self.code.append(inst)
+        
+        # Start function
+        self.fname = name
+        
+        # Skip temp variables for params and return
+        par = node.decl
+        while not isinstance(par, ast.FuncDecl):
+            par = par.type
+        if par.params:
+            self.versions[name] = len(par.params.params)
+        else:
+            self.versions[name] = 0
+
+        # Get return temporary variable
+        self.ret['value'] = self.new_temp()
+                
+        # Visit function declaration
+        self.visit(node.decl)
+        
+        # Get return label, if needed.
+        self.ret['label'] = self.new_temp()
+        label = (self.ret['label'][1:],)
+                
+        # Visit body
+        if node.body:
+            self.visit(node.body)
+        
+        # Return label and return
+        ty = var.type.name[-1].name
+        
+        # Void = no return, only label and return_void inst.
+        if ty == 'void':
+            ret_inst = ('return_void',)
+            self.code += [label, ret_inst]
+        # Type: get return value from ret_val and return it.
+        else:
+            # New temp for return value.
+            ret_target = self.new_temp()
+            
+            # Get return value from ret_val (stored)
+            val_inst = ('load_'+ty, self.ret['value'], ret_target)
+            
+            # Return instruction and append.
+            ret_inst = ('return_'+ty, ret_target)
+            self.code += [label, val_inst, ret_inst]
     
     def visit_GlobalDecl(self, node):
         for decl in node.decls:
@@ -261,11 +370,17 @@ class uCIRGenerate(ast.NodeVisitor):
         target = self.new_temp()
         
         # Create the opcode and append to list
-        inst = ('load_' + node.type.name[-1].name, node.name, target)
+        ty = node.type.name[-1].name
+        inst = ('load_' + ty, node.name, target)
         self.code.append(inst)
         
         # Save the name of the temporary variable where the value was placed 
         node.gen_location = target
+        
+    def visit_InitList(self, node):
+        # TODO: idk
+        for expr in node.exprs:
+            self.visit(expr)
     
     def visit_If(self, node):
         # Visit condition
@@ -280,15 +395,29 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code.append(inst)
         
         # Create THEN
-        self.code.append((target_then,))
+        self.code.append((target_then[1:],))
         if node.if_stat:
             self.visit(node.if_stat)
         
         # Create ELSE
-        self.code.append((target_else,))
+        self.code.append((target_else[1:],))
         if node.else_stat:
             self.visit(node.else_stat)
     
+    def visit_ParamList(self, node):
+        for par in node.params:
+            # Visit parameter (allocate vars)
+            self.visit(par)
+        
+        for i, par in enumerate(node.params or []):
+            # Store value in temp var "i" in newly allocated var.
+            ty = par.type
+            while not isinstance(ty, ast.Type):
+                ty = ty.type
+            ty = ty.name[-1].name
+            inst = ('store_'+ty, f'%{i}', par.gen_location)
+            self.code.append(inst)
+
     def visit_Print(self, node):
         # Visit the expression
         if node.expr:
@@ -301,6 +430,12 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('print_' + ty, node.expr.gen_location)
         self.code.append(inst)
     
+    def visit_PtrDecl(self, node):
+        # TODO: ptr?
+        ret = self.visit(node.type)
+        node.gen_location = node.type.gen_location
+        return ret
+    
     def visit_Read(self, node):
         # Visit the expression
         self.visit(node.expr)
@@ -310,6 +445,23 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('read_' + ty, node.expr.gen_location)
         self.code.append(inst)
 
+    def visit_Return(self, node):
+        # If there is a return expression.
+        if node.expr:
+            self.visit(node.expr)
+            
+            # Store return value in allocated variable
+            ty = node.expr.type.name[-1].name
+            inst = ('store_'+ty, node.expr.gen_location, self.ret['value'])
+            self.code.append(inst)
+        
+        # Jump to return label.
+        inst = ('jump', self.ret['label'])
+        self.code.append(inst)
+
+    def visit_Type(self, node):
+        assert False, "'Type' nodes are not visited in code generation!"
+    
     def visit_UnaryOp(self, node):
         # Visit the expression
         self.visit(node.expr)
@@ -326,22 +478,25 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
 
     def visit_VarDecl(self, node):
+        ty = node.type.name[-1].name
+        
+        # Try global
+        if self.fname == 'global':
+            node.gen_location = '@'+node.declname.name
+            return ('global_'+ty, node.gen_location)
+        
         # Allocate on stack memory.
-        # TODO: global
-        inst = ('alloc_' + node.type.name[-1].name, node.declname.name)
+        alloc_target = self.new_temp()
+        inst = ('alloc_' + ty, node.declname.name, alloc_target)
         self.code.append(inst)
         
-        # Store optional init value.
-        # TODO: return operation to Decl, where initializer can be stored.
-        #if node.value:
-         #   self.visit(node.value)
-         #   inst = ('store_' + node.type.name, node.value.gen_location, node.id)
-         #   self.code.append(inst)
+        node.gen_location = alloc_target
+        return None
     
     def visit_While(self, node):
         # Create loop label
         label = self.new_temp()
-        self.code.append((label,))
+        self.code.append((label[1:],))
         
         # Visit the condition
         self.visit(node.cond)
@@ -355,7 +510,7 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code.append(inst)
         
         # Visit loop
-        self.code.append((target_true,))
+        self.code.append((target_true[1:],))
         if node.body:
             self.visit(node.body)
         
@@ -364,7 +519,7 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code.append(inst)
         
         # Rest of the code
-        self.code.append((target_fake,))
+        self.code.append((target_fake[1:],))
     
     ## AUXILIARY FUNCTIONS ##
     def get_operation(self, op, ty):

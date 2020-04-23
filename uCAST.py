@@ -156,12 +156,14 @@ class Program(Node):
 #### AST NODES CLASSES ####
 
 class ArrayDecl(Node):
-    __slots__ = ('type', 'dims', 'coord')
+    __slots__ = ('type', 'dims', 'gen_location', 'coord')
     
     def __init__(self, type, dims, coord=None):
         self.type = type
         self.dims = dims
         self.coord = coord
+        #IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -309,13 +311,15 @@ class Coord(Node):
         return coord_str 
         
 class Decl(Node):
-    __slots__ = ('name', 'type', 'init', 'coord')
+    __slots__ = ('name', 'type', 'init', 'gen_location', 'coord')
 
     def __init__(self, name, type, init, coord=None):
         self.name = name 
         self.type = type 
         self.init = init 
         self.coord = coord
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -376,15 +380,15 @@ class For(Node):
         return tuple(children)
 
 class FuncCall(Node):
-    __slots__ = ('name', 'args', 'type', 'coord')
+    __slots__ = ('name', 'args', 'type', 'gen_location', 'coord')
     
     def __init__ (self, name, args, coord=None):
         self.name = name
         self.args = args
         self.coord = coord
-        
         # Semantic Only
         self.type = None
+        self.gen_location = None
         
     def children(self):
         children = []
@@ -504,11 +508,13 @@ class Print(Node):
         return tuple(children)
 
 class PtrDecl(Node):
-    __slots__ = ('type', 'coord')
+    __slots__ = ('type', 'gen_location', 'coord')
     
     def __init__(self, type, coord=None):
         self.type = type
         self.coord = coord
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -568,12 +574,14 @@ class UnaryOp(Node):
     attr_names = ('op', )
 
 class VarDecl(Node):
-    __slots__ = ('declname', 'type', 'coord')
+    __slots__ = ('declname', 'type', 'gen_location', 'coord')
 
     def __init__(self, declname, type, coord=None):
         self.declname = declname
         self.type = type
         self.coord = coord 
+        #IR only
+        self.gen_location = None
 
     def children(self):
         children = []
