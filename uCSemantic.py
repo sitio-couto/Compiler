@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 20/04/2020.
+Last Modified: 22/04/2020.
 '''
  
 import uCType
@@ -183,15 +183,14 @@ class ScopeStack():
 
     # Add a new variable to the current function's scope (in node VarDecl)
     def add_to_scope(self, node):
-        # node should be Class ast.VarDecl
         scope = self.stack[-1]              # Get current scope (top of the stack)
         var_name = node.declname.name       # Get declared variable name
         
-        msg = f"Variable '{var_name}' defined twice in the same scope."
-        coord = f"({node.declname.coord.line}, {node.declname.coord.column}): "
-        assert not scope.lookup(var_name), coord+msg
+        # Check if variable is declared in scope.
+        declared = scope.lookup(var_name)
         
-        scope.add(var_name, node) # Add to current scope      
+        scope.add(var_name, node) # Add to current scope
+        return not declared
     
     def add_func(self, node):
         # node should be Class ast.VarDecl
@@ -890,8 +889,10 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.type)
         
         # 2. Check scope and insert in symbol table.
-        if isinstance(node.declname, ast.ID):
-            self.scopes.add_to_scope(node)
+        var = node.declname
+        msg = f"Variable '{var.name}' defined twice in the same scope."
+        msg = self.build_error_msg(msg, var.coord)
+        assert self.scopes.add_to_scope(node), msg
         
         # 3. Visit name.
         self.visit(node.declname)
