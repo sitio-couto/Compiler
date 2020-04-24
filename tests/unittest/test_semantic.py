@@ -48,11 +48,33 @@ class TestAST(unittest.TestCase):
 
         void main() {
             print();
+            print("veri", 123, "naice", 0.2, 'h');
             assert(v==1);
+            assert((v==1 && v!=0) || !(v==v) );
             read(v);
+            read("uat");
         }
         '''
         , err_test=False)
+
+    def test_pf2(self):
+        self.runNcmp(
+        '''
+        void test() {
+            assert("uaaat");
+        }
+        '''
+        , err_test=True)
+
+    def test_pf3(self):
+        self.runNcmp(
+        '''
+        void test() {
+            print(d);
+        }
+        '''
+        , err_test=True)
+
 
     # Functions
 
@@ -149,22 +171,22 @@ class TestAST(unittest.TestCase):
             test2 (1, 1.0, '1');
         }
 
-        void t2(int a, float b, char c){
+        void test2(int a, float b, char c){
             return;
         }
         '''
         , err_test=False)
 
-    # def test_f11(self):
-    #     self.runNcmp(
-    #     '''
-    #     void test2 (int a, float b, char c);
+    def test_f11(self):
+        self.runNcmp(
+        '''
+        void test2 (int a, float b, char c);
 
-    #     void test(int a, float b, char c){
-    #         test2 (1, 1.0, '1');
-    #     }
-    #     '''
-    #     , err_test=True)
+        void test(int a, float b, char c){
+            test2 (1, 1.0, '1');
+        }
+        '''
+        , err_test=True)
 
     def test_f12(self):
         self.runNcmp(
@@ -178,7 +200,7 @@ class TestAST(unittest.TestCase):
             test2 (x, y, z);
         }
 
-        void t2(int a, float b, char c){
+        void test2(int a, float b, char c){
             return;
         }
         '''
@@ -186,6 +208,22 @@ class TestAST(unittest.TestCase):
 
     # Variables
     
+    def test_v0(self):
+        self.runNcmp(
+        '''
+        int x = 1;
+
+        void main () {
+            float f = -.1, f2 = +0.3;
+            f *= 0.01;
+            f2 /= 123.0;
+            x += 1;
+            x -= 1;
+            print(&x);
+        }
+        '''
+        , err_test=False)
+
     def test_v1(self):
         self.runNcmp(
         '''
@@ -266,9 +304,22 @@ class TestAST(unittest.TestCase):
         self.runNcmp(
         '''
         int i = 2.31;
+        
+        void main ( ) {
+            ++i;
+            i++;
+            return;
+        }
         '''
         , err_test=True)
 
+    def test_v9(self):
+        self.runNcmp(
+        '''
+        int i = 2.31;
+        
+        '''
+        , err_test=True)
 
     # Arrays
 
@@ -290,6 +341,13 @@ class TestAST(unittest.TestCase):
         char c = str2[3];
         '''
         , err_test=False)
+
+    def test_a2(self):
+        self.runNcmp(
+        '''
+        int i[];
+        '''
+        , err_test=True)
 
     def test_a2(self):
         self.runNcmp(

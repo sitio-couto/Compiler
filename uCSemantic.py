@@ -54,8 +54,7 @@ class SignaturesTable():
     def __init__(self):
         self.sign = dict()  # Check which functions were declared (signatures: int main(float f);)
     
-    # Register function signature (when Decl is declaring a FuncDecl)
-    # NOTE: function calls will be validate using self.sign table
+    # Register function signature (when Decl is declaring a FuncDecl)\
     # Params: 
     #   node - a FuncDecl class from the uCAST
     def sign_func(self, node, defining):
@@ -149,7 +148,17 @@ class SignaturesTable():
 
     # Fetches signature (node must be ast.ID)
     def get_sign(self, node):
-        return self.sign.get(node.name, None)
+        sign = self.sign.get(node.name, None)
+        if sign : sign['called'] = True # Tag as called
+        return sign
+
+    # Check it there's an undefined declaration (signature)
+    def all_defined(self):
+        for (name,sign) in zip(self.sign.keys(),self.sign.values()):
+            if not sign.get('called', None) : continue
+            defined = sign['defined']
+            msg = f"Function '{name}' has multiple declarations: diffrent return types."
+            assert defined, msg
     
     def __str__(self):
         text = '\n'
@@ -312,7 +321,10 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 3. Remove global scope.
         self.scopes.pop_scope()
         
-        # 4. Clear signatures table for next semantic check.
+        # 4. Checking if called funcs were defined
+        self.signatures.all_defined()
+
+        # 5. Clear signatures table for next semantic check.
         self.signatures = SignaturesTable()
 
     def visit_ArrayDecl(self, node):
