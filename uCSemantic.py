@@ -573,7 +573,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                         # TODO: dims can be UnOp or other expression... Not worth it?
                         msg = f"Initializer-string '{const.value}' for char array is too long."
                         msg = self.build_error_msg(msg, dims.coord)
-                        assert len(const.value) <= dims.value, msg
+                        assert len(const.value)-2 <= dims.value, msg
                     else:
                         node.type.dims = ast.Constant('int', len(const.value), node.name.coord)
                         self.visit_Constant(node.type.dims)
