@@ -156,7 +156,7 @@ class Compiler:
             elif ast_file is not None:
                 self.ast.show(buf=ast_file, showcoord=True)
         except AssertionError as e:
-           error(None, e)
+            error(None, e)
 
     def _do_compile(self, susy, ast_file, debug):
         """ Compiles the code to the given file object. """
@@ -170,7 +170,10 @@ class Compiler:
         with subscribe_errors(lambda msg: sys.stderr.write(msg+"\n")):
             self._do_compile(susy, ast_file, debug)
             if errors_reported():
-                sys.stderr.write("{} error(s) encountered.".format(errors_reported()))
+                sys.stderr.write("{} error(s) encountered.\n".format(errors_reported()))
+                retval = errors_reported()
+                clear_errors()
+                return retval
         return 0
 
 
