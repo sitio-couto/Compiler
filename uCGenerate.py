@@ -16,6 +16,106 @@ Last Modified: 23/04/2020.
 import uCAST as ast
 from os.path import exists
 
+class SymbolTable(object):
+    '''
+    Class representing a symbol table.  It should provide functionality
+    for adding and looking up nodes associated with identifiers.
+    '''
+    def __init__(self):
+        self.symtab = {}
+    def lookup(self, a):
+        return self.symtab.get(a, None)
+    def add(self, a, v):
+        self.symtab[a] = v
+    def pop(self, a):
+        self.symtab.pop(a)
+    
+    def __str__(self, offset=''):
+        text = ''
+        for name in self.symtab.keys():
+            text += f"{offset}    {name}\n"
+        return text
+
+class ScopeStack():
+    '''
+    Class responsible for keeping variables scopes.
+    Used for type checking variables as well as checking if they're are defined.
+    Atributes:
+        - stack: stack of SymbolTables. Each item is a different scope ([0] is global [-1] is local)
+    '''
+    def __init__(self):
+        self.stack = []
+    
+    # Add new scope (if a function definition started)
+    # Every function definition is considered a new scope (new symboltable)
+    def add_scope(self, node=None):
+        sym_tab = SymbolTable()
+        if node : node = node.decl.name # Get funcs name (None if loop)
+        sym_tab.add(0, node)            # Add scope name to table with key 0 (only numeric)
+        self.stack.append(sym_tab) 
+
+    # Add a new variable's address to the current function's scope
+    def add_to_scope(self, node, addr):
+        scope = self.stack[-1]      # Get current scope (top of the stack)
+        name = node.declname.name   # Get declared variable name
+        scope.add(name, addr)       # Add address to current scope
+
+    # Return a variable's address
+    def fetch_addr(self, node):
+        name = node.name
+        for scope in self.stack[::-1]:
+            var = scope.lookup(name)
+            if var: break                       # Prioritize local
+        return var
+
+    # Add a function's label to the scope
+    def add_func(self, node):
+        pass
+
+    # Remove current scope from stack (when a FuncDef node ends)
+    def pop_scope(self):
+        self.stack.pop() 
+    
+    # Check the current enclosure
+    def enclosure(self):
+        scope = self.stack[-1]
+        return scope.lookup(0)
+    
+    # Get current function scope.
+    def nearest_func_scope(self):
+        for scope in self.stack[::-1]:
+            if scope.lookup(0): return scope
+        return None
+
+    # Check the current function
+    def nearest_function(self):
+        func = self.nearest_func_scope()
+        return func.lookup(0) if func else None
+
+    # Set that function has returned.
+    def set_returned(self):
+        func = self.nearest_func_scope()
+        if func: func.add('returned', True)
+
+    # Get if function is returned.
+    def check_returned(self):
+        func = self.nearest_func_scope()
+        return func.lookup('returned')
+
+    def __str__(self):
+        text = '\n'
+        for (i,sym) in enumerate(self.stack):
+            st = sym.symtab
+            labels = list(st.keys())
+            labels.remove(0) # Remove enclosure
+            labels = [(x,st[x]) for x in labels]
+            if i: enclosure = f"At '{st[0].name}'" if st[0] else 'In a loop'
+            else : enclosure = 'Globals'
+            text += f"{enclosure} => |"
+            for k,v in labels: text+=f" {k} {v} |"
+            text += '\n'
+        return text
+
 # TODO: types - -1, 0 or all?
 class uCIRGenerate(ast.NodeVisitor):
     '''
@@ -23,7 +123,10 @@ class uCIRGenerate(ast.NodeVisitor):
     '''
     def __init__(self, front_end):
         super(uCIRGenerate, self).__init__()
-        
+
+        # Adding variables tables
+        self.scopes = ScopeStack()
+
         # Adding front_end for testing.
         self.front_end = front_end
         
@@ -78,13 +181,19 @@ class uCIRGenerate(ast.NodeVisitor):
             print(inst)
 
     def visit_Program(self, node):
-        # Define global scope.
+        # Define volatile vars scope.
         self.fname = 'global'
         self.versions = {}
+
+        # Add global scope.
+        self.scopes.add_scope()
         
         # Visit all of the statements
         for gdecl in node.gdecls:
             self.visit(gdecl)
+
+        # Remove global scope.
+        self.scopes.pop_scope()
 
     def visit_ArrayDecl(self, node):
         # TODO: what?
@@ -133,11 +242,12 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Create the opcode and append to list
         ty = node.rvalue.type.name[-1].name
-        inst = ('store_' + ty, node.rvalue.gen_location, node.lvalue.gen_location) # TODO: lvalue has gen_location?
+        laddr = self.scopes.fetch_addr(node.lvalue)
+        inst = ('store_' + ty, node.rvalue.gen_location, laddr) # TODO: lvalue has gen_location?
         self.code.append(inst)
         
         # Store location of the result on the node        
-        node.gen_location = node.lvalue.gen_location
+        node.gen_location = laddr
         
     def visit_BinaryOp(self, node):
         # Visit the left and right expressions
@@ -306,6 +416,9 @@ class uCIRGenerate(ast.NodeVisitor):
             self.visit(node.params)
     
     def visit_FuncDef(self, node):
+        # Add function's scope
+        self.scopes.add_scope(node=node)
+
         # Find out function name.
         var = node.decl
         while not isinstance(var, ast.VarDecl):
@@ -360,6 +473,10 @@ class uCIRGenerate(ast.NodeVisitor):
             # Return instruction and append.
             ret_inst = ('return_'+ty, ret_target)
             self.code += [label, val_inst, ret_inst]
+        
+        # Remove function's scope
+        print(self.scopes)
+        self.scopes.pop_scope()
     
     def visit_GlobalDecl(self, node):
         for decl in node.decls:
@@ -490,8 +607,9 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('alloc_' + ty, node.declname.name, alloc_target)
         self.code.append(inst)
         
+        self.scopes.add_to_scope(node, alloc_target)
+
         node.gen_location = alloc_target
-        return None
     
     def visit_While(self, node):
         # Create loop label
