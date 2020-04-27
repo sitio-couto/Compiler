@@ -145,6 +145,7 @@ class uCLexer():
 
     def t_STRING (self, t) :
         r'\".*?\"'
+        t.value = t.value[1:-1]
         return t
         
     def t_LINECOMMENT (self, t) :
