@@ -15,6 +15,7 @@ Last Modified: 23/04/2020.
 
 import uCAST as ast
 from os.path import exists
+import re
 
 class SymbolTable(object):
     '''
@@ -61,47 +62,18 @@ class ScopeStack():
         scope.add(name, addr)       # Add address to current scope
 
     # Return a variable's address
-    def fetch_addr(self, node):
+    def fetch_temp(self, node):
         name = node.name
         for scope in self.stack[::-1]:
             var = scope.lookup(name)
             if var: break                       # Prioritize local
         return var
 
-    # Add a function's label to the scope
-    def add_func(self, node):
-        pass
-
     # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):
         self.stack.pop() 
-    
-    # Check the current enclosure
-    def enclosure(self):
-        scope = self.stack[-1]
-        return scope.lookup(0)
-    
-    # Get current function scope.
-    def nearest_func_scope(self):
-        for scope in self.stack[::-1]:
-            if scope.lookup(0): return scope
-        return None
 
-    # Check the current function
-    def nearest_function(self):
-        func = self.nearest_func_scope()
-        return func.lookup(0) if func else None
-
-    # Set that function has returned.
-    def set_returned(self):
-        func = self.nearest_func_scope()
-        if func: func.add('returned', True)
-
-    # Get if function is returned.
-    def check_returned(self):
-        func = self.nearest_func_scope()
-        return func.lookup('returned')
-
+    # Print for debugging
     def __str__(self):
         text = '\n'
         for (i,sym) in enumerate(self.stack):
@@ -136,7 +108,7 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Dictionaries for operations
         self.bin_ops = {'+':'add', '-':'sub', '*':'mul', '/':'div', '%':'mod'}
-        self.un_ops = {'+':'uadd', '-':'uneg'} #TODO: ++, --, p++, p--, *, &
+        self.un_ops = {'+':'uadd', '-':'uneg', '++':'uinc', '--':'udec', 'p++':'upinc', 'p--':'updec'} #TODO: *, &
         self.rel_ops = {'<':'lt', '>':'gt', '<=':'le', '>=':'ge', '==':'eq', '!=':'ne', '&&':'and', '||':'or'}
 
         # The generated code (list of tuples)
@@ -197,7 +169,16 @@ class uCIRGenerate(ast.NodeVisitor):
 
     def visit_ArrayDecl(self, node):
         # TODO: what?
-        ret = self.visit(node.type)
+        if isinstance(node.type, ast.VarDecl):
+            ty = node.type.type.name[-1].name
+            node.type.gen_location = '@'+node.type.declname.name
+            ret = ('global_'+ty, node.type.gen_location)
+        else:
+            ret = self.visit(node.type)
+ 
+        if ret:
+            ret = (f'{ret[0]}_{node.dims.value}', ret[1])
+        
         node.gen_location = node.type.gen_location
         return ret
 
@@ -242,7 +223,7 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Create the opcode and append to list
         ty = node.rvalue.type.name[-1].name
-        laddr = self.scopes.fetch_addr(node.lvalue)
+        laddr = self.scopes.fetch_temp(node.lvalue)
         inst = ('store_' + ty, node.rvalue.gen_location, laddr) # TODO: lvalue has gen_location?
         self.code.append(inst)
         
@@ -300,8 +281,14 @@ class uCIRGenerate(ast.NodeVisitor):
         # Create a new temporary variable name 
         target = self.new_temp()
 
-        # Make the SSA opcode and append to list of generated instructions
+        # Get type and check if is a string
         ty = node.type.name[0].name
+        if ty == 'string': 
+            # Constant must be in array (no opcode)
+            node.gen_location = node.value
+            return
+        
+        # Make the SSA opcode and append to list of generated instructions
         inst = ('literal_' + ty, node.value, target)
         self.code.append(inst)
 
@@ -320,7 +307,7 @@ class uCIRGenerate(ast.NodeVisitor):
         if node.init:
             # Visit initializers
             self.visit(node.init)
-            
+
             # Create opcode and append to instruction list
             # TODO: array?
             if inst:
@@ -331,6 +318,14 @@ class uCIRGenerate(ast.NodeVisitor):
                 inst = ('store_' + ty, node.init.gen_location, node.type.gen_location)
             
             self.code.append(inst)
+        # If is an array with no initialization, set all as zero
+        elif isinstance(node.type, ast.ArrayDecl):
+            vals = 0
+            dims = [int(x) for x in re.findall(r"_(\d+)", inst[0])]
+            for d in reversed(dims): vals = [vals]*d
+            inst = (inst[0], inst[1], vals)
+            self.code.append(inst)
+            
             
     def visit_DeclList(self, node):
         for decl in node.decls:
@@ -495,9 +490,10 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
         
     def visit_InitList(self, node):
-        # TODO: idk
+        node.gen_location = []
         for expr in node.exprs:
-            self.visit(expr)
+            node.gen_location.append(expr.value)
+            # self.visit(expr)
     
     def visit_If(self, node):
         # Visit condition

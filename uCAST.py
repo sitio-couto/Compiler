@@ -471,11 +471,12 @@ class If(Node):
         return tuple(children)
 
 class InitList(Node):
-    __slots__ = ('exprs', 'coord')
+    __slots__ = ('exprs', 'gen_location', 'coord')
 
     def __init__(self, exprs, coord=None):
         self.exprs = exprs
         self.coord = coord
+        self.gen_location = None
 
     def children(self):
         children = []

@@ -349,12 +349,6 @@ class TestAST(unittest.TestCase):
         '''
         , err_test=True)
 
-    def test_a2(self):
-        self.runNcmp(
-        '''
-        int i[];
-        '''
-        , err_test=True)
 
 
 
