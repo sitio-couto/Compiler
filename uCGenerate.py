@@ -54,7 +54,7 @@ class ScopeStack():
     # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):
         self.stack.pop() 
-
+    
     # Print for debugging
     def __str__(self):
         text = '\n'
@@ -307,12 +307,17 @@ class uCIRGenerate(ast.NodeVisitor):
     
     def visit_Decl(self, node):
         # Check if allocation phase (TODO: really incomplete)
+        if self.fname == 'global' and not isinstance(node.type, ast.FuncDecl):
+            ty = self.build_types(node.type)
+            # add global variable
+            
         #if self.alloc_phase:
-        inst = self.visit(node.type)
+        #inst = self.visit(node.type)
         
         # Get gen_location
         if not isinstance(node.type, ast.FuncDecl):
-             node.gen_location = node.type.gen_location
+            ty = self.build_types(node.type)
+            node.gen_location = node.type.gen_location
         
         # Handle initialization
         if node.init:
@@ -613,10 +618,10 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_VarDecl(self, node):
         ty = node.type.name[-1].name
         
-        # Try global (TODO: awful)
+        # Try global
         if self.fname == 'global':
             node.gen_location = '@'+node.declname.name
-            return ('global_'+ty, node.gen_location)
+            return
         
         # Allocate on stack memory.
         alloc_target = self.new_temp()
@@ -664,3 +669,14 @@ class uCIRGenerate(ast.NodeVisitor):
             return self.bin_ops[op] + "_" + ty.name[-1].name
         else:
             return self.rel_ops[op] + "_" + ty.name[-1].name
+
+    def build_types(self, node):
+        msg = ''
+        ty = node
+        while not isinstance(ty, ast.VarDecl):
+            if isinstance(ty, ast.ArrayDecl):
+                msg += f'{ty.dims.value}_'
+            elif isinstance(ty, ast.PtrDecl):
+                msg += '*_'
+            ty = ty.type
+        return msg + ty.type.name[-1].name
