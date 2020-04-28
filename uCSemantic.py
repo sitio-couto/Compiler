@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/04/2020.
+Last Modified: 28/04/2020.
 '''
  
 import uCType
@@ -58,9 +58,9 @@ class SignaturesTable():
     # Params: 
     #   node - a FuncDecl class from the uCAST
     def sign_func(self, node, defining):
-        name      = node.type.declname.name # Get function's name
+        name      = node.type.declname.name 
         ty        = node.type.type          # get func type (FuncDecl.VarDecl.Type)
-        params    = []                      # Use to keep function params types
+        params    = []                      
         coord = f"({node.type.declname.coord.line}, {node.type.declname.coord.column}): "
 
         if node.params: 
@@ -87,8 +87,8 @@ class SignaturesTable():
             signature['defined'] = defining # Update flag if defining and not defined
 
             # Check return type and amount of paramters
-            msg = f"Function '{name}' has multiple declarations: diffrent return types."
-            ret_type = (ty.name[0] == signature['type'].name[0])
+            msg = f"Function '{name}' has multiple declarations: different return types."
+            ret_type = (ty.name == signature['type'].name)
             assert ret_type, coord+msg
             
             msg = f"Function '{name}' has exceding/missing arguments."
@@ -96,9 +96,9 @@ class SignaturesTable():
             assert num_params, coord+msg
             
             # Check paramter types
-            param_types = True # Assume their types match
+            param_types = True 
             for (new, sign) in zip(new['params'], self.sign[name]['params']):
-                param_types *= (sign.name[0] == new.name[0]) # Check if all params match
+                param_types *= (sign.name == new.name)
                 
             msg = f"Function '{name}' has incorrect parameter types."
             assert param_types, coord+msg
@@ -180,36 +180,40 @@ class ScopeStack():
     '''
     def __init__(self):
         # Index 0 is the global scope, -1 is the current scope
-        self.stack = [] # last element is the top of the stack
+        self.stack = [] 
     
     # Add new scope (if a function definition started)
     # Every function definition is considered a new scope (new symboltable)
     def add_scope(self, node=None):
         sym_tab = SymbolTable()
-        if node : node = node.decl.name # Get funcs name (None if loop)
+        if node : node = node.decl.name 
         sym_tab.add(0, node)            # Add scope name to table with key 0 (only numeric)
         self.stack.append(sym_tab) 
 
     # Add a new variable to the current function's scope (in node VarDecl)
     def add_to_scope(self, node):
-        scope = self.stack[-1]              # Get current scope (top of the stack)
-        var_name = node.declname.name       # Get declared variable name
+        scope = self.stack[-1]      
+        var_name = node.declname.name 
         
         # Check if variable is declared in scope.
         declared = scope.lookup(var_name)
         
-        scope.add(var_name, node) # Add to current scope
+        scope.add(var_name, node)
         return not declared
     
     def add_func(self, node):
         # node should be Class ast.VarDecl
-        f_name = node.declname.name  # Get declared variable name
-        glob = self.stack[0]         # Get global scope
-        loc = self.stack[-1]         # Get current scope (top of the stack)
-        if not glob.lookup(f_name):  # Add global ref if func not defined
-            glob.add(f_name, node)   # Add to global scope 
-        if loc.lookup(f_name):       # if in current scope
-            loc.pop(f_name)          # Remove from current scope.
+        f_name = node.declname.name 
+        glob = self.stack[0]        
+        loc = self.stack[-1]
+        
+        # Add to global scope if not defined
+        if not glob.lookup(f_name):  
+            glob.add(f_name, node)
+            
+        # Remove local scope
+        if loc.lookup(f_name):       
+            loc.pop(f_name)          
 
     # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):

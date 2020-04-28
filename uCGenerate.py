@@ -10,32 +10,13 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/04/2020.
+Last Modified: 28/04/2020.
 '''
 
-import uCAST as ast
-from os.path import exists
 import re
-
-class SymbolTable(object):
-    '''
-    Class representing a symbol table.  It should provide functionality
-    for adding and looking up nodes associated with identifiers.
-    '''
-    def __init__(self):
-        self.symtab = {}
-    def lookup(self, a):
-        return self.symtab.get(a, None)
-    def add(self, a, v):
-        self.symtab[a] = v
-    def pop(self, a):
-        self.symtab.pop(a)
-    
-    def __str__(self, offset=''):
-        text = ''
-        for name in self.symtab.keys():
-            text += f"{offset}    {name}\n"
-        return text
+import uCAST as ast
+from uCSemantic import SymbolTable
+from os.path import exists
 
 class ScopeStack():
     '''
@@ -51,22 +32,23 @@ class ScopeStack():
     # Every function definition is considered a new scope (new symboltable)
     def add_scope(self, node=None):
         sym_tab = SymbolTable()
-        if node : node = node.decl.name # Get funcs name (None if loop)
-        sym_tab.add(0, node)            # Add scope name to table with key 0 (only numeric)
+        if node : node = node.decl.name 
+        sym_tab.add(0, node)
         self.stack.append(sym_tab) 
 
     # Add a new variable's address to the current function's scope
     def add_to_scope(self, node, addr):
-        scope = self.stack[-1]      # Get current scope (top of the stack)
-        name = node.declname.name   # Get declared variable name
-        scope.add(name, addr)       # Add address to current scope
+        scope = self.stack[-1]
+        name = node.declname.name
+        scope.add(name, addr)
 
     # Return a variable's address
+    # TODO: global is different than local
     def fetch_temp(self, node):
         name = node.name
         for scope in self.stack[::-1]:
             var = scope.lookup(name)
-            if var: break                       # Prioritize local
+            if var: break
         return var
 
     # Remove current scope from stack (when a FuncDef node ends)
@@ -88,7 +70,8 @@ class ScopeStack():
             text += '\n'
         return text
 
-# TODO: types - -1, 0 or all?
+# TODO: change types to recursive (aux function).
+# TODO: remove returns from visit, replace with deep dive from upper nodes.
 class uCIRGenerate(ast.NodeVisitor):
     '''
     Node visitor class that creates 3-address encoded instruction sequences.
@@ -108,7 +91,7 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Dictionaries for operations
         self.bin_ops = {'+':'add', '-':'sub', '*':'mul', '/':'div', '%':'mod'}
-        self.un_ops = {'+':'uadd', '-':'uneg', '++':'uinc', '--':'udec', 'p++':'upinc', 'p--':'updec'} #TODO: *, &
+        self.un_ops = {'+':'uadd', '-':'uneg', '++':'uinc', '--':'udec', 'p++':'upinc', 'p--':'updec'} #TODO: wrong. See new examples
         self.rel_ops = {'<':'lt', '>':'gt', '<=':'le', '>=':'ge', '==':'eq', '!=':'ne', '&&':'and', '||':'or'}
 
         # The generated code (list of tuples)
@@ -116,6 +99,8 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Useful attributes
         self.ret = {'label':None, 'value':None}
+        self.loop_end = None
+        self.alloc_phase = None
 
     def new_temp(self):
         ''' Create a new temporary variable of a given scope (function name). '''
@@ -168,14 +153,9 @@ class uCIRGenerate(ast.NodeVisitor):
         self.scopes.pop_scope()
 
     def visit_ArrayDecl(self, node):
-        # TODO: what?
-        if isinstance(node.type, ast.VarDecl):
-            ty = node.type.type.name[-1].name
-            node.type.gen_location = '@'+node.type.declname.name
-            ret = ('global_'+ty, node.type.gen_location)
-        else:
-            ret = self.visit(node.type)
- 
+        # TODO: local and init
+        ret = self.visit(node.type)
+        
         if ret:
             ret = (f'{ret[0]}_{node.dims.value}', ret[1])
         
@@ -183,8 +163,19 @@ class uCIRGenerate(ast.NodeVisitor):
         return ret
 
     def visit_ArrayRef(self, node):
-        # TODO: what? Ask for more examples
-        self.visit(node.name)
+        # Visit subscript
+        self.visit(node.subsc)
+        
+        # Get array
+        arr = scopes.fetch_temp(node.name)
+        ty = node.type.name[-1].name
+        
+        # Get new temp variable
+        target = self.new_temp()
+        
+        # Create instruction
+        inst = ("elem_" + ty, arr, node.subsc.gen_location, target)
+        self.code.append(inst)
 
     def visit_Assert(self, node):
         # Visit the assert condition
@@ -223,8 +214,25 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Create the opcode and append to list
         ty = node.rvalue.type.name[-1].name
-        laddr = self.scopes.fetch_temp(node.lvalue)
-        inst = ('store_' + ty, node.rvalue.gen_location, laddr) # TODO: lvalue has gen_location?
+        
+        # Assignable expressions are ID and ArrayRef
+        # TODO: arrayRef correct?
+        if isinstance(node.lvalue, ast.ID):
+            laddr = self.scopes.fetch_temp(node.lvalue)
+        else:
+            self.visit(node.lvalue)
+            laddr = node.lvalue.gen_location
+        
+        # Other assignment ops
+        if node.op != '=':
+            loc = self.new_temp()
+            opcode = self.bin_ops[node.op[0]] + "_" + ty
+            inst = (opcode, laddr, node.rvalue.gen_location, loc)
+            self.code.append(inst)
+        else:
+            loc = node.rvalue.gen_location
+        
+        inst = ('store_' + ty, loc, laddr)
         self.code.append(inst)
         
         # Store location of the result on the node        
@@ -232,8 +240,8 @@ class uCIRGenerate(ast.NodeVisitor):
         
     def visit_BinaryOp(self, node):
         # Visit the left and right expressions
-        self.visit(node.lvalue)
         self.visit(node.rvalue)
+        self.visit(node.lvalue)
 
         # Make a new temporary for storing the result
         target = self.new_temp()
@@ -247,8 +255,8 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
         
     def visit_Break(self, node):
-        # TODO: find out loop (idea: class attribute with gen_location of label).
-        return
+        inst = ('jump', self.loop_end)
+        self.code.append(inst)
 
     def visit_Cast(self, node):
         # Visit the expression
@@ -283,6 +291,8 @@ class uCIRGenerate(ast.NodeVisitor):
 
         # Get type and check if is a string
         ty = node.type.name[0].name
+        
+        # TODO: wrong
         if ty == 'string': 
             # Constant must be in array (no opcode)
             node.gen_location = node.value
@@ -296,12 +306,13 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
     
     def visit_Decl(self, node):
-        # Visit declaration type
+        # Check if allocation phase (TODO: really incomplete)
+        #if self.alloc_phase:
         inst = self.visit(node.type)
         
         # Get gen_location
         if not isinstance(node.type, ast.FuncDecl):
-            node.gen_location = node.type.gen_location
+             node.gen_location = node.type.gen_location
         
         # Handle initialization
         if node.init:
@@ -319,13 +330,13 @@ class uCIRGenerate(ast.NodeVisitor):
             
             self.code.append(inst)
         # If is an array with no initialization, set all as zero
+        # TODO: is this correct
         elif isinstance(node.type, ast.ArrayDecl):
             vals = 0
             dims = [int(x) for x in re.findall(r"_(\d+)", inst[0])]
             for d in reversed(dims): vals = [vals]*d
             inst = (inst[0], inst[1], vals)
             self.code.append(inst)
-            
             
     def visit_DeclList(self, node):
         for decl in node.decls:
@@ -366,6 +377,9 @@ class uCIRGenerate(ast.NodeVisitor):
             self.code.append((target_true[1:],))
         else:
             target_fake = self.new_temp()
+        
+        # Add loop ending to attribute.
+        self.loop_end = target_fake
             
         # Visit loop
         if node.body:
@@ -540,13 +554,19 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit the expression
         if node.expr:
             self.visit(node.expr)
-            ty = node.expr.type.name[-1].name
+            
+            if isinstance(node.expr, ast.ExprList):
+                for expr in node.expr.exprs:
+                    ty = expr.type.name[-1].name
+                    inst = ('print_' + ty, expr.gen_location)
+                    self.code.append(inst)
+            else:
+                ty = node.expr.type.name[-1].name
+                inst = ('print_' + ty, node.expr.gen_location)
+                self.code.append(inst)
         else:
-            ty = 'void' #TODO: correct?
-
-        # Create the opcode and append to list
-        inst = ('print_' + ty, node.expr.gen_location)
-        self.code.append(inst)
+            inst = ('print_void',)
+            self.code.append(inst)
     
     def visit_PtrDecl(self, node):
         # TODO: ptr?
@@ -598,14 +618,14 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_VarDecl(self, node):
         ty = node.type.name[-1].name
         
-        # Try global
+        # Try global (TODO: awful)
         if self.fname == 'global':
             node.gen_location = '@'+node.declname.name
             return ('global_'+ty, node.gen_location)
         
         # Allocate on stack memory.
         alloc_target = self.new_temp()
-        inst = ('alloc_' + ty, node.declname.name, alloc_target)
+        inst = ('alloc_' + ty, alloc_target)
         self.code.append(inst)
         
         self.scopes.add_to_scope(node, alloc_target)
@@ -628,6 +648,9 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('cbranch', node.cond.gen_location, target_true, target_fake)
         self.code.append(inst)
         
+        # Add loop ending to attribute.
+        self.loop_end = target_fake
+        
         # Visit loop
         self.code.append((target_true[1:],))
         if node.body:
@@ -645,4 +668,4 @@ class uCIRGenerate(ast.NodeVisitor):
         if op in self.bin_ops.keys():
             return self.bin_ops[op] + "_" + ty.name[-1].name
         else:
-            return self.rel_ops[op]
+            return self.rel_ops[op] + "_" + ty.name[-1].name

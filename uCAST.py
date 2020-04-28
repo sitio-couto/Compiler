@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/04/2020.
+Last Modified: 27/04/2020.
 '''
 
 import sys
@@ -172,7 +172,7 @@ class ArrayDecl(Node):
         return tuple(children)
 
 class ArrayRef(Node):
-    __slots__ = ('name', 'subsc', 'type', 'coord')
+    __slots__ = ('name', 'subsc', 'type', 'gen_location', 'coord')
     
     def __init__(self, name, subsc, coord):
         self.name = name
@@ -181,6 +181,9 @@ class ArrayRef(Node):
         
         # Semantic Only
         self.type = None
+        
+        # IR Only
+        self.gen_location = None
         
     def children(self):
         children = []
