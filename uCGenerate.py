@@ -308,7 +308,7 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_Decl(self, node):
         # Check if allocation phase (TODO: really incomplete)
         #if self.alloc_phase:
-        self.visit(node.type)
+        inst = self.visit(node.type)
         
         # Get gen_location
         if not isinstance(node.type, ast.FuncDecl):
@@ -330,6 +330,7 @@ class uCIRGenerate(ast.NodeVisitor):
             
             self.code.append(inst)
         # If is an array with no initialization, set all as zero
+        # TODO: is this correct
         elif isinstance(node.type, ast.ArrayDecl):
             vals = 0
             dims = [int(x) for x in re.findall(r"_(\d+)", inst[0])]
