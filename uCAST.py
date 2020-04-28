@@ -36,6 +36,9 @@ class Node(object):
         indent = ''
         separator = ''
         for name in self.__slots__[:-1]:
+            skips = isinstance(self, ID)
+            skips *= name in ['type','gen_location']
+            if skips: continue
             result += separator
             result += indent
             result += name + '=' + (_repr(getattr(self, name)).replace('\n', '\n  ' + (' ' * (len(name) + len(self.__class__.__name__)))))
@@ -70,6 +73,10 @@ class Node(object):
                 attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
             else:
                 vlist = [getattr(self, n) for n in self.attr_names]
+                if isinstance(self, Constant): 
+                    for i,e in enumerate(vlist):
+                        if isinstance(e, Type):
+                            vlist[i] = e.name[0]
                 attrstr = ', '.join('%s' % v for v in vlist)
                 buf.write(attrstr)
 
