@@ -340,7 +340,9 @@ class uCIRGenerate(ast.NodeVisitor):
             self.visit(expr)
     
     def visit_For(self, node):
-        # TODO: scope?
+        # Add loop scope
+        self.scopes.add_scope()
+
         # Visit declarations
         if node.init:
             self.visit(node.init)
@@ -377,6 +379,9 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('jump', label)
         self.code.append(inst)
         
+        # Remove loop scope
+        self.scopes.pop_scope()
+
         # Rest of the code
         self.code.append((target_fake[1:],))
     
