@@ -73,6 +73,10 @@ class Node(object):
                 attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
             else:
                 vlist = [getattr(self, n) for n in self.attr_names]
+                if isinstance(self, Constant): 
+                    for i,e in enumerate(vlist):
+                        if isinstance(e, Type):
+                            vlist[i] = e.name[0]
                 attrstr = ', '.join('%s' % v for v in vlist)
                 buf.write(attrstr)
 
