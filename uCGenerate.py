@@ -18,6 +18,11 @@ import uCAST as ast
 from uCSemantic import SymbolTable
 from os.path import exists
 
+# TODO:
+# - Pass multiple times through functions (first decl, then inits, then the rest)
+# - Add local arrays allocations based on global initializations
+# - With constants, and globals stacks, scopes can now be removed
+
 class ScopeStack():
     '''
     Class responsible for keeping variables scopes.
@@ -27,6 +32,7 @@ class ScopeStack():
     '''
     def __init__(self):
         self.stack = []
+        self.constants = []
     
     # Add new scope (if a function definition started)
     # Every function definition is considered a new scope (new symboltable)
@@ -85,6 +91,10 @@ class uCIRGenerate(ast.NodeVisitor):
         # Adding front_end for testing.
         self.front_end = front_end
         
+        # Exclusive stacks
+        self.constants = dict()
+        self.globals = dict() 
+
         # Version dictionary for temporaries
         self.fname = 'global'
         self.versions = {}
@@ -151,6 +161,11 @@ class uCIRGenerate(ast.NodeVisitor):
 
         # Remove global scope.
         self.scopes.pop_scope()
+
+        # Append to special stacks
+        globs = list(self.globals.values())
+        consts = list(self.constants.values())
+        self.code = globs + consts + self.code
 
     def visit_ArrayDecl(self, node):
         # TODO: local and init
@@ -307,17 +322,31 @@ class uCIRGenerate(ast.NodeVisitor):
     
     def visit_Decl(self, node):
         # Check if allocation phase (TODO: really incomplete)
-        if self.fname == 'global' and not isinstance(node.type, ast.FuncDecl):
+        ty = None
+        if not isinstance(node.type, ast.FuncDecl):
+            # Get instruction name
             ty = self.build_types(node.type)
-            # add global variable
+
+            # Check for globals and arrays shenanigans
+            global_scope = (self.fname == 'global')
+            array_decl = isinstance(node.type, ast.ArrayDecl)
+            if global_scope or array_decl:
+                ty = 'global_' + ty 
+                if global_scope: name = '@'+node.name.name
+                else: name = '@_const_'+node.name.name
+                init = self.get_expr(node.init, ty=node.type, name=ty)
+                inst = (ty, name, init)
+                
+                # Add to global or constant if local array initialization
+                if global_scope: self.globals[name] = inst
+                else: self.constants[name] = inst
+                return
+
+            # Get gen_location
+            node.gen_location = node.type.gen_location
             
         #if self.alloc_phase:
-        #inst = self.visit(node.type)
-        
-        # Get gen_location
-        if not isinstance(node.type, ast.FuncDecl):
-            ty = self.build_types(node.type)
-            node.gen_location = node.type.gen_location
+        # inst = self.visit(node.type)
         
         # Handle initialization
         if node.init:
@@ -326,21 +355,13 @@ class uCIRGenerate(ast.NodeVisitor):
 
             # Create opcode and append to instruction list
             # TODO: array?
-            if inst:
+            if ty:
                 # TODO: this does not get the actual value, but the register. what to do?
-                inst = (inst[0], inst[1], node.init.gen_location)
+                inst = (ty, node.name.name, node.init.gen_location)
             else:
                 ty = node.init.type.name[-1].name
                 inst = ('store_' + ty, node.init.gen_location, node.type.gen_location)
-            
-            self.code.append(inst)
-        # If is an array with no initialization, set all as zero
-        # TODO: is this correct
-        elif isinstance(node.type, ast.ArrayDecl):
-            vals = 0
-            dims = [int(x) for x in re.findall(r"_(\d+)", inst[0])]
-            for d in reversed(dims): vals = [vals]*d
-            inst = (inst[0], inst[1], vals)
+
             self.code.append(inst)
             
     def visit_DeclList(self, node):
@@ -669,6 +690,32 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code.append((target_fake[1:],))
     
     ## AUXILIARY FUNCTIONS ##
+
+    # Get Expression for constant initilization
+    # This should handle the possible assignment expressions
+    def get_expr(self, expr, ty=None, name=None):
+        if isinstance(expr, ast.BinaryOp):
+            left = self.get_expr(expr.lvalue)
+            right = self.get_expr(expr.rvalue)
+            ret = f"({left}{expr.op}{right})"
+        elif isinstance(expr, ast.UnaryOp):
+            right = self.get_expr(expr.expr)
+            ret = f"({expr.op}{right})"
+        elif isinstance(expr, ast.ID):
+            ret = expr.name # TODO: should replace ID.name by the ID's value
+        elif isinstance(expr, ast.Constant):
+            ret = expr.value
+        elif isinstance(expr, ast.InitList):
+            ret = [self.get_expr(val) for val in expr.exprs]
+        elif expr==None:
+            ret = 0
+            if isinstance(ty,ast.ArrayDecl):
+                dims = [int(x) for x in re.findall(r"_(\d+)", name)]
+                for d in reversed(dims): ret = [ret]*d
+        else:
+            raise Exception(f"get_expr: Unable to process {type(expr)} class")
+        return ret
+
     def get_operation(self, op, ty):
         if op in self.bin_ops.keys():
             return self.bin_ops[op] + "_" + ty.name[-1].name
@@ -676,12 +723,13 @@ class uCIRGenerate(ast.NodeVisitor):
             return self.rel_ops[op] + "_" + ty.name[-1].name
 
     def build_types(self, node):
-        msg = ''
+        name = ''
         ty = node
         while not isinstance(ty, ast.VarDecl):
             if isinstance(ty, ast.ArrayDecl):
-                msg += f'{ty.dims.value}_'
+                name += f'_{ty.dims.value}'
             elif isinstance(ty, ast.PtrDecl):
-                msg += '*_'
+                name += '_*'
             ty = ty.type
-        return msg + ty.type.name[-1].name
+        name = ty.type.name[-1].name + name
+        return name
