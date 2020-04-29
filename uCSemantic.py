@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 28/04/2020.
+Last Modified: 29/04/2020.
 '''
  
 import uCType
@@ -395,7 +395,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.lvalue)
         lvalue = node.lvalue
         
-        # 2. Check if ID or ArrayRef.
+        # 2. Check if ID or ArrayRef or UnaryOp.
+        assignable = True
         if isinstance(lvalue, ast.ID):
             func = self.signatures.get_sign(lvalue)
             
@@ -404,7 +405,15 @@ class uCSemanticCheck(ast.NodeVisitor):
                 msg = f"Assigning to function '{lvalue.name}'." 
                 msg = self.build_error_msg(msg, lvalue.coord)
                 assert func['type'].name[0] == ptr, msg
+        elif isinstance(lvalue, ast.UnaryOp):
+            inner = lvalue.expr
+            while isinstance(inner, ast.UnaryOp):
+                inner = inner.expr
+            assignable = isinstance(inner, (ast.ArrayRef, ast.ID))
         elif not isinstance(lvalue, ast.ArrayRef):
+            assignable = False
+            
+        if not assignable:
             msg = "Expression is not assignable."
             msg = self.build_error_msg(msg, node.coord)
             assert False, msg
@@ -652,7 +661,8 @@ class uCSemanticCheck(ast.NodeVisitor):
 
             # 3.3. Any other expression.
             else:
-                assert ty.type.name == node.init.type.name, ty_msg
+                ty = self.get_inner_type(ty)
+                assert ty.name == node.init.type.name, ty_msg
         
         # 4. If array declaration has no init.    
         elif isinstance(ty, ast.ArrayDecl):
@@ -897,7 +907,8 @@ class uCSemanticCheck(ast.NodeVisitor):
             self.visit(ty)
         elif node.op == '&':
             ptr = self.types.lookup('ptr')
-            ty.name.insert(0, ptr)
+            ty = ast.Type([ptr]+ty.name, node.coord)
+            self.visit(ty)
         elif node.op == '!':
             ty = ast.Type(['bool'], node.coord)
             self.visit(ty)
