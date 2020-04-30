@@ -1,5 +1,5 @@
 ('global_string', '@.str.0', 'assertion_fail on 7:12')
-('define', 'main')
+('define', '@main')
 ('alloc_int', '%2')
 ('alloc_int', '%3')
 ('alloc_int', '%4')

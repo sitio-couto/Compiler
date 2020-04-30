@@ -3,7 +3,7 @@
 ('global_string', '@.str.2', ' integers\\n')
 ('global_string', '@.str.3', 'Sorted list in ascending order:\\n')
 ('global_string', '@.str.4', ' ')
-('define', 'main')
+('define', '@main')
 ('alloc_int_100', '%2')
 ('alloc_int', '%3')
 ('alloc_int', '%4')

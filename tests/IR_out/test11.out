@@ -1,4 +1,4 @@
-('define', 'main')
+('define', '@main')
 ('alloc_int', '%2')
 ('alloc_int', '%3')
 ('alloc_int_*', '%4')
