@@ -852,6 +852,16 @@ class uCSemanticCheck(ast.NodeVisitor):
     def visit_Read(self, node):
         # 1. Visit the expressions.
         self.visit(node.expr)
+        
+        if isinstance(node.expr, ast.ExprList):
+            exprs = node.expr.exprs
+        else:
+            exprs = [node.expr]
+        
+        msg = "Expression read must be ID or array reference."
+        for expr in exprs:
+            err = self.build_error_msg(msg, node.coord)
+            assert isinstance(expr, (ast.ID, ast.ArrayRef)), err
 
     def visit_Return(self, node):
         # 1. Check expression.
