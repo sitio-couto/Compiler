@@ -608,13 +608,25 @@ class uCIRGenerate(ast.NodeVisitor):
         return ret
     
     def visit_Read(self, node):
-        # Visit the expression
-        self.visit(node.expr)
-
         # Create the opcode and append to list
-        ty = self.build_reg_types(node.expr.type)
-        inst = ('read_' + ty, node.expr.gen_location)
-        self.code.append(inst)
+        if isinstance(node.expr, ast.ExprList):
+            exprs = node.expr.exprs
+        else:
+            exprs = [node.expr]
+            
+        for expr in exprs:
+            # Read
+            aux = self.new_temp()
+            ty = self.build_reg_types(expr.type)
+            inst = ('read_' + ty, aux)
+            
+            # Store
+            if isinstance(expr, ast.ID):
+                target = self.scopes.fetch_temp(expr)
+            else:
+                target = expr.gen_location
+            stor = ('store_' + ty, aux, target)
+            self.code += [inst, stor]
 
     def visit_Return(self, node):
         # If there is a return expression.
