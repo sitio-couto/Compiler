@@ -54,7 +54,6 @@ class ScopeStack():
         self.stack[0].add(name, addr)
 
     # Return a variable's address
-    # TODO: global is different than local
     def fetch_temp(self, node):
         name = node.name
         for scope in self.stack[::-1]:
@@ -81,7 +80,6 @@ class ScopeStack():
             text += '\n'
         return text
 
-# TODO: remove returns from visit, replace with deep dive from upper nodes.
 class uCIRGenerate(ast.NodeVisitor):
     '''
     Node visitor class that creates 3-address encoded instruction sequences.
@@ -113,7 +111,7 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Useful attributes
         self.ret = {'label':None, 'value':None}
-        self.loop_end = None
+        self.loop_end = []
         self.alloc_phase = None
 
     def new_temp(self):
@@ -295,7 +293,7 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
         
     def visit_Break(self, node):
-        inst = ('jump', self.loop_end)
+        inst = ('jump', self.loop_end[-1])
         self.code.append(inst)
 
     def visit_Cast(self, node):
@@ -424,7 +422,7 @@ class uCIRGenerate(ast.NodeVisitor):
             target_fake = self.new_temp()
         
         # Add loop ending to attribute.
-        self.loop_end = target_fake
+        self.loop_end.append(target_fake)
             
         # Visit loop
         if node.body:
@@ -438,7 +436,8 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('jump', label)
         self.code.append(inst)
         
-        # Remove loop scope
+        # Remove loop scope and end
+        self.loop_end.pop()
         self.scopes.pop_scope()
 
         # Rest of the code
@@ -724,7 +723,7 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code.append(inst)
         
         # Add loop ending to attribute.
-        self.loop_end = target_fake
+        self.loop_end.append(target_fake)
         
         # Visit loop
         self.code.append((target_true[1:],))
@@ -734,6 +733,9 @@ class uCIRGenerate(ast.NodeVisitor):
         # Go back to the beginning.
         inst = ('jump', label)
         self.code.append(inst)
+        
+        # Remove loop ending.
+        self.loop_end.pop()
         
         # Rest of the code
         self.code.append((target_fake[1:],))
