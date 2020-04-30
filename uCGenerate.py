@@ -119,7 +119,14 @@ class uCIRGenerate(ast.NodeVisitor):
         self.versions[self.fname] += 1
         return name
 
-    def test(self, data, show_ast):
+    def write_file(self, code, out_file):
+        out = ''
+        for inst in code: out += str(inst)+'\n'
+        f = open(out_file, 'w')
+        f.write(out)
+        f.close()
+
+    def test(self, data, show_ast, out_file=None, quiet=False):
         self.code = []
         self.front_end.parser.lexer.reset_line_num()
         
@@ -140,8 +147,8 @@ class uCIRGenerate(ast.NodeVisitor):
             
         # Generate IR
         self.visit(ast)
-        self.print_code()
-        return self.code
+        if not quiet: self.print_code()
+        if out_file: self.write_file(self.code, out_file)
     
     def print_code(self):
         for inst in self.code:
