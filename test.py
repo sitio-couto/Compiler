@@ -37,7 +37,12 @@ if __name__ == '__main__':
         # quick testing input file
         if len(argv) > 1 :
             for i in range(1,len(argv)):
-                generator.test(argv[i], False)
+                code = generator.test(argv[i], False)
+                out = ''
+                for inst in code: out += str(inst)+'\n'
+                f = open(argv[i][:-2]+'in', 'w')
+                f.write(out)
+                f.close()
             exit(1)
 
         print("\nSend 'l' for lexer test, 'p' for parser test, 's' for semantic test and 'i' for IR test ('q' to quit)")

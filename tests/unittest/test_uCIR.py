@@ -42,18 +42,18 @@ class TestAST(unittest.TestCase):
         'tests/IR_in/test11.in']
 
     targets = [
-        'tests/IR_in/test01.out',
-        'tests/IR_in/test02.out',
-        'tests/IR_in/test03.out',
-        'tests/IR_in/test04.out',
-        'tests/IR_in/test04.out',
-        'tests/IR_in/test05.out',
-        'tests/IR_in/test06.out',
-        'tests/IR_in/test07.out',
-        'tests/IR_in/test08.out',
-        'tests/IR_in/test09.out',
-        'tests/IR_in/test10.out',
-        'tests/IR_in/test11.out']
+        'tests/IR_out/test01.out',
+        'tests/IR_out/test02.out',
+        'tests/IR_out/test03.out',
+        'tests/IR_out/test04.out',
+        'tests/IR_out/test04.out',
+        'tests/IR_out/test05.out',
+        'tests/IR_out/test06.out',
+        'tests/IR_out/test07.out',
+        'tests/IR_out/test08.out',
+        'tests/IR_out/test09.out',
+        'tests/IR_out/test10.out',
+        'tests/IR_out/test11.out']
 
     def runNcmp(self, id):
         id -= 1
@@ -83,17 +83,17 @@ class TestAST(unittest.TestCase):
     def test_t1(self):
         self.runNcmp(1)
 
-    def test_t2(self):
-        self.runNcmp(2)
+    # def test_t2(self):
+    #     self.runNcmp(2)
 
-    def test_t3(self):
-        self.runNcmp(3)
+    # def test_t3(self):
+    #     self.runNcmp(3)
 
-    def test_t4(self):
-        self.runNcmp(4)
+    # def test_t4(self):
+    #     self.runNcmp(4)
 
-    def test_t5(self):
-        self.runNcmp(5)
+    # def test_t5(self):
+    #     self.runNcmp(5)
         
 
 if __name__ == '__main__':

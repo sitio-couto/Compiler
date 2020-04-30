@@ -141,6 +141,7 @@ class uCIRGenerate(ast.NodeVisitor):
         # Generate IR
         self.visit(ast)
         self.print_code()
+        return self.code
     
     def print_code(self):
         for inst in self.code:
@@ -518,7 +519,6 @@ class uCIRGenerate(ast.NodeVisitor):
             self.code += [label, val_inst, ret_inst]
         
         # Remove function's scope
-        print(self.scopes)
         self.scopes.pop_scope()
     
     def visit_GlobalDecl(self, node):
