@@ -21,7 +21,7 @@ from os.path import exists
 # TODO:
 # - Pass multiple times through functions (first decl, then inits, then the rest)
 # - Add local arrays allocations based on global initializations
-# - With constants, and globals stacks, scopes can now be removed
+# - With constants, and globals stacks, scopes can now be removed (or can be used with a new add_global function)
 
 class ScopeStack():
     '''
@@ -180,10 +180,8 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit subscript
         self.visit(node.subsc)
         
-        # Get array
-        self.visit(node.name)
         # TODO: ArrayRef of ArrayRef not working
-        arr = node.name.gen_location
+        arr = self.scopes.fetch_temp(node.name)
         ty = self.build_reg_types(node.type)
         
         # Get new temp variable
@@ -213,6 +211,7 @@ class uCIRGenerate(ast.NodeVisitor):
         fake_label = (target_fake[1:],)
         coord = node.expr.coord
         msg_coord = f'{coord.line}:{coord.column}'
+        # TODO: add string to global, and then print the global
         error = ('print_string', 'assertion_fail on ' + msg_coord)
         
         # Jump to return
@@ -329,6 +328,7 @@ class uCIRGenerate(ast.NodeVisitor):
             ty = self.build_decl_types(node.type)
 
             # Check for globals and arrays shenanigans
+            # TODO: wrong
             global_scope = (self.fname == 'global')
             array_decl = isinstance(node.type, ast.ArrayDecl)
             if global_scope or array_decl:

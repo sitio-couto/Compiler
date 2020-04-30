@@ -1,6 +1,7 @@
-int x[] = {1, 2, 3};
-int y[2][2];
-
-void main(){
-    int z[] = {1, 2, 3};
+int main () {
+    int x = 2, y, z;
+    y = ++x;
+    z = x++;
+    assert x == 4 && y == z;
+    return 1;
 }

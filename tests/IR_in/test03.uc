@@ -1,11 +1,9 @@
-int n = 10;
-
-int foo(int a, int b) {
-    return n * (a + b);
-}
-
-int main() {
-    int c = 2, d = 3;
-    int e = foo(c, d);
-    return 0;
+void main(){
+  int i, j;
+  int *r;
+  int y[5];
+  r = &y[j];
+  i = y[j];
+  y[i] = i + j;
+  return;
 }

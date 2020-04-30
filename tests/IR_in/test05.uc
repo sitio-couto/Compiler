@@ -1,7 +1,9 @@
 int main () {
-    int x, y;
-    int *r = &x;
-    *r = y;
-    x = *r;
-    return 1;
+    int i, j;
+    i = 1;
+    j = 2;
+    for (int k=1; k<10; k++)
+        i += j * k;
+    assert i == 91;
+    return 0;
 }
