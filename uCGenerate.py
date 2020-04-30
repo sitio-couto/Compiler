@@ -162,9 +162,15 @@ class uCIRGenerate(ast.NodeVisitor):
         # Add global scope.
         self.scopes.add_scope()
         
-        # Visit all of the statements
+        # Visit all global declarations.
         for gdecl in node.gdecls:
-            self.visit(gdecl)
+            if isinstance(gdecl, ast.GlobalDecl):
+                self.visit(gdecl)
+                
+        # Visit all function definitions.
+        for fdef in node.gdecls:
+            if isinstance(fdef, ast.FuncDef):
+                self.visit(gdecl)
 
         # Remove global scope.
         self.scopes.pop_scope()
@@ -527,6 +533,9 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Remove function's scope
         self.scopes.pop_scope()
+        
+        # Return to global
+        self.fname = 'global'
     
     def visit_GlobalDecl(self, node):
         for decl in node.decls:
@@ -561,14 +570,19 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Create THEN
         self.code.append((target_then[1:],))
-        if node.if_stat:
-            self.visit(node.if_stat)
+        self.visit(node.if_stat)
         
         # Create ELSE
-        self.code.append((target_else[1:],))
         if node.else_stat:
+            target_exit = self.new_temp()
+            inst = ('jump', target_exit)
+            self.code.append(inst)
+            self.code.append((target_else[1:],))
             self.visit(node.else_stat)
-    
+            self.code.append((target_exit[1:],))
+        else:
+            self.code.append((target_else[1:],))
+            
     def visit_InitList(self, node):
         node.gen_location = []
         for expr in node.exprs:
