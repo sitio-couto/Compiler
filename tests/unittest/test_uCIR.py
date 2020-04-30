@@ -7,7 +7,16 @@ from importlib.machinery import SourceFileLoader
 workdir = os.path.dirname(os.path.abspath(__file__))
 workdir = re.sub('.tests.unittest$', '', workdir)
 sys.path.append(workdir)
-import uCCompiler
+
+from uCLexer import uCLexer as Lexer
+from uCParser import uCParser as Parser
+from uCSemantic import uCSemanticCheck as Semantic
+from uCGenerate import uCIRGenerate as Generator
+from os.path import exists
+from sys import argv
+
+def print_error(msg, x, y):
+    print("Lexical error: %s at %d:%d" % (msg, x, y))
 
 print('\n', f'Working Directory: {workdir}','\n')
 
@@ -59,8 +68,15 @@ class TestAST(unittest.TestCase):
         id -= 1
         i,o,t = self.inputs[id], self.outputs[id], self.targets[id]
         sys.argv = sys.argv[:1]+[i]
-        with self.assertRaises(SystemExit) as cm:
-            uCCompiler.run_compiler()
+        
+        tokenizer = Lexer(print_error)
+        tokenizer.build()
+        parser = Parser(tokenizer)
+        parser.build()
+        semantic = Semantic(parser)
+        generator = Generator(semantic)
+        generator.test(i, False, out_file=o, quiet=True)
+
         print(f'Comparing: {o} == {t} ?')
         try:
             assert filecmp.cmp(o, t, shallow=True)
@@ -80,11 +96,11 @@ class TestAST(unittest.TestCase):
         else:
             print('TRUE - The Output Is Correct\n')
 
-    def test_t1(self):
-        self.runNcmp(1)
+    # def test_t1(self):
+    #     self.runNcmp(1)
 
-    # def test_t2(self):
-    #     self.runNcmp(2)
+    def test_t2(self):
+        self.runNcmp(2)
 
     # def test_t3(self):
     #     self.runNcmp(3)
