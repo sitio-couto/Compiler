@@ -163,7 +163,7 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit all function definitions.
         for fdef in node.gdecls:
             if isinstance(fdef, ast.FuncDef):
-                self.visit(gdecl)
+                self.visit(fdef)
 
         # Remove global scope.
         self.scopes.pop_scope()
@@ -330,32 +330,32 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_Decl(self, node):
         # Check if allocation phase (TODO: really incomplete, confusing and maybe not appropriate)
         ty = None
-        if not isinstance(node.type, ast.FuncDecl):
-            # Get instruction name
-            ty = self.build_decl_types(node.type)
 
-            # Check for globals and arrays shenanigans
-            # TODO: wrong
-            global_scope = (self.fname == 'global')
-            array_decl = isinstance(node.type, ast.ArrayDecl)
-            if global_scope or array_decl:
-                ty = 'global_' + ty 
-                if global_scope: name = '@'+node.name.name
-                else: name = '@_const_'+node.name.name
-                init = self.get_expr(node.init, ty=node.type, name=ty)
-                inst = (ty, name, init)
-                
-                # Add to global or constant if local array initialization
-                if global_scope: self.globals[name] = inst
-                else: self.constants[name] = inst
-                return
-                
-            # TODO: this is far from complete or working.
-            elif self.alloc_phase:
-                self.visit(node.type)
-                
-            # Get gen_location
-            node.gen_location = node.type.gen_location
+        # Get instruction name
+        ty = self.build_decl_types(node.type)
+
+        # Check for globals and arrays shenanigans
+        # TODO: wrong
+        global_scope = (self.fname == 'global')
+        array_decl = isinstance(node.type, ast.ArrayDecl)
+        if global_scope or array_decl:
+            ty = 'global_' + ty 
+            if global_scope: name = '@'+node.name.name
+            else: name = '@_const_'+node.name.name
+            init = self.get_expr(node.init, ty=node.type, name=ty)
+            inst = (ty, name, init)
+            
+            # Add to global or constant if local array initialization
+            if global_scope: self.globals[name] = inst
+            else: self.constants[name] = inst
+            return
+            
+        # TODO: this is far from complete or working.
+        elif self.alloc_phase or True:
+            self.visit(node.type)
+            
+        # Get gen_location
+        node.gen_location = node.type.gen_location
         
         # Handle initialization
         if node.init:
@@ -459,7 +459,6 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = self.new_temp()
     
     def visit_FuncDecl(self, node):
-        # TODO: what? Anything? Ask for more examples.
         # TODO: not including signatures
         if node.params:
             self.visit(node.params)
@@ -482,9 +481,7 @@ class uCIRGenerate(ast.NodeVisitor):
         self.fname = name
         
         # Skip temp variables for params and return
-        par = node.decl
-        while not isinstance(par, ast.FuncDecl):
-            par = par.type
+        par = node.decl.type
         if par.params:
             self.versions[name] = len(par.params.params)
         else:
@@ -493,8 +490,8 @@ class uCIRGenerate(ast.NodeVisitor):
         # Get return temporary variable
         self.ret['value'] = self.new_temp()
                 
-        # Visit function declaration
-        self.visit(node.decl)
+        # Visit function declaration (FuncDecl)
+        self.visit(node.decl.type)
         
         # Get return label, if needed.
         self.ret['label'] = self.new_temp()
@@ -532,7 +529,9 @@ class uCIRGenerate(ast.NodeVisitor):
     
     def visit_GlobalDecl(self, node):
         for decl in node.decls:
-            self.visit(decl)
+            # TODO: Ptr FuncDecl
+            if not isinstance(decl.type, ast.FuncDecl):
+                self.visit(decl)
     
     def visit_ID(self, node):
         # Create a new temporary variable name 
