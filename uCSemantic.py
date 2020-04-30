@@ -628,11 +628,18 @@ class uCSemanticCheck(ast.NodeVisitor):
                     
                     # 3.2.2.1. If not explicit size of array, use initialization as size.
                     if ty.dims is None:
-                        node.type.dims = ast.Constant('int', len(exprs), node.name.coord)
-                        self.visit_Constant(node.type.dims)
-                    else:
-                        # TODO: dims can be unOp or other expression... Not worth it?
-                        assert ty.dims.value == len(exprs), sz_msg
+                        l = node.init
+                        arr = ty
+                        while isinstance(arr, ast.ArrayDecl):
+                            l = l.exprs if isinstance(l, ast.InitList) else [l]
+                            arr.dims = ast.Constant('int', len(l), node.name.coord)
+                            self.visit_Constant(arr.dims)
+                            arr = arr.type
+                            l = l[0]
+                    
+                    # TODO: dims can be unOp or other expression... Not worth it?
+                    # Check if initialization lists are OK.
+                    assert self.check_init_len(exprs, ty), sz_msg
                     
                     # 3.2.2.2. Get basic type.
                     msg = "No basic type in array declaration."
@@ -641,8 +648,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                     assert ty, msg
                     
                     # 3.2.2.3. Check type.
-                    for expr in exprs:
-                        assert ty.name[-1] == expr.type.name[-1], ty_msg
+                    assert self.check_init_list(exprs, ty), ty_msg
                 
                 # 3.2.3. Pointer
                 elif isinstance(ty, ast.PtrDecl):
@@ -979,6 +985,29 @@ class uCSemanticCheck(ast.NodeVisitor):
         while ty and not isinstance(ty, ast.Type):
             ty = ty.type
         return ty
+    
+    def check_init_len(self, init, ty):
+        ''' Check if every element of InitList is of the same length as array dimension.'''
+        ret = True
+        if isinstance(ty.type, ast.ArrayDecl):
+            for expr in init:
+                ret &= isinstance(expr, ast.InitList)
+                if not ret: break
+                ret &= self.check_init_len(expr.exprs, ty.type)
+        
+        ret &= ty.dims.value == len(init)
+        return ret
+    
+    def check_init_list(self, init, ty):
+        ''' Check if every element of InitList is of the same main type as array.'''
+        ret = True
+        if isinstance(init[0], ast.InitList):
+            for expr in init:
+                ret &= self.check_init_list(expr.exprs, ty)
+        else:
+            for expr in init:
+                ret &= ty.name[-1] == expr.type.name[-1]
+        return ret
     
     ## ERROR MESSAGE FUNCTIONS ##
     def build_coords(self, coord):

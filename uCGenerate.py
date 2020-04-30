@@ -19,9 +19,9 @@ from uCSemantic import SymbolTable
 from os.path import exists
 
 # TODO:
-# - Pass multiple times through functions (first decl, then inits, then the rest)
 # - Add local arrays allocations based on global initializations
-# - With constants, and globals stacks, scopes can now be removed (or can be used with a new add_global function)
+# - Add global initializations.
+# - Other TODOs in the code body.
 
 class ScopeStack():
     '''
@@ -47,6 +47,11 @@ class ScopeStack():
         scope = self.stack[-1]
         name = node.declname.name
         scope.add(name, addr)
+    
+    # Add a new variable's name to the global scope
+    def add_global(self, node, addr):
+        name = node.declname.name
+        self.stack[0].add(name, addr)
 
     # Return a variable's address
     # TODO: global is different than local
@@ -181,15 +186,21 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code = globs + consts + self.code
 
     def visit_ArrayDecl(self, node):
-        # TODO: local and init
-        ret = self.visit(node.type)
+        # TODO: Repeated code from ArrayDecl, so that we have the array dims. Can we do it without repeating?
+        # TODO: save dims somewhere? We need it afterward.
+        ty = self.build_decl_types(node)
         
-        if ret:
-            ret = (f'{ret[0]}_{node.dims.value}', ret[1])
+        alloc_target = self.new_temp()
+        inst = ('alloc_' + ty, alloc_target)
+        self.code.append(inst)
         
-        node.gen_location = node.type.gen_location
-        return ret
-
+        # Adding to scope
+        var = node.type
+        while not isinstance(var, ast.VarDecl):
+            var = var.type
+        self.scopes.add_to_scope(var, alloc_target)
+        node.gen_location = alloc_target
+        
     def visit_ArrayRef(self, node):
         # Visit subscript
         self.visit(node.subsc)
@@ -335,49 +346,41 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
     
     def visit_Decl(self, node):
-        # Check if allocation phase (TODO: really incomplete, confusing and maybe not appropriate)
-        ty = None
-
-        # Get instruction name
-        ty = self.build_decl_types(node.type)
-
-        # Check for globals and arrays shenanigans
-        # TODO: wrong
-        global_scope = (self.fname == 'global')
-        array_decl = isinstance(node.type, ast.ArrayDecl)
-        if global_scope or array_decl:
+        # Check for globals
+        if self.fname == 'global':
+            # Visit declaration
+            self.visit(node.type)
+            
+            # Get decl type.
+            ty = self.build_decl_types(node.type)
+            
             ty = 'global_' + ty 
-            if global_scope: name = '@'+node.name.name
-            else: name = '@_const_'+node.name.name
+            name = node.type.gen_location
             init = self.get_expr(node.init, ty=node.type, name=ty)
             inst = (ty, name, init)
             
             # Add to global or constant if local array initialization
-            if global_scope: self.globals[name] = inst
-            else: self.constants[name] = inst
-            return
+            self.globals[name] = inst
             
-        # TODO: this is far from complete or working.
-        elif self.alloc_phase or True:
+            # Get gen_location
+            node.gen_location = node.type.gen_location
+            
+        elif self.alloc_phase:
             self.visit(node.type)
             
-        # Get gen_location
-        node.gen_location = node.type.gen_location
+            # Get gen_location
+            node.gen_location = node.type.gen_location
         
         # Handle initialization
-        if node.init:
+        elif node.init:
             # Visit initializers
             self.visit(node.init)
 
-            # Create opcode and append to instruction list
-            # TODO: array?
-            if ty:
-                # TODO: this does not get the actual value, but the register. what to do?
-                inst = ('store_' + ty, node.gen_location, node.init.gen_location)
-            else:
-                ty = node.init.type.name[-1].name
-                inst = ('store_' + ty, node.init.gen_location, node.type.gen_location)
+            # Get decl type.
+            ty = self.build_decl_types(node.type)
 
+            # Create opcode and append to instruction list
+            inst = ('store_' + ty, node.init.gen_location, node.gen_location)
             self.code.append(inst)
             
     def visit_DeclList(self, node):
@@ -489,15 +492,13 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Skip temp variables for params and return
         par = node.decl.type
-        if par.params:
-            self.versions[name] = len(par.params.params)
-        else:
-            self.versions[name] = 0
+        self.versions[name] = len(par.params.params) if par.params else 0
 
         # Get return temporary variable
         self.ret['value'] = self.new_temp()
                 
         # Visit function declaration (FuncDecl)
+        self.alloc_phase = True
         self.visit(node.decl.type)
         
         # Get return label, if needed.
@@ -506,7 +507,14 @@ class uCIRGenerate(ast.NodeVisitor):
                 
         # Visit body
         if node.body:
-            self.alloc_phase = True # TODO: just so it allocates for now, use it later for other things.
+            
+            # Allocate first, without init
+            if node.body.decls:
+                for decl in node.body.decls:
+                    self.visit(decl)
+            
+            # Initiate decls and visit body.
+            self.alloc_phase = False
             self.visit(node.body)
         
         # Return label and return
@@ -585,8 +593,11 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_InitList(self, node):
         node.gen_location = []
         for expr in node.exprs:
-            node.gen_location.append(expr.value)
-            # self.visit(expr)
+            if isinstance(expr, ast.InitList):
+                self.visit(expr)
+                node.gen_location.append(expr.gen_location)
+            else:
+                node.gen_location.append(expr.value)
     
     def visit_ParamList(self, node):
         for par in node.params:
@@ -622,10 +633,8 @@ class uCIRGenerate(ast.NodeVisitor):
             self.code.append(inst)
     
     def visit_PtrDecl(self, node):
-        # TODO: ptr?
-        ret = self.visit(node.type)
+        self.visit(node.type)
         node.gen_location = node.type.gen_location
-        return ret
     
     def visit_Read(self, node):
         # Create the opcode and append to list
@@ -687,16 +696,16 @@ class uCIRGenerate(ast.NodeVisitor):
         # Try global
         if self.fname == 'global':
             node.gen_location = '@'+node.declname.name
-            return
+        else:
+            # Allocate on stack memory.
+            alloc_target = self.new_temp()
+            inst = ('alloc_' + ty, alloc_target)
+            self.code.append(inst)
         
-        # Allocate on stack memory.
-        alloc_target = self.new_temp()
-        inst = ('alloc_' + ty, alloc_target)
-        self.code.append(inst)
+            node.gen_location = alloc_target
         
-        self.scopes.add_to_scope(node, alloc_target)
-
-        node.gen_location = alloc_target
+        # Adding to scope
+        self.scopes.add_to_scope(node, node.gen_location)
     
     def visit_While(self, node):
         # Create loop label
@@ -742,7 +751,7 @@ class uCIRGenerate(ast.NodeVisitor):
             right = self.get_expr(expr.expr)
             ret = f"({expr.op}{right})"
         elif isinstance(expr, ast.ID):
-            ret = expr.name # TODO: should replace ID.name by the ID's value
+            ret = self.scopes.fetch_temp(expr) # TODO: should replace ID.name by the ID's value (done?)
         elif isinstance(expr, ast.Constant):
             ret = expr.value
         elif isinstance(expr, ast.InitList):
@@ -778,7 +787,7 @@ class uCIRGenerate(ast.NodeVisitor):
         name = ''
         for item in ty.name[::-1]:
             if item.name == 'array':
-                name += f'_{ty.dims.value}' # TODO: get dims (save in scope?)
+                name += f'_'#{ty.dims.value}' # TODO: get dims (save in scope?)
             elif item.name == 'ptr':
                 name += '_*'
             else:
