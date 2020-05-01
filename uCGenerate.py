@@ -308,7 +308,11 @@ class uCIRGenerate(ast.NodeVisitor):
             opcode = 'sitofp'
         
         # Create the opcode and append to list
-        inst = (opcode, node.expr.gen_location)
+        old = node.expr.gen_location
+        casted = self.new_temp()
+        inst = (opcode, old, casted)
+        node.expr.gen_location = casted
+    
         self.code.append(inst)
 
         # Store location of the result on the node
@@ -483,7 +487,7 @@ class uCIRGenerate(ast.NodeVisitor):
         name = var.declname.name
         
         # Create opcode and append to list.
-        inst = ('define', name)
+        inst = ('define', '@'+name)
         self.code.append(inst)
         
         # Start function
