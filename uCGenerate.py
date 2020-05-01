@@ -101,6 +101,8 @@ class uCIRGenerate(ast.NodeVisitor):
         self.fname = 'global'
         self.versions = {}
         
+        self.str_counter = 0
+
         # Dictionaries for operations
         self.bin_ops = {'+':'add', '-':'sub', '*':'mul', '/':'div', '%':'mod'}
         self.un_ops = {'+':'uadd', '-':'uneg', '++':'uinc', '--':'udec', 'p++':'upinc', 'p--':'updec', '&':'addr', '*':'ptr'} #TODO: wrong. See new examples
@@ -113,6 +115,14 @@ class uCIRGenerate(ast.NodeVisitor):
         self.ret = {'label':None, 'value':None}
         self.loop_end = []
         self.alloc_phase = None
+
+    def new_str(self, value):
+        ''' Create a new string constant on the global scope. '''
+        name = f"@.str.{self.str_counter}" 
+        inst = ('global_string', name, value)
+        self.constants[name] = inst
+        self.str_counter += 1
+        return name
 
     def new_temp(self):
         ''' Create a new temporary variable of a given scope (function name). '''
@@ -235,7 +245,8 @@ class uCIRGenerate(ast.NodeVisitor):
         coord = node.expr.coord
         msg_coord = f'{coord.line}:{coord.column}'
         # TODO: add string to global, and then print the global
-        error = ('print_string', 'assertion_fail on ' + msg_coord)
+        name = self.new_str('assertion_fail on '+msg_coord)
+        error = ('print_string', name)
         
         # Jump to return
         fake_jump = ('jump', self.ret['label'])
@@ -334,10 +345,10 @@ class uCIRGenerate(ast.NodeVisitor):
         # Get type and check if is a string
         ty = node.type.name[0].name
         
-        # TODO: wrong
         if ty == 'string': 
             # Constant must be in array (no opcode)
-            node.gen_location = node.value
+            name = self.new_str(node.value)
+            node.gen_location = name
             return
         
         # Make the SSA opcode and append to list of generated instructions
@@ -348,8 +359,31 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
     
     def visit_Decl(self, node):
+        # Check for array initializers
+        arr_decl = isinstance(node.type, ast.ArrayDecl) 
+        str_type = None
+        if isinstance(node.init, ast.Constant): 
+            str_type = (node.init.type.name[0].name == 'string')
+        
+        if (arr_decl and not str_type) and not self.alloc_phase:
+            # Visit declaration
+            self.visit(node.type)
+            
+            # Get decl type.
+            ty = self.build_decl_types(node.type)
+           
+            init = self.get_expr(node.init, ty=node.type, name=ty)
+            name = self.new_str(init)
+
+            # Get gen_location
+            node.gen_location = self.new_temp()
+            
+            # Create opcode and append to instruction list
+            inst = ('store_' + ty, name, node.gen_location)
+            self.code.append(inst)
+
         # Check for globals
-        if self.fname == 'global':
+        elif self.fname == 'global':
             # Visit declaration
             self.visit(node.type)
             
@@ -464,13 +498,13 @@ class uCIRGenerate(ast.NodeVisitor):
                 inst = ('param_' + ty, arg.gen_location)
                 self.code.append(inst)
         
-        # Create opcode and append to list
-        inst = ('call', node.name.name)
-        self.code.append(inst)
-        
         # TODO: check return type of function, and create temporary variable for it if non-void. Also, gen_location if so.
         node.gen_location = self.new_temp()
     
+        # Create opcode and append to list
+        inst = ('call', '@'+node.name.name, node.gen_location)
+        self.code.append(inst)
+
     def visit_FuncDecl(self, node):
         # TODO: not including signatures
         if node.params:
@@ -552,11 +586,16 @@ class uCIRGenerate(ast.NodeVisitor):
                 self.visit(decl)
     
     def visit_ID(self, node):
-        # Create a new temporary variable name 
-        target = self.new_temp()
-        
         # Get temporary with ID name.
         var = self.scopes.fetch_temp(node)
+        
+        # NOTE: Globals are stored directly from label
+        if '@' in var: 
+            node.gen_location = var
+            return 
+        
+        # Create a new temporary variable name 
+        target = self.new_temp()
         
         # Create the opcode and append to list
         ty = self.build_reg_types(node.type)

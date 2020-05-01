@@ -96,11 +96,11 @@ class TestAST(unittest.TestCase):
         else:
             print('TRUE - The Output Is Correct\n')
 
-    # def test_t1(self):
-    #     self.runNcmp(1)
+    def test_t1(self):
+        self.runNcmp(1)
 
-    def test_t2(self):
-        self.runNcmp(2)
+    # def test_t2(self):
+    #     self.runNcmp(2)
 
     # def test_t3(self):
     #     self.runNcmp(3)
