@@ -212,16 +212,19 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit subscript
         self.visit(node.subsc)
         
-        # TODO: ArrayRef of ArrayRef not working
-        arr = self.scopes.fetch_temp(node.name)
-        ty = self.build_reg_types(node.type)
+        # TODO: ArrayRef of ArrayRef not working (check test06)
+        if isinstance(node.name, ast.ArrayRef):
+            self.visit(node.name)
+        else:
+            arr = self.scopes.fetch_temp(node.name)
+            ty = self.build_reg_types(node.type)
         
-        # Get new temp variable
-        target = self.new_temp()
+            # Get new temp variable
+            target = self.new_temp()
         
-        # Create instruction
-        inst = ("elem_" + ty, arr, node.subsc.gen_location, target)
-        self.code.append(inst)
+            # Create instruction
+            inst = ("elem_" + ty, arr, node.subsc.gen_location, target)
+            self.code.append(inst)
 
     def visit_Assert(self, node):
         # Visit the assert condition
@@ -673,8 +676,7 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_Print(self, node):
         # Visit the expression
         if node.expr:
-            self.visit(node.expr)
-            
+                        
             # Handle 1 or more exprs
             if isinstance(node.expr, ast.ExprList):
                 exprs = node.expr.exprs
@@ -682,6 +684,7 @@ class uCIRGenerate(ast.NodeVisitor):
                 exprs = [node.expr]
             
             for expr in exprs:
+                self.visit(expr)
                 ty = self.build_reg_types(expr.type)
                 inst = ('print_' + ty, expr.gen_location)
                 self.code.append(inst)
