@@ -6,4 +6,4 @@ newParse.py
 lextab.py
 parsetab.py
 tests/unittest/test.*
-tests/IR_in/*.in
+test.out

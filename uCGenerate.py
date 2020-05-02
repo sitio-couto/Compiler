@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 29/04/2020.
+Last Modified: 02/05/2020.
 '''
 
 import re
@@ -19,8 +19,6 @@ from uCSemantic import SymbolTable
 from os.path import exists
 
 # TODO:
-# - Add local arrays allocations based on global initializations
-# - Add global initializations.
 # - Other TODOs in the code body.
 
 class ScopeStack():
@@ -104,7 +102,6 @@ class uCIRGenerate(ast.NodeVisitor):
         # Version dictionary for temporaries
         self.fname = 'global'
         self.versions = {}
-        
         self.str_counter = 0
 
         # Dictionaries for operations
@@ -517,9 +514,16 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code.append(inst)
 
     def visit_FuncDecl(self, node):
-        # TODO: not including signatures
-        if node.params:
-            self.visit(node.params)
+        var = node.type
+        while not isinstance(var, ast.VarDecl):
+            var = var.type
+        
+        # Add function node to global scope.
+        self.scopes.add_global(var, var)
+        
+        if self.fname != 'global':
+            if node.params:
+                self.visit(node.params)
     
     def visit_FuncDef(self, node):
         # Add function's scope
@@ -534,9 +538,6 @@ class uCIRGenerate(ast.NodeVisitor):
         # Create opcode and append to list.
         inst = ('define', '@'+name)
         self.code.append(inst)
-        
-        # Add function node to global scope (TODO: signatures not included).
-        self.scopes.add_global(var, node)
         
         # Start function
         self.fname = name
@@ -831,14 +832,28 @@ class uCIRGenerate(ast.NodeVisitor):
             return self.rel_ops[op] + "_" + self.build_reg_types(ty)
 
     def build_decl_types(self, node):
+        # TODO: maybe add array total size in semantic check?
+        size,dims = 1,0
+        ptr = 0
         name = ''
         ty = node
         while not isinstance(ty, ast.VarDecl):
             if isinstance(ty, ast.ArrayDecl):
-                name += f'_{ty.dims.value}'
+                size *= ty.dims.value
+                dims += 1
             elif isinstance(ty, ast.PtrDecl):
-                name += '_*'
+                ptr += 1
             ty = ty.type
+        
+        if dims > 0:    
+            if dims == 1:
+                name += f'_{size}'
+            else:
+                name += f'_{size}_{dims}'                
+        
+        if ptr > 0:
+            name += ('_*'*ptr)
+        
         name = ty.type.name[-1].name + name
         return name
     
@@ -846,7 +861,8 @@ class uCIRGenerate(ast.NodeVisitor):
         name = ''
         for item in ty.name[::-1]:
             if item.name == 'array':
-                name += f'_'#{ty.dims.value}' # TODO: get dims (save in scope?)
+                pass
+            #    name += f'_'{ty.dims.value}' # TODO: get dims (save in scope?)
             elif item.name == 'ptr':
                 name += '_*'
             else:
