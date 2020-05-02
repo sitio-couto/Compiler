@@ -53,6 +53,10 @@ class ScopeStack():
         name = node.declname.name
         self.stack[0].add(name, addr)
 
+    # Get type of function, stored as a global var.
+    def get_func_type(self, name):
+        return self.stack[0].lookup(name).type
+
     # Return a variable's address
     def fetch_temp(self, node):
         name = node.name
@@ -116,11 +120,9 @@ class uCIRGenerate(ast.NodeVisitor):
         self.loop_end = []
         self.alloc_phase = None
 
-    def new_str(self, value):
+    def new_str(self):
         ''' Create a new string constant on the global scope. '''
         name = f"@.str.{self.str_counter}" 
-        inst = ('global_string', name, value)
-        self.constants[name] = inst
         self.str_counter += 1
         return name
 
@@ -194,7 +196,7 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code = globs + consts + self.code
 
     def visit_ArrayDecl(self, node):
-        # TODO: Repeated code from ArrayDecl, so that we have the array dims. Can we do it without repeating?
+        # TODO: Repeated code from VarDecl, so that we have the array dims. Can we do it without repeating?
         # TODO: save dims somewhere? We need it afterward.
         ty = self.build_decl_types(node)
         
@@ -244,8 +246,11 @@ class uCIRGenerate(ast.NodeVisitor):
         fake_label = (target_fake[1:],)
         coord = node.expr.coord
         msg_coord = f'{coord.line}:{coord.column}'
-        # TODO: add string to global, and then print the global
-        name = self.new_str('assertion_fail on '+msg_coord)
+        
+        name = self.new_str()
+        inst = ('global_string', name, 'assertion_fail on '+msg_coord)
+        self.constants[name] = inst
+
         error = ('print_string', name)
         
         # Jump to return
@@ -347,7 +352,9 @@ class uCIRGenerate(ast.NodeVisitor):
         
         if ty == 'string': 
             # Constant must be in array (no opcode)
-            name = self.new_str(node.value)
+            name = self.new_str()
+            inst = ('global_string', name, node.value)
+            self.constants[name] = inst
             node.gen_location = name
             return
         
@@ -359,31 +366,9 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
     
     def visit_Decl(self, node):
-        # Check for array initializers
-        arr_decl = isinstance(node.type, ast.ArrayDecl) 
-        str_type = None
-        if isinstance(node.init, ast.Constant): 
-            str_type = (node.init.type.name[0].name == 'string')
         
-        if (arr_decl and not str_type) and not self.alloc_phase:
-            # Visit declaration
-            self.visit(node.type)
-            
-            # Get decl type.
-            ty = self.build_decl_types(node.type)
-           
-            init = self.get_expr(node.init, ty=node.type, name=ty)
-            name = self.new_str(init)
-
-            # Get gen_location
-            node.gen_location = self.new_temp()
-            
-            # Create opcode and append to instruction list
-            inst = ('store_' + ty, name, node.gen_location)
-            self.code.append(inst)
-
         # Check for globals
-        elif self.fname == 'global':
+        if self.fname == 'global':
             # Visit declaration
             self.visit(node.type)
             
@@ -392,8 +377,11 @@ class uCIRGenerate(ast.NodeVisitor):
             
             ty = 'global_' + ty 
             name = node.type.gen_location
-            init = self.get_expr(node.init, ty=node.type, name=ty)
-            inst = (ty, name, init)
+            if node.init:
+                init = self.get_expr(node.init, ty=node.type, name=ty)
+                inst = (ty, name, init)
+            else:
+                inst = (ty, name)
             
             # Add to global or constant if local array initialization
             self.globals[name] = inst
@@ -409,15 +397,32 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Handle initialization
         elif node.init:
-            # Visit initializers
-            self.visit(node.init)
-
+            
             # Get decl type.
             ty = self.build_decl_types(node.type)
+                    
+            # Check for array initializers
+            arr_decl = isinstance(node.type, ast.ArrayDecl) 
+            init_type = isinstance(node.init, ast.InitList)
+            
+            # If InitList
+            if arr_decl and init_type:
+                init = self.get_expr(node.init, ty=node.type, name=ty)
+                
+                name = self.new_str()
+                inst = ('global_' + ty, name, init)
+                self.constants[name] = inst
+                            
+                # Create opcode and append to instruction list
+                inst = ('store_' + ty, name, node.gen_location)
+                self.code.append(inst)
+            else:
+                # Visit initializers
+                self.visit(node.init)
 
-            # Create opcode and append to instruction list
-            inst = ('store_' + ty, node.init.gen_location, node.gen_location)
-            self.code.append(inst)
+                # Create opcode and append to instruction list
+                inst = ('store_' + ty, node.init.gen_location, node.gen_location)
+                self.code.append(inst)
             
     def visit_DeclList(self, node):
         for decl in node.decls:
@@ -498,11 +503,17 @@ class uCIRGenerate(ast.NodeVisitor):
                 inst = ('param_' + ty, arg.gen_location)
                 self.code.append(inst)
         
-        # TODO: check return type of function, and create temporary variable for it if non-void. Also, gen_location if so.
-        node.gen_location = self.new_temp()
+        # Get function return type.
+        ty = self.scopes.get_func_type(node.name.name)
+        
+        # Create opcode and append to list.
+        if ty.name[0].name != 'void':
+            node.gen_location = self.new_temp()
+            inst = ('call', '@'+node.name.name, node.gen_location)
+        else:
+            node.gen_location = None
+            inst = ('call', '@'+node.name.name)
     
-        # Create opcode and append to list
-        inst = ('call', '@'+node.name.name, node.gen_location)
         self.code.append(inst)
 
     def visit_FuncDecl(self, node):
@@ -523,6 +534,9 @@ class uCIRGenerate(ast.NodeVisitor):
         # Create opcode and append to list.
         inst = ('define', '@'+name)
         self.code.append(inst)
+        
+        # Add function node to global scope (TODO: signatures not included).
+        self.scopes.add_global(var, node)
         
         # Start function
         self.fname = name
