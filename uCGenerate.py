@@ -61,6 +61,10 @@ class ScopeStack():
         for scope in self.stack[::-1]:
             var = scope.lookup(name)
             if var: break
+        
+        # If function
+        if isinstance(var, ast.VarDecl):
+            var = var.gen_location
         return var
 
     # Remove current scope from stack (when a FuncDef node ends)
@@ -106,7 +110,6 @@ class uCIRGenerate(ast.NodeVisitor):
 
         # Dictionaries for operations
         self.bin_ops = {'+':'add', '-':'sub', '*':'mul', '/':'div', '%':'mod'}
-        self.un_ops = {'+':'uadd', '-':'uneg', '++':'uinc', '--':'udec', 'p++':'upinc', 'p--':'updec', '&':'addr', '*':'ptr'} #TODO: wrong. See new examples
         self.rel_ops = {'<':'lt', '>':'gt', '<=':'le', '>=':'ge', '==':'eq', '!=':'ne', '&&':'and', '||':'or'}
 
         # The generated code (list of tuples)
@@ -521,12 +524,17 @@ class uCIRGenerate(ast.NodeVisitor):
         while not isinstance(var, ast.VarDecl):
             var = var.type
         
+        var.gen_location = '@'+var.declname.name
+        
         # Add function node to global scope.
+        # TODO: works for return type, but NOT for function pointer, assignment, etc. (basically test12)
         self.scopes.add_global(var, var)
         
         if self.fname != 'global':
             if node.params:
                 self.visit(node.params)
+        
+        node.gen_location = var.gen_location
     
     def visit_FuncDef(self, node):
         # Add function's scope
@@ -599,9 +607,8 @@ class uCIRGenerate(ast.NodeVisitor):
     
     def visit_GlobalDecl(self, node):
         for decl in node.decls:
-            # TODO: Ptr FuncDecl
-            if not isinstance(decl.type, ast.FuncDecl):
-                self.visit(decl)
+            # TODO: signatures can be considered variables if not pointer?
+            self.visit(decl)
     
     def visit_ID(self, node):
         # Get temporary with ID name.
@@ -738,14 +745,33 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit the expression
         self.visit(node.expr)
         
+        # Pointer and address operations are only semantic.
+        if node.op == '*' or node.op == '&':
+            node.gen_location = node.expr.gen_location
+            return
+        
+        # Increments and decrements are done after the prior operation.
+        # TODO: how to increment after operation? Visit twice?
+        if node.op == '++' or node.op == '--':
+            node.gen_location = node.expr.gen_location
+            return
+        
         # Create a new temporary variable name 
         target = self.new_temp()
         
         # Create the opcode and append to list
         ty = self.build_reg_types(node.expr.type)
-        opcode = self.un_ops[node.op] + "_" + ty
-        inst = (opcode, node.expr.gen_location, target)
-        self.code.append(inst)
+        if node.op == '-':
+            inst = ('mul_' + ty, node.expr.gen_location, -1, target)
+            self.code.append(inst)
+        elif node.op == 'p++':
+            inst = ('add_' + ty, node.expr.gen_location, 1, target)
+            self.code.append(inst)
+        elif node.op == 'p--':
+            inst = ('sub_' + ty, node.expr.gen_location, 1, target)
+            self.code.append(inst)
+        else:
+            assert False, "Unsupported unary operation."
         
         # Store location of the result on the node        
         node.gen_location = target

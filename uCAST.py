@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 27/04/2020.
+Last Modified: 02/05/2020.
 '''
 
 import sys
@@ -407,12 +407,15 @@ class FuncCall(Node):
         return tuple(children)
 
 class FuncDecl(Node):
-    __slots__ = ('type', 'params', 'coord')
+    __slots__ = ('type', 'params', 'gen_location', 'coord')
     
     def __init__(self, type, params, coord=None):
         self.type = type
         self.params = params
         self.coord = coord
+        
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []

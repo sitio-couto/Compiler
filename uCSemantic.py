@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 29/04/2020.
+Last Modified: 02/05/2020.
 '''
  
 import uCType
@@ -157,7 +157,7 @@ class SignaturesTable():
         for (name,sign) in zip(self.sign.keys(),self.sign.values()):
             if not sign.get('called', None) : continue
             defined = sign['defined']
-            msg = f"Function '{name}' has multiple declarations: diffrent return types."
+            msg = f"Function '{name}' was not defined."
             assert defined, msg
     
     def __str__(self):
@@ -327,7 +327,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.scopes.pop_scope()
         
         # 4. Checking if called funcs were defined
-        self.signatures.all_defined()
+        # TODO: needed?
+        #self.signatures.all_defined()
 
         # 5. Clear signatures table for next semantic check.
         self.signatures = SignaturesTable()
@@ -721,7 +722,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 1. Visit name ID.
         self.visit(node.name)
         name = node.name
-        
+
         # 2. Check if identifier is a function.
         msg = f"ID '{name.name}' in function call is not a function."
         msg = self.build_error_msg(msg, node.coord)
