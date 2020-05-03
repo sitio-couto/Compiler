@@ -19,6 +19,7 @@ from uCSemantic import SymbolTable
 from os.path import exists
 
 # TODO:
+# - The self.scopes.dims list must be update with the scopes to work properly
 # - Other TODOs in the code body.
 
 class ScopeStack():
@@ -30,6 +31,7 @@ class ScopeStack():
     '''
     def __init__(self):
         self.stack = []
+        self.dims = dict()
         self.constants = []
     
     # Add new scope (if a function definition started)
@@ -50,6 +52,14 @@ class ScopeStack():
     def add_global(self, node, addr):
         name = node.declname.name
         self.stack[0].add(name, addr)
+
+    def add_dims(self, node, data):
+        name = node.declname.name
+        dims = list(map(int, re.findall(r'_(\d+)', data)))
+        self.dims[name] = dims
+
+    def fetch_dims(self, node):
+        return list(reversed(self.dims[node.name]))
 
     # Get type of function, stored as a global var.
     def get_func_type(self, name):
@@ -111,6 +121,13 @@ class uCIRGenerate(ast.NodeVisitor):
         # Dictionaries for operations
         self.bin_ops = {'+':'add', '-':'sub', '*':'mul', '/':'div', '%':'mod'}
         self.rel_ops = {'<':'lt', '>':'gt', '<=':'le', '>=':'ge', '==':'eq', '!=':'ne', '&&':'and', '||':'or'}
+
+        # Variables for array access
+        self.depth = -1 # NOTE: Only used in arrayref
+        self.offset = 0
+        self.arr_ref = None
+        self.arr_temp = None
+        self.arr_type = None
 
         # The generated code (list of tuples)
         self.code = []
@@ -209,26 +226,34 @@ class uCIRGenerate(ast.NodeVisitor):
         while not isinstance(var, ast.VarDecl):
             var = var.type
         self.scopes.add_to_scope(var, alloc_target)
+        self.scopes.add_dims(var, ty)
         node.gen_location = alloc_target
         
     def visit_ArrayRef(self, node):
-        # Visit subscript
-        self.visit(node.subsc)
+        self.depth += 1
         
-        # TODO: ArrayRef of ArrayRef not working (check test06)
-        if isinstance(node.name, ast.ArrayRef):
-            self.visit(node.name)
-        else:
-            arr = self.scopes.fetch_temp(node.name)
-            ty = self.build_reg_types(node.type)
+        # Fetch the array's dimensions (if on root)
+        self.build_offset(node)
         
+        # If not root, skip elem_ instruction
+        if self.depth == 0: 
+            # get addres and type
+            addr = self.arr_temp
+            ty = self.arr_type
+
             # Get new temp variable
             target = self.new_temp()
         
-            # Create instruction
-            inst = ("elem_" + ty, arr, node.subsc.gen_location, target)
+            # Create instructions
+            elem = ("elem_" + ty, addr, self.offset, target)
+            new_target = self.new_temp()
+            load = ("load_" + ty, target, new_target)
+            target = new_target
+
             node.gen_location = target
-            self.code.append(inst)
+            self.code += [elem,load]
+
+        self.depth -= 1
 
     def visit_Assert(self, node):
         # Visit the assert condition
@@ -348,12 +373,10 @@ class uCIRGenerate(ast.NodeVisitor):
                 self.visit(stmt)
 
     def visit_Constant(self, node):
-        # Create a new temporary variable name 
-        target = self.new_temp()
-
         # Get type and check if is a string
         ty = node.type.name[0].name
-        
+
+        # Strings are a special case
         if ty == 'string': 
             # Constant must be in array (no opcode)
             name = self.new_str()
@@ -361,7 +384,10 @@ class uCIRGenerate(ast.NodeVisitor):
             self.constants[name] = inst
             node.gen_location = name
             return
-        
+
+        # Create a new temporary variable name 
+        target = self.new_temp()
+
         # Make the SSA opcode and append to list of generated instructions
         inst = ('literal_' + ty, node.value, target)
         self.code.append(inst)
@@ -830,6 +856,59 @@ class uCIRGenerate(ast.NodeVisitor):
     
     ## AUXILIARY FUNCTIONS ##
 
+    def last_temp(self):
+        inst = self.code[-1]
+        return inst[-1]
+
+    def build_offset(self, node):
+        ''' This function receives the root of a ArrayRef chain and creates
+            the necessary instuctions to build the offset of the referenced 
+            position. It is also responsible for collecting necessary info 
+            to build the elem_(type) instuction in the ArrayRef node.
+        '''
+
+        if isinstance(node.name, ast.ArrayRef):
+            self.visit(node.name)
+        else: # Recursion's Base
+            self.arr_temp = self.scopes.fetch_temp(node.name)
+            self.arr_type = self.build_reg_types(node.type)
+            self.arr_ref = self.scopes.fetch_dims(node.name)
+            self.offset = 0
+
+        # Multiply index by dimension's elements size
+        literal = None
+        mult = None
+        if self.depth == 0:
+            self.visit(node.subsc)
+            result = self.last_temp() # First dim (right to left) is always a unitary size
+        else:
+            # Load dimension's element size value
+            element_size = self.arr_ref[self.depth-1] # We want the size of the dimension's elements, therefore we fetch the inner dimension's size (hence the -1 in self.depth-1)
+            size = self.new_temp()
+            literal = ('literal_int', element_size, size)
+            self.code.append(literal)
+
+            # Fetch array access index 
+            self.visit(node.subsc)
+            index = self.last_temp()
+
+            # Multiply index and the dimension's element size
+            result = self.new_temp()
+            mult = ('mul_int', size, index, result)
+            self.code.append(mult)
+
+        # Update the current offset
+        add = None
+        if self.offset: # if not 0, then create a add instruction to acumulate
+            new_offset = self.new_temp()
+            add = ('add_int', self.offset, result, new_offset)
+        else: # If 0, define the offset as the multiplication's result
+            new_offset = result
+        self.offset = new_offset # update
+
+        # Include operations in the code
+        if add:     self.code.append(add)
+
     # Get Expression for constant initilization
     # This should handle the possible assignment expressions
     def get_expr(self, expr, ty=None, name=None):
@@ -863,23 +942,33 @@ class uCIRGenerate(ast.NodeVisitor):
 
     def build_decl_types(self, node):
         # TODO: maybe add array total size in semantic check?
-        size,dims = 1,0
+        sizes = []
         ptr = 0
         name = ''
         ty = node
         while not isinstance(ty, ast.VarDecl):
             if isinstance(ty, ast.ArrayDecl):
-                size *= ty.dims.value
-                dims += 1
+                # size *= ty.dims.value
+                sizes.append(ty.dims.value)
             elif isinstance(ty, ast.PtrDecl):
                 ptr += 1
             ty = ty.type
         
-        if dims > 0:    
-            if dims == 1:
-                name += f'_{size}'
-            else:
-                name += f'_{size}_{dims}'                
+        # Processes sizes
+        acc = 1 
+        new_sizes = []
+        for size in reversed(sizes):
+            acc *= size
+            new_sizes.append(acc)
+        sizes = list(reversed(new_sizes))
+
+        if len(sizes) > 0:
+            for size in sizes:
+                name += f'_{size}'    
+            # if dims == 1:
+            #     name += f'{size}'
+            # else:
+            #     name += f'{size}_{dims}'                
         
         if ptr > 0:
             name += ('_*'*ptr)
