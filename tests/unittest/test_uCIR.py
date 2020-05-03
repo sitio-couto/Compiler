@@ -23,10 +23,10 @@ print('\n', f'Working Directory: {workdir}','\n')
 class TestAST(unittest.TestCase):
 
     inputs = [
+        'tests/IR_in/test.uc',
         'tests/IR_in/test01.uc',
         'tests/IR_in/test02.uc',
         'tests/IR_in/test03.uc',
-        'tests/IR_in/test04.uc',
         'tests/IR_in/test04.uc',
         'tests/IR_in/test05.uc',
         'tests/IR_in/test06.uc',
@@ -34,13 +34,14 @@ class TestAST(unittest.TestCase):
         'tests/IR_in/test08.uc',
         'tests/IR_in/test09.uc',
         'tests/IR_in/test10.uc',
-        'tests/IR_in/test11.uc']
+        'tests/IR_in/test11.uc',
+        'tests/IR_in/test12.uc']
     
     outputs = [
+        'tests/IR_in/test.in',
         'tests/IR_in/test01.in',
         'tests/IR_in/test02.in',
         'tests/IR_in/test03.in',
-        'tests/IR_in/test04.in',
         'tests/IR_in/test04.in',
         'tests/IR_in/test05.in',
         'tests/IR_in/test06.in',
@@ -48,13 +49,14 @@ class TestAST(unittest.TestCase):
         'tests/IR_in/test08.in',
         'tests/IR_in/test09.in',
         'tests/IR_in/test10.in',
-        'tests/IR_in/test11.in']
+        'tests/IR_in/test11.in',
+        'tests/IR_in/test12.in']
 
     targets = [
+        'tests/IR_out/test.out',
         'tests/IR_out/test01.out',
         'tests/IR_out/test02.out',
         'tests/IR_out/test03.out',
-        'tests/IR_out/test04.out',
         'tests/IR_out/test04.out',
         'tests/IR_out/test05.out',
         'tests/IR_out/test06.out',
@@ -62,10 +64,10 @@ class TestAST(unittest.TestCase):
         'tests/IR_out/test08.out',
         'tests/IR_out/test09.out',
         'tests/IR_out/test10.out',
-        'tests/IR_out/test11.out']
+        'tests/IR_out/test11.out',
+        'tests/IR_out/test12.out']
 
     def runNcmp(self, id):
-        id -= 1
         i,o,t = self.inputs[id], self.outputs[id], self.targets[id]
         sys.argv = sys.argv[:1]+[i]
         
@@ -96,8 +98,11 @@ class TestAST(unittest.TestCase):
         else:
             print('TRUE - The Output Is Correct\n')
 
-    def test_t1(self):
-        self.runNcmp(1)
+    def test_t10(self):
+        self.runNcmp(0)
+
+    # def test_t1(self):
+    #     self.runNcmp(1)
 
     # def test_t2(self):
     #     self.runNcmp(2)
@@ -111,6 +116,9 @@ class TestAST(unittest.TestCase):
     # def test_t5(self):
     #     self.runNcmp(5)
         
+    # def test_t10(self):
+    #     self.runNcmp(10)
+
 
 if __name__ == '__main__':
     unittest.main()    

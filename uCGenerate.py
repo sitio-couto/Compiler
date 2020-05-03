@@ -227,6 +227,7 @@ class uCIRGenerate(ast.NodeVisitor):
         
             # Create instruction
             inst = ("elem_" + ty, arr, node.subsc.gen_location, target)
+            node.gen_location = target
             self.code.append(inst)
 
     def visit_Assert(self, node):
