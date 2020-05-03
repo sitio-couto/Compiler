@@ -5,5 +5,6 @@ newParse.py
 *.ast
 lextab.py
 parsetab.py
+tests/IR_in/*.in
 tests/unittest/test.*
 test.out
