@@ -312,7 +312,7 @@ class uCIRGenerate(ast.NodeVisitor):
             self.code.append(inst)
         else:
             loc = node.rvalue.gen_location
-        
+            
         inst = ('store_' + ty, loc, laddr)
         self.code.append(inst)
                 
@@ -613,7 +613,7 @@ class uCIRGenerate(ast.NodeVisitor):
                     
                 # Visiting for declaration.
                 for stmt in node.body.stats:
-                    if isinstance(stmt, ast.For):
+                    if isinstance(stmt, ast.For) and isinstance(stmt.init, ast.DeclList):
                         self.visit(stmt.init)
             
             # Initiate decls and visit body.

@@ -113,8 +113,8 @@ class TestAST(unittest.TestCase):
     #def test_t4(self):
     #    self.runNcmp(4)
 
-    #def test_t5(self):
-    #    self.runNcmp(5)
+    def test_t5(self):
+        self.runNcmp(5)
 
     def test_t6(self):
         self.runNcmp(6)
