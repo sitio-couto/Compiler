@@ -305,9 +305,10 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Other assignment ops
         if node.op != '=':
+            self.visit(node.lvalue)            # NOTE: unnecessary but Marcio does it.
             loc = self.new_temp()
             opcode = self.bin_ops[node.op[0]] + "_" + ty
-            inst = (opcode, laddr, node.rvalue.gen_location, loc)
+            inst = (opcode, node.lvalue.gen_location, node.rvalue.gen_location, loc)
             self.code.append(inst)
         else:
             loc = node.rvalue.gen_location
@@ -394,7 +395,6 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
     
     def visit_Decl(self, node):
-        
         # Check for globals
         if self.fname == 'global':
             # Visit declaration
@@ -445,19 +445,22 @@ class uCIRGenerate(ast.NodeVisitor):
                 inst = ('store_' + ty, name, node.gen_location)
                 self.code.append(inst)
             else:
-                # Visit initializers
-                self.visit(node.init)
+                name = None
+                # TODO: maybe only global (add "or name[0] != '@'")
+                if isinstance(node.init, ast.ID):
+                    name = self.scopes.fetch_temp(node.init)
+                
+                if not name:
+                    # Visit initializers
+                    self.visit(node.init)
+                    name = node.init.gen_location
 
                 # Create opcode and append to instruction list
-                inst = ('store_' + ty, node.init.gen_location, node.gen_location)
+                inst = ('store_' + ty, name, node.gen_location)
                 self.code.append(inst)
                 
-    # TODO: visit this at the beginning of function.
+    # TODO: visit this at the beginning of function (maybe?).
     def visit_DeclList(self, node):
-        self.alloc_phase = True
-        for decl in node.decls:
-            self.visit(decl)
-        self.alloc_phase = False
         for decl in node.decls:
             self.visit(decl)
     
@@ -472,30 +475,32 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_For(self, node):
         # Add loop scope
         self.scopes.add_scope()
-
+        
+        # Create loop label
+        label = self.new_temp()
+        
+        # Create true/false labels
+        if node.cond:
+            target_true = self.new_temp()
+            target_fake = self.new_temp()
+        else:
+            target_fake = self.new_temp()
+        
         # Visit declarations
         if node.init:
             self.visit(node.init)
         
-        # Create loop label
-        label = self.new_temp()
         self.code.append((label[1:],))
         
         if node.cond:
             # Visit the condition
             self.visit(node.cond)
-
-            # Create two new temporary variable names for true/false labels
-            target_true = self.new_temp()
-            target_fake = self.new_temp()
             
             # Create the opcode and append to list
             inst = ('cbranch', node.cond.gen_location, target_true, target_fake)
             self.code.append(inst)
 
             self.code.append((target_true[1:],))
-        else:
-            target_fake = self.new_temp()
         
         # Add loop ending to attribute.
         self.loop_end.append(target_fake)
@@ -605,6 +610,11 @@ class uCIRGenerate(ast.NodeVisitor):
             if node.body.decls:
                 for decl in node.body.decls:
                     self.visit(decl)
+                    
+                # Visiting for declaration.
+                for stmt in node.body.stats:
+                    if isinstance(stmt, ast.For):
+                        self.visit(stmt.init)
             
             # Initiate decls and visit body.
             self.alloc_phase = False
@@ -643,12 +653,7 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_ID(self, node):
         # Get temporary with ID name.
         var = self.scopes.fetch_temp(node)
-        
-        # NOTE: Globals are stored directly from label
-        if '@' in var: 
-            node.gen_location = var
-            return 
-        
+
         # Create a new temporary variable name 
         target = self.new_temp()
         
