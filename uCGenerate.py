@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/05/2020.
+Last Modified: 04/05/2020.
 '''
 
 import re
@@ -122,18 +122,12 @@ class uCIRGenerate(ast.NodeVisitor):
         self.bin_ops = {'+':'add', '-':'sub', '*':'mul', '/':'div', '%':'mod'}
         self.rel_ops = {'<':'lt', '>':'gt', '<=':'le', '>=':'ge', '==':'eq', '!=':'ne', '&&':'and', '||':'or'}
 
-        # Variables for array access
-        self.depth = -1 # NOTE: Only used in arrayref
-        self.offset = 0
-        self.arr_ref = None
-        self.arr_temp = None
-        self.arr_type = None
-
         # The generated code (list of tuples)
         self.code = []
         
         # Useful attributes
-        self.ret = {'label':None, 'value':None}
+        self.arr = {'offset':0, 'depth':-1}     # NOTE: only used in ArrayRef
+        self.ret = {}
         self.loop_end = []
         self.alloc_phase = None
 
@@ -230,22 +224,22 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = alloc_target
         
     def visit_ArrayRef(self, node):
-        self.depth += 1
+        self.arr['depth'] += 1
         
         # Fetch the array's dimensions (if on root)
         self.build_offset(node)
         
         # If not root, skip elem_ instruction
-        if self.depth == 0: 
+        if self.arr['depth'] == 0: 
             # get addres and type
-            addr = self.arr_temp
-            ty = self.arr_type
+            addr = self.arr['temp']
+            ty = self.arr['type']
 
             # Get new temp variable
             target = self.new_temp()
         
             # Create instructions
-            elem = ("elem_" + ty, addr, self.offset, target)
+            elem = ("elem_" + ty, addr, self.arr['offset'], target)
             new_target = self.new_temp()
             load = ("load_" + ty, target, new_target)
             target = new_target
@@ -253,7 +247,7 @@ class uCIRGenerate(ast.NodeVisitor):
             node.gen_location = target
             self.code += [elem,load]
 
-        self.depth -= 1
+        self.arr['depth'] -= 1
 
     def visit_Assert(self, node):
         # Visit the assert condition
@@ -784,19 +778,23 @@ class uCIRGenerate(ast.NodeVisitor):
             return
         
         # Create a new temporary variable name 
+        literal = self.new_temp()
         target = self.new_temp()
         
         # Create the opcode and append to list
         ty = self.build_reg_types(node.expr.type)
         if node.op == '-':
-            inst = ('mul_' + ty, node.expr.gen_location, -1, target)
-            self.code.append(inst)
+            inst1 = ('literal_int', -1, literal)
+            inst2 = ('mul_' + ty, node.expr.gen_location, literal, target)
+            self.code += [inst1, inst2]
         elif node.op == 'p++':
-            inst = ('add_' + ty, node.expr.gen_location, 1, target)
-            self.code.append(inst)
+            inst1 = ('literal_int', 1, literal)
+            inst2 = ('add_int', node.expr.gen_location, literal, target)
+            self.code += [inst1, inst2]
         elif node.op == 'p--':
-            inst = ('sub_' + ty, node.expr.gen_location, 1, target)
-            self.code.append(inst)
+            inst1 = ('literal_int', 1, literal)
+            inst2 = ('sub_int', node.expr.gen_location, literal, target)
+            self.code += [inst1, inst2]
         else:
             assert False, "Unsupported unary operation."
         
@@ -870,20 +868,20 @@ class uCIRGenerate(ast.NodeVisitor):
         if isinstance(node.name, ast.ArrayRef):
             self.visit(node.name)
         else: # Recursion's Base
-            self.arr_temp = self.scopes.fetch_temp(node.name)
-            self.arr_type = self.build_reg_types(node.type)
-            self.arr_ref = self.scopes.fetch_dims(node.name)
-            self.offset = 0
+            self.arr['temp'] = self.scopes.fetch_temp(node.name)
+            self.arr['type'] = self.build_reg_types(node.type)
+            self.arr['ref'] = self.scopes.fetch_dims(node.name)
+            self.arr['offset'] = 0
 
         # Multiply index by dimension's elements size
         literal = None
         mult = None
-        if self.depth == 0:
+        if self.arr['depth'] == 0:
             self.visit(node.subsc)
             result = self.last_temp() # First dim (right to left) is always a unitary size
         else:
             # Load dimension's element size value
-            element_size = self.arr_ref[self.depth-1] # We want the size of the dimension's elements, therefore we fetch the inner dimension's size (hence the -1 in self.depth-1)
+            element_size = self.arr['ref'][self.arr['depth']-1] # We want the size of the dimension's elements, therefore we fetch the inner dimension's size (hence the -1 in self.arr['depth']-1)
             size = self.new_temp()
             literal = ('literal_int', element_size, size)
             self.code.append(literal)
@@ -899,12 +897,12 @@ class uCIRGenerate(ast.NodeVisitor):
 
         # Update the current offset
         add = None
-        if self.offset: # if not 0, then create a add instruction to acumulate
+        if self.arr['offset']: # if not 0, then create a add instruction to acumulate
             new_offset = self.new_temp()
-            add = ('add_int', self.offset, result, new_offset)
+            add = ('add_int', self.arr['offset'], result, new_offset)
         else: # If 0, define the offset as the multiplication's result
             new_offset = result
-        self.offset = new_offset # update
+        self.arr['offset'] = new_offset # update
 
         # Include operations in the code
         if add:     self.code.append(add)
@@ -939,6 +937,23 @@ class uCIRGenerate(ast.NodeVisitor):
             return self.bin_ops[op] + "_" + self.build_reg_types(ty)
         else:
             return self.rel_ops[op] + "_" + self.build_reg_types(ty)
+    
+    def check_unary_after_op(self, node):
+        if node.op != '++' and node.op != '--':
+            return
+        
+        literal= self.new_temp()
+        target = self.new_temp()
+        if node.op == '++':
+            inst1 = ('literal_int', 1, literal)
+            inst2 = ('add_int', node.gen_location, literal, target)
+        else:
+            inst1 = ('literal_int', 1, literal)
+            inst2 = ('sub_int', node.gen_location, literal, target)
+
+        self.code += [inst1, inst2]
+
+    ## TYPE-RELATED FUNCTIONS ##
 
     def build_decl_types(self, node):
         # TODO: maybe add array total size in semantic check?
