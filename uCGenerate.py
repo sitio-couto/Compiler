@@ -207,46 +207,50 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code = globs + consts + self.code
 
     def visit_ArrayDecl(self, node):
-        # TODO: Repeated code from VarDecl, so that we have the array dims. Can we do it without repeating?
-        # TODO: save dims somewhere? We need it afterward.
+        # Getting type
         ty = self.build_decl_types(node)
-        
-        alloc_target = self.new_temp()
-        inst = ('alloc_' + ty, alloc_target)
-        self.code.append(inst)
         
         # Adding to scope
         var = node.type
         while not isinstance(var, ast.VarDecl):
             var = var.type
-        self.scopes.add_to_scope(var, alloc_target)
         self.scopes.add_dims(var, ty)
-        node.gen_location = alloc_target
         
+        # Allocate
+        if self.fname == 'global':
+            node.gen_location = '@'+var.declname.name
+        else:
+            alloc_target = self.new_temp()
+            inst = ('alloc_' + ty, alloc_target)
+            self.code.append(inst)
+            node.gen_location = alloc_target
+
+        self.scopes.add_to_scope(var, node.gen_location)
+    
+    # TODO: a[b[i]] doesn't work.
     def visit_ArrayRef(self, node):
         self.arr['depth'] += 1
         
         # Fetch the array's dimensions (if on root)
         self.build_offset(node)
         
-        # If not root, skip elem_ instruction
+        # If not root, skip elem instruction
         if self.arr['depth'] == 0: 
-            # get addres and type
+            # get address and type
             addr = self.arr['temp']
             ty = self.arr['type']
 
-            # Get new temp variable
+            # Get new temp variables
             target = self.new_temp()
-        
+            new_target = self.new_temp()
+                    
             # Create instructions
             elem = ("elem_" + ty, addr, self.arr['offset'], target)
-            new_target = self.new_temp()
-            load = ("load_" + ty, target, new_target)
-            target = new_target
+            load = ("load_" + ty + '_*', target, new_target)
 
-            node.gen_location = target
             self.code += [elem,load]
-
+            node.gen_location = new_target
+            
         self.arr['depth'] -= 1
 
     def visit_Assert(self, node):
@@ -293,7 +297,6 @@ class uCIRGenerate(ast.NodeVisitor):
         ty = self.build_reg_types(node.rvalue.type)
         
         # Assignable expressions are ID, ArrayRef and UnaryOp
-        # TODO: arrayRef correct?
         if isinstance(node.lvalue, ast.ID):
             laddr = self.scopes.fetch_temp(node.lvalue)
         else:
@@ -312,6 +315,12 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('store_' + ty, loc, laddr)
         self.code.append(inst)
         
+        # Check p++ and p--
+        if isinstance(node.lvalue, ast.UnaryOp):
+            self.check_unary_after_op(node.lvalue)
+        if isinstance(node.rvalue, ast.UnaryOp):
+            self.check_unary_after_op(node.rvalue)
+        
         # Store location of the result on the node        
         node.gen_location = laddr
         
@@ -328,9 +337,15 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = (opcode, node.lvalue.gen_location, node.rvalue.gen_location, target)
         self.code.append(inst)
 
+        # Check p++ and p--
+        if isinstance(node.lvalue, ast.UnaryOp):
+            self.check_unary_after_op(node.lvalue)
+        if isinstance(node.rvalue, ast.UnaryOp):
+            self.check_unary_after_op(node.rvalue)
+
         # Store location of the result on the node
         node.gen_location = target
-        
+                
     def visit_Break(self, node):
         inst = ('jump', self.loop_end[-1])
         self.code.append(inst)
@@ -353,7 +368,11 @@ class uCIRGenerate(ast.NodeVisitor):
         node.expr.gen_location = casted
     
         self.code.append(inst)
-
+        
+        # Check p++ and p--
+        if isinstance(node.expr, ast.UnaryOp):
+            self.check_unary_after_op(node.expr)
+        
         # Store location of the result on the node
         node.gen_location = node.expr.gen_location
 
@@ -448,6 +467,10 @@ class uCIRGenerate(ast.NodeVisitor):
                 inst = ('store_' + ty, node.init.gen_location, node.gen_location)
                 self.code.append(inst)
             
+            # Check p++ and p--
+            if isinstance(node.init, ast.UnaryOp):
+                self.check_unary_after_op(node.init)
+            
     def visit_DeclList(self, node):
         for decl in node.decls:
             self.visit(decl)
@@ -459,6 +482,10 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit expressions
         for expr in node.exprs:
             self.visit(expr)
+            
+            # Check p++ and p--
+            if isinstance(expr, ast.UnaryOp):
+                self.check_unary_after_op(expr)
     
     def visit_For(self, node):
         # Add loop scope
@@ -498,6 +525,10 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit next
         if node.next:
             self.visit(node.next)
+            
+            # Check p++ and p--
+            if isinstance(node.next, ast.UnaryOp):
+                self.check_unary_after_op(node.next)
         
         # Go back to the beginning.
         inst = ('jump', label)
@@ -539,6 +570,10 @@ class uCIRGenerate(ast.NodeVisitor):
             inst = ('call', '@'+node.name.name)
     
         self.code.append(inst)
+        
+        # Check p++ and p--
+        if isinstance(node.args, ast.UnaryOp):
+            self.check_unary_after_op(node.args)
 
     def visit_FuncDecl(self, node):
         var = node.type
@@ -719,6 +754,10 @@ class uCIRGenerate(ast.NodeVisitor):
         else:
             inst = ('print_void',)
             self.code.append(inst)
+        
+        # Check p++ and p--
+        if isinstance(node.expr, ast.UnaryOp):
+            self.check_unary_after_op(node.expr)
     
     def visit_PtrDecl(self, node):
         self.visit(node.type)
@@ -754,6 +793,10 @@ class uCIRGenerate(ast.NodeVisitor):
             ty = self.build_reg_types(node.expr.type)
             inst = ('store_'+ty, node.expr.gen_location, self.ret['value'])
             self.code.append(inst)
+            
+            # Check p++ and p--
+            if isinstance(node.expr, ast.UnaryOp):
+                self.check_unary_after_op(node.expr)
         
         # Jump to return label.
         inst = ('jump', self.ret['label'])
@@ -767,36 +810,50 @@ class uCIRGenerate(ast.NodeVisitor):
         self.visit(node.expr)
         
         # Pointer and address operations are only semantic.
-        if node.op == '*' or node.op == '&':
+        # Operation '+' is useless.
+        if node.op == '*' or node.op == '&' or node.op == '+':
             node.gen_location = node.expr.gen_location
             return
         
         # Increments and decrements are done after the prior operation.
-        # TODO: how to increment after operation? Visit twice?
-        if node.op == '++' or node.op == '--':
+        if node.op == 'p++' or node.op == 'p--':
             node.gen_location = node.expr.gen_location
             return
         
         # Create a new temporary variable name 
-        literal = self.new_temp()
         target = self.new_temp()
+        expr_loc = node.expr.gen_location
+        
+        # NOT is a specific case.
+        if node.op == '!':
+            inst1 = ('not', expr_loc, target)
+            self.code.append(inst1)
+            return
         
         # Create the opcode and append to list
+        literal = self.new_temp()
         ty = self.build_reg_types(node.expr.type)
         if node.op == '-':
             inst1 = ('literal_int', -1, literal)
-            inst2 = ('mul_' + ty, node.expr.gen_location, literal, target)
-            self.code += [inst1, inst2]
-        elif node.op == 'p++':
+            inst2 = ('mul_' + ty, expr_loc, literal, target)
+        elif node.op == '++':
             inst1 = ('literal_int', 1, literal)
-            inst2 = ('add_int', node.expr.gen_location, literal, target)
-            self.code += [inst1, inst2]
-        elif node.op == 'p--':
+            inst2 = ('add_int', expr_loc, literal, target)
+        elif node.op == '--':
             inst1 = ('literal_int', 1, literal)
-            inst2 = ('sub_int', node.expr.gen_location, literal, target)
-            self.code += [inst1, inst2]
+            inst2 = ('sub_int', expr_loc, literal, target)
         else:
             assert False, "Unsupported unary operation."
+
+        self.code += [inst1, inst2]
+        
+        # Check p++ and p--
+        if isinstance(node.expr, ast.UnaryOp):
+            self.check_unary_after_op(node.expr)
+        elif isinstance(node.expr, ast.ID) and node.op != '-':
+            var = self.scopes.fetch_temp(node.expr)
+            inst = ('store_int', node.gen_location, var)
+            self.code.append(inst)
         
         # Store location of the result on the node        
         node.gen_location = target
@@ -854,10 +911,6 @@ class uCIRGenerate(ast.NodeVisitor):
     
     ## AUXILIARY FUNCTIONS ##
 
-    def last_temp(self):
-        inst = self.code[-1]
-        return inst[-1]
-
     def build_offset(self, node):
         ''' This function receives the root of a ArrayRef chain and creates
             the necessary instuctions to build the offset of the referenced 
@@ -874,38 +927,37 @@ class uCIRGenerate(ast.NodeVisitor):
             self.arr['offset'] = 0
 
         # Multiply index by dimension's elements size
-        literal = None
-        mult = None
         if self.arr['depth'] == 0:
             self.visit(node.subsc)
-            result = self.last_temp() # First dim (right to left) is always a unitary size
+            result = node.subsc.gen_location
         else:
             # Load dimension's element size value
-            element_size = self.arr['ref'][self.arr['depth']-1] # We want the size of the dimension's elements, therefore we fetch the inner dimension's size (hence the -1 in self.arr['depth']-1)
+            # We want the size of the dimension's elements, therefore we fetch the inner dimension's size (hence the -1 in self.arr['depth']-1)
+            element_size = self.arr['ref'][self.arr['depth']-1] 
             size = self.new_temp()
             literal = ('literal_int', element_size, size)
             self.code.append(literal)
 
             # Fetch array access index 
             self.visit(node.subsc)
-            index = self.last_temp()
 
             # Multiply index and the dimension's element size
             result = self.new_temp()
-            mult = ('mul_int', size, index, result)
+            mult = ('mul_int', size, node.subsc.gen_location, result)
             self.code.append(mult)
 
         # Update the current offset
-        add = None
-        if self.arr['offset']: # if not 0, then create a add instruction to acumulate
+        # if not 0, then create a add instruction to acumulate
+        if self.arr['offset']: 
             new_offset = self.new_temp()
             add = ('add_int', self.arr['offset'], result, new_offset)
-        else: # If 0, define the offset as the multiplication's result
+            self.code.append(add)
+        # If 0, define the offset as the multiplication's result
+        else: 
             new_offset = result
-        self.arr['offset'] = new_offset # update
-
-        # Include operations in the code
-        if add:     self.code.append(add)
+            
+        # Update offset
+        self.arr['offset'] = new_offset
 
     # Get Expression for constant initilization
     # This should handle the possible assignment expressions
@@ -918,7 +970,7 @@ class uCIRGenerate(ast.NodeVisitor):
             right = self.get_expr(expr.expr)
             ret = f"({expr.op}{right})"
         elif isinstance(expr, ast.ID):
-            ret = self.scopes.fetch_temp(expr) # TODO: should replace ID.name by the ID's value (done?)
+            ret = self.scopes.fetch_temp(expr)
         elif isinstance(expr, ast.Constant):
             ret = expr.value
         elif isinstance(expr, ast.InitList):
@@ -939,52 +991,47 @@ class uCIRGenerate(ast.NodeVisitor):
             return self.rel_ops[op] + "_" + self.build_reg_types(ty)
     
     def check_unary_after_op(self, node):
-        if node.op != '++' and node.op != '--':
+        ops = ['p++', 'p--']
+        if not isinstance(node.expr, ast.ID) or node.op not in ops:
             return
         
         literal= self.new_temp()
         target = self.new_temp()
-        if node.op == '++':
+        if node.op == 'p++':
             inst1 = ('literal_int', 1, literal)
             inst2 = ('add_int', node.gen_location, literal, target)
         else:
             inst1 = ('literal_int', 1, literal)
             inst2 = ('sub_int', node.gen_location, literal, target)
+        
+        var = self.scopes.fetch_temp(node.expr)
+        inst3 = ('store_int', node.gen_location, var)
 
-        self.code += [inst1, inst2]
+        self.code += [inst1, inst2, inst3]
 
     ## TYPE-RELATED FUNCTIONS ##
 
     def build_decl_types(self, node):
-        # TODO: maybe add array total size in semantic check?
         sizes = []
         ptr = 0
         name = ''
         ty = node
+        
+        # Identify modifiers.
         while not isinstance(ty, ast.VarDecl):
             if isinstance(ty, ast.ArrayDecl):
-                # size *= ty.dims.value
                 sizes.append(ty.dims.value)
             elif isinstance(ty, ast.PtrDecl):
                 ptr += 1
             ty = ty.type
         
         # Processes sizes
-        acc = 1 
-        new_sizes = []
-        for size in reversed(sizes):
-            acc *= size
-            new_sizes.append(acc)
-        sizes = list(reversed(new_sizes))
-
-        if len(sizes) > 0:
-            for size in sizes:
-                name += f'_{size}'    
-            # if dims == 1:
-            #     name += f'{size}'
-            # else:
-            #     name += f'{size}_{dims}'                
+        for i in range(len(sizes)-1)[::-1]:
+            sizes[i] *= sizes[i+1]
+        for size in sizes:
+            name += f'_{size}'  
         
+        # Ptrs
         if ptr > 0:
             name += ('_*'*ptr)
         
@@ -996,7 +1043,6 @@ class uCIRGenerate(ast.NodeVisitor):
         for item in ty.name[::-1]:
             if item.name == 'array':
                 pass
-            #    name += f'_'{ty.dims.value}' # TODO: get dims (save in scope?)
             elif item.name == 'ptr':
                 name += '_*'
             else:
