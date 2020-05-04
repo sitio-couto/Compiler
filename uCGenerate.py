@@ -314,20 +314,15 @@ class uCIRGenerate(ast.NodeVisitor):
         
         inst = ('store_' + ty, loc, laddr)
         self.code.append(inst)
-        
-        # Check p++ and p--
-        if isinstance(node.lvalue, ast.UnaryOp):
-            self.check_unary_after_op(node.lvalue)
-        if isinstance(node.rvalue, ast.UnaryOp):
-            self.check_unary_after_op(node.rvalue)
-        
+                
         # Store location of the result on the node        
         node.gen_location = laddr
         
     def visit_BinaryOp(self, node):
         # Visit the left and right expressions
-        self.visit(node.rvalue)
+        # TODO: inconsistency in tests: visit l or r first?
         self.visit(node.lvalue)
+        self.visit(node.rvalue)
 
         # Make a new temporary for storing the result
         target = self.new_temp()
@@ -336,12 +331,6 @@ class uCIRGenerate(ast.NodeVisitor):
         opcode = self.get_operation(node.op, node.lvalue.type)
         inst = (opcode, node.lvalue.gen_location, node.rvalue.gen_location, target)
         self.code.append(inst)
-
-        # Check p++ and p--
-        if isinstance(node.lvalue, ast.UnaryOp):
-            self.check_unary_after_op(node.lvalue)
-        if isinstance(node.rvalue, ast.UnaryOp):
-            self.check_unary_after_op(node.rvalue)
 
         # Store location of the result on the node
         node.gen_location = target
@@ -368,11 +357,7 @@ class uCIRGenerate(ast.NodeVisitor):
         node.expr.gen_location = casted
     
         self.code.append(inst)
-        
-        # Check p++ and p--
-        if isinstance(node.expr, ast.UnaryOp):
-            self.check_unary_after_op(node.expr)
-        
+                
         # Store location of the result on the node
         node.gen_location = node.expr.gen_location
 
@@ -466,12 +451,13 @@ class uCIRGenerate(ast.NodeVisitor):
                 # Create opcode and append to instruction list
                 inst = ('store_' + ty, node.init.gen_location, node.gen_location)
                 self.code.append(inst)
-            
-            # Check p++ and p--
-            if isinstance(node.init, ast.UnaryOp):
-                self.check_unary_after_op(node.init)
-            
+                
+    # TODO: visit this at the beginning of function.
     def visit_DeclList(self, node):
+        self.alloc_phase = True
+        for decl in node.decls:
+            self.visit(decl)
+        self.alloc_phase = False
         for decl in node.decls:
             self.visit(decl)
     
@@ -482,10 +468,6 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit expressions
         for expr in node.exprs:
             self.visit(expr)
-            
-            # Check p++ and p--
-            if isinstance(expr, ast.UnaryOp):
-                self.check_unary_after_op(expr)
     
     def visit_For(self, node):
         # Add loop scope
@@ -525,11 +507,7 @@ class uCIRGenerate(ast.NodeVisitor):
         # Visit next
         if node.next:
             self.visit(node.next)
-            
-            # Check p++ and p--
-            if isinstance(node.next, ast.UnaryOp):
-                self.check_unary_after_op(node.next)
-        
+
         # Go back to the beginning.
         inst = ('jump', label)
         self.code.append(inst)
@@ -570,10 +548,6 @@ class uCIRGenerate(ast.NodeVisitor):
             inst = ('call', '@'+node.name.name)
     
         self.code.append(inst)
-        
-        # Check p++ and p--
-        if isinstance(node.args, ast.UnaryOp):
-            self.check_unary_after_op(node.args)
 
     def visit_FuncDecl(self, node):
         var = node.type
@@ -754,11 +728,7 @@ class uCIRGenerate(ast.NodeVisitor):
         else:
             inst = ('print_void',)
             self.code.append(inst)
-        
-        # Check p++ and p--
-        if isinstance(node.expr, ast.UnaryOp):
-            self.check_unary_after_op(node.expr)
-    
+            
     def visit_PtrDecl(self, node):
         self.visit(node.type)
         node.gen_location = node.type.gen_location
@@ -793,11 +763,7 @@ class uCIRGenerate(ast.NodeVisitor):
             ty = self.build_reg_types(node.expr.type)
             inst = ('store_'+ty, node.expr.gen_location, self.ret['value'])
             self.code.append(inst)
-            
-            # Check p++ and p--
-            if isinstance(node.expr, ast.UnaryOp):
-                self.check_unary_after_op(node.expr)
-        
+                    
         # Jump to return label.
         inst = ('jump', self.ret['label'])
         self.code.append(inst)
@@ -808,38 +774,35 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_UnaryOp(self, node):
         # Visit the expression
         self.visit(node.expr)
+        expr_loc = node.expr.gen_location
         
         # Pointer and address operations are only semantic.
         # Operation '+' is useless.
         if node.op == '*' or node.op == '&' or node.op == '+':
-            node.gen_location = node.expr.gen_location
+            node.gen_location = expr_loc
             return
-        
-        # Increments and decrements are done after the prior operation.
-        if node.op == 'p++' or node.op == 'p--':
-            node.gen_location = node.expr.gen_location
-            return
-        
-        # Create a new temporary variable name 
-        target = self.new_temp()
-        expr_loc = node.expr.gen_location
         
         # NOT is a specific case.
         if node.op == '!':
+            target = self.new_temp()
             inst1 = ('not', expr_loc, target)
             self.code.append(inst1)
+            node.gen_location = target
             return
+            
+        # Create new temporary variables
+        literal = self.new_temp()
+        target = self.new_temp()
         
         # Create the opcode and append to list
-        literal = self.new_temp()
         ty = self.build_reg_types(node.expr.type)
         if node.op == '-':
             inst1 = ('literal_int', -1, literal)
             inst2 = ('mul_' + ty, expr_loc, literal, target)
-        elif node.op == '++':
+        elif '++' in node.op:
             inst1 = ('literal_int', 1, literal)
             inst2 = ('add_int', expr_loc, literal, target)
-        elif node.op == '--':
+        elif '--' in node.op:
             inst1 = ('literal_int', 1, literal)
             inst2 = ('sub_int', expr_loc, literal, target)
         else:
@@ -847,16 +810,16 @@ class uCIRGenerate(ast.NodeVisitor):
 
         self.code += [inst1, inst2]
         
-        # Check p++ and p--
-        if isinstance(node.expr, ast.UnaryOp):
-            self.check_unary_after_op(node.expr)
-        elif isinstance(node.expr, ast.ID) and node.op != '-':
+        if isinstance(node.expr, ast.ID) and node.op != '-':
             var = self.scopes.fetch_temp(node.expr)
-            inst = ('store_int', node.gen_location, var)
+            inst = ('store_int', target, var)
             self.code.append(inst)
         
-        # Store location of the result on the node        
-        node.gen_location = target
+        # Store location of the result (or expr) on the node
+        if node.op[0] == 'p':
+            node.gen_location = expr_loc
+        else:
+            node.gen_location = target
 
     def visit_VarDecl(self, node):
         ty = self.build_reg_types(node.type)
@@ -989,25 +952,6 @@ class uCIRGenerate(ast.NodeVisitor):
             return self.bin_ops[op] + "_" + self.build_reg_types(ty)
         else:
             return self.rel_ops[op] + "_" + self.build_reg_types(ty)
-    
-    def check_unary_after_op(self, node):
-        ops = ['p++', 'p--']
-        if not isinstance(node.expr, ast.ID) or node.op not in ops:
-            return
-        
-        literal= self.new_temp()
-        target = self.new_temp()
-        if node.op == 'p++':
-            inst1 = ('literal_int', 1, literal)
-            inst2 = ('add_int', node.gen_location, literal, target)
-        else:
-            inst1 = ('literal_int', 1, literal)
-            inst2 = ('sub_int', node.gen_location, literal, target)
-        
-        var = self.scopes.fetch_temp(node.expr)
-        inst3 = ('store_int', node.gen_location, var)
-
-        self.code += [inst1, inst2, inst3]
 
     ## TYPE-RELATED FUNCTIONS ##
 
