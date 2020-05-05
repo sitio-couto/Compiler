@@ -35,7 +35,8 @@ class TestAST(unittest.TestCase):
         'tests/IR_in/test09.uc',
         'tests/IR_in/test10.uc',
         'tests/IR_in/test11.uc',
-        'tests/IR_in/test12.uc']
+        'tests/IR_in/test12.uc',
+        'tests/IR_in/test13.uc']
     
     outputs = [
         'tests/IR_in/test.in',
@@ -50,7 +51,8 @@ class TestAST(unittest.TestCase):
         'tests/IR_in/test09.in',
         'tests/IR_in/test10.in',
         'tests/IR_in/test11.in',
-        'tests/IR_in/test12.in']
+        'tests/IR_in/test12.in',
+        'tests/IR_in/test13.in']
 
     targets = [
         'tests/IR_out/test.out',
@@ -65,7 +67,8 @@ class TestAST(unittest.TestCase):
         'tests/IR_out/test09.out',
         'tests/IR_out/test10.out',
         'tests/IR_out/test11.out',
-        'tests/IR_out/test12.out']
+        'tests/IR_out/test12.out',
+        'tests/IR_out/test13.out']
 
     def runNcmp(self, id):
         i,o,t = self.inputs[id], self.outputs[id], self.targets[id]
@@ -107,35 +110,38 @@ class TestAST(unittest.TestCase):
     #def test_t2(self):
     #    self.runNcmp(2)
 
-    def test_t3(self):
-        self.runNcmp(3)
+    #def test_t3(self):
+    #    self.runNcmp(3)
 
     #def test_t4(self):
     #    self.runNcmp(4)
 
-    def test_t5(self):
-        self.runNcmp(5)
+    #def test_t5(self):
+    #    self.runNcmp(5)
 
-    def test_t6(self):
-        self.runNcmp(6)
+    #def test_t6(self):
+    #    self.runNcmp(6)
 
     def test_t7(self):
         self.runNcmp(7)
 
-    # def test_t8(self):
-    #     self.runNcmp(8)
+    #def test_t8(self):
+    #    self.runNcmp(8)
 
-    def test_t9(self):
-        self.runNcmp(9)
+    #def test_t9(self):
+    #    self.runNcmp(9)
 
-    # def test_t10(self):
-    #     self.runNcmp(10)
+    #def test_t10(self):
+    #    self.runNcmp(10)
 
-    # def test_t11(self):
-    #     self.runNcmp(11)
+    #def test_t11(self):
+    #    self.runNcmp(11)
     
-    # def test_t12(self):
-    #     self.runNcmp(12)
+    #def test_t12(self):
+    #    self.runNcmp(12)
+    
+    #def test_t13(self):
+    #    self.runNcmp(13)
 
 if __name__ == '__main__':
     unittest.main()    

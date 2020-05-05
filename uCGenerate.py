@@ -246,14 +246,12 @@ class uCIRGenerate(ast.NodeVisitor):
 
             # Get new temp variables
             target = self.new_temp()
-            new_target = self.new_temp()
                     
             # Create instructions
             elem = ("elem_" + ty, addr, self.arr['offset'], target)
-            load = ("load_" + ty + '_*', target, new_target)
 
-            self.code += [elem,load]
-            node.gen_location = new_target
+            self.code.append(elem)
+            node.gen_location = target
             
         self.arr['depth'] -= 1
 
@@ -295,21 +293,35 @@ class uCIRGenerate(ast.NodeVisitor):
     
     def visit_Assignment(self, node):
         # Visit the expression to be assigned.
+        # NOTE: Marcio does not load rvalue if it is a function pointer.
         self.visit(node.rvalue)
         
-        # Create the opcode and append to list
+        # Create types
         ty = self.build_reg_types(node.rvalue.type)
         
+        # Load if ArrayRef
+        if isinstance(node.rvalue, ast.ArrayRef):
+            target = self.new_temp()
+            inst = ('load_'+ty+'_*', node.rvalue.gen_location, target)
+            self.code.append(inst)
+            node.rvalue.gen_location = target
+        
         # Assignable expressions are ID, ArrayRef and UnaryOp
+        visited = False
         if isinstance(node.lvalue, ast.ID):
             laddr = self.scopes.fetch_temp(node.lvalue)
         else:
+            visited = True
             self.visit(node.lvalue)
             laddr = node.lvalue.gen_location
+            
+            # Get content if ArrayRef.
+            if isinstance(node.lvalue, ast.ArrayRef):
+                ty += '_*'
         
         # Other assignment ops
         if node.op != '=':
-            self.visit(node.lvalue)            # NOTE: unnecessary but Marcio does it.
+            if not visited:   self.visit(node.lvalue)            # NOTE: unnecessary but Marcio does it.
             loc = self.new_temp()
             opcode = self.bin_ops[node.op[0]] + "_" + ty
             inst = (opcode, node.lvalue.gen_location, node.rvalue.gen_location, loc)
@@ -325,9 +337,25 @@ class uCIRGenerate(ast.NodeVisitor):
         
     def visit_BinaryOp(self, node):
         # Visit the left and right expressions
-        # TODO: inconsistency in tests: visit l or r first?
+        # TODO: inconsistency in tests: visit l or r first? Depends if ID
+        
         self.visit(node.lvalue)
+        # Load if ArrayRef
+        if isinstance(node.lvalue, ast.ArrayRef):
+            ty = self.build_reg_types(node.lvalue.type)
+            target = self.new_temp()
+            inst = ('load_'+ty+'_*', node.lvalue.gen_location, target)
+            self.code.append(inst)
+            node.lvalue.gen_location = target
+        
         self.visit(node.rvalue)
+        # Load if ArrayRef
+        if isinstance(node.rvalue, ast.ArrayRef):
+            ty = self.build_reg_types(node.rvalue.type)
+            target = self.new_temp()
+            inst = ('load_'+ty+'_*', node.rvalue.gen_location, target)
+            self.code.append(inst)
+            node.rvalue.gen_location = target
 
         # Make a new temporary for storing the result
         target = self.new_temp()
@@ -347,6 +375,14 @@ class uCIRGenerate(ast.NodeVisitor):
     def visit_Cast(self, node):
         # Visit the expression
         self.visit(node.expr)
+        
+        # Load if ArrayRef
+        if isinstance(node.expr, ast.ArrayRef):
+            ty = self.build_reg_types(node.expr.type)
+            target = self.new_temp()
+            inst = ('load_'+ty+'_*', node.expr.gen_location, target)
+            self.code.append(inst)
+            node.expr.gen_location = target
         
         # Check type.
         ty = node.type.name[0].name
@@ -463,7 +499,6 @@ class uCIRGenerate(ast.NodeVisitor):
                 inst = ('store_' + ty, name, node.gen_location)
                 self.code.append(inst)
                 
-    # TODO: visit this at the beginning of function (maybe?).
     def visit_DeclList(self, node):
         for decl in node.decls:
             self.visit(decl)
@@ -566,7 +601,6 @@ class uCIRGenerate(ast.NodeVisitor):
         var.gen_location = '@'+var.declname.name
         
         # Add function node to global scope.
-        # TODO: works for return type, but NOT for function pointer, assignment, etc. (basically test12)
         self.scopes.add_global(var, var)
         
         if self.fname != 'global':
@@ -615,7 +649,8 @@ class uCIRGenerate(ast.NodeVisitor):
                 for decl in node.body.decls:
                     self.visit(decl)
                     
-                # Visiting for declaration.
+            # Visiting for declaration.
+            if node.body.stats:
                 for stmt in node.body.stats:
                     if isinstance(stmt, ast.For) and isinstance(stmt.init, ast.DeclList):
                         self.visit(stmt.init)
@@ -651,7 +686,6 @@ class uCIRGenerate(ast.NodeVisitor):
     
     def visit_GlobalDecl(self, node):
         for decl in node.decls:
-            # TODO: signatures can be considered variables if not pointer?
             self.visit(decl)
     
     def visit_ID(self, node):
@@ -661,8 +695,12 @@ class uCIRGenerate(ast.NodeVisitor):
         # Create a new temporary variable name 
         target = self.new_temp()
         
-        # Create the opcode and append to list
+        # Check pointer
         ty = self.build_reg_types(node.type)
+        if node.type.name[0].name == 'ptr':
+            ty += '_*'
+        
+        # Create the opcode and append to list
         inst = ('load_' + ty, var, target)
         self.code.append(inst)
         
@@ -732,6 +770,14 @@ class uCIRGenerate(ast.NodeVisitor):
             for expr in exprs:
                 self.visit(expr)
                 ty = self.build_reg_types(expr.type)
+                
+                # Load if ArrayRef
+                if isinstance(expr, ast.ArrayRef):
+                    target = self.new_temp()
+                    inst = ('load_'+ty+'_*', expr.gen_location, target)
+                    self.code.append(inst)
+                    expr.gen_location = target
+                    
                 inst = ('print_' + ty, expr.gen_location)
                 self.code.append(inst)
         else:
@@ -758,6 +804,9 @@ class uCIRGenerate(ast.NodeVisitor):
             # Store
             if isinstance(expr, ast.ID):
                 target = self.scopes.fetch_temp(expr)
+            elif isinstance(expr, ast.ArrayRef):
+                ty += '_*'
+                target = expr.gen_location
             else:
                 target = expr.gen_location
             stor = ('store_' + ty, aux, target)
@@ -767,10 +816,19 @@ class uCIRGenerate(ast.NodeVisitor):
         # If there is a return expression.
         if node.expr:
             self.visit(node.expr)
+            expr_loc = node.expr.gen_location
             
             # Store return value in allocated variable
             ty = self.build_reg_types(node.expr.type)
-            inst = ('store_'+ty, node.expr.gen_location, self.ret['value'])
+            
+            # Load if ArrayRef
+            if isinstance(node.expr, ast.ArrayRef):
+                target = self.new_temp()
+                inst = ('load_'+ty+'_*', expr_loc, target)
+                self.code.append(inst)
+                expr_loc = target
+            
+            inst = ('store_'+ty, expr_loc, self.ret['value'])
             self.code.append(inst)
                     
         # Jump to return label.
@@ -781,13 +839,31 @@ class uCIRGenerate(ast.NodeVisitor):
         assert False, "'Type' nodes are not visited in code generation!"
     
     def visit_UnaryOp(self, node):
+        # With address, don't load ID.
+        if node.op == '&' and isinstance(node.expr, ast.ID):
+            node.gen_location = self.scopes.fetch_temp(node.expr)
+            return
+        
         # Visit the expression
         self.visit(node.expr)
         expr_loc = node.expr.gen_location
+        ty = self.build_reg_types(node.expr.type)
         
-        # Pointer and address operations are only semantic.
+        # With address, we ignore pointers or ArrayRef.
+        if node.op == '&':
+            node.gen_location = expr_loc
+            return
+        
+        # Load if ArrayRef
+        if isinstance(node.expr, ast.ArrayRef):
+            target = self.new_temp()
+            inst = ('load_'+ty+'_*', expr_loc, target)
+            self.code.append(inst)
+            expr_loc = target
+        
         # Operation '+' is useless.
-        if node.op == '*' or node.op == '&' or node.op == '+':
+        # Pointer operation is purely semantic.
+        if node.op == '+' or node.op == '*':
             node.gen_location = expr_loc
             return
         
@@ -798,13 +874,12 @@ class uCIRGenerate(ast.NodeVisitor):
             self.code.append(inst1)
             node.gen_location = target
             return
-            
+                
         # Create new temporary variables
         literal = self.new_temp()
         target = self.new_temp()
         
         # Create the opcode and append to list
-        ty = self.build_reg_types(node.expr.type)
         if node.op == '-':
             inst1 = ('literal_' + ty, 0, literal)
             inst2 = ('sub_' + ty, literal, expr_loc, target)
@@ -831,7 +906,7 @@ class uCIRGenerate(ast.NodeVisitor):
             node.gen_location = target
 
     def visit_VarDecl(self, node):
-        ty = self.build_reg_types(node.type)
+        ty = self.build_var_types(node.type)
         
         # Try global
         if self.fname == 'global':
@@ -852,12 +927,12 @@ class uCIRGenerate(ast.NodeVisitor):
         label = self.new_temp()
         self.code.append((label[1:],))
         
-        # Visit the condition
-        self.visit(node.cond)
-
         # Create two new temporary variable names for true/false labels
         target_true = self.new_temp()
         target_fake = self.new_temp()
+        
+        # Visit the condition
+        self.visit(node.cond)
 
         # Create the opcode and append to list
         inst = ('cbranch', node.cond.gen_location, target_true, target_fake)
@@ -992,6 +1067,9 @@ class uCIRGenerate(ast.NodeVisitor):
         return name
     
     def build_reg_types(self, ty):
+        return ty.name[-1].name
+    
+    def build_var_types(self, ty):
         name = ''
         for item in ty.name[::-1]:
             if item.name == 'array':
