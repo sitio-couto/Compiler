@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/04/2020.
+Last Modified: 05/05/2020.
 '''
 
 class uCType(object):
@@ -47,10 +47,11 @@ float_type = uCType("float",
     )
 char_type = uCType("char",
     un_ops = {'*', '&'},
-    rel_ops = {'==', '!=', '&&', '||'},
+    rel_ops = {'==', '!='},
     cast_types = {'char'}
     )
 string_type = uCType("string",
+    bin_ops = {'+'},
     rel_ops = {'==', '!='}
     )
 boolean_type = uCType("bool",
