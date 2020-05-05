@@ -14,6 +14,7 @@ from uCLexer import uCLexer as Lexer
 from uCParser import uCParser as Parser
 from uCSemantic import uCSemanticCheck as Semantic
 from uCGenerate import uCIRGenerate as Generator
+from uCInterpreter import uCIRInterpreter as Interpreter
 from os.path import exists
 from sys import argv
 
@@ -32,6 +33,7 @@ if __name__ == '__main__':
     
     semantic = Semantic(parser)
     generator = Generator(semantic)
+    interpreter = Interpreter(generator)
     
     while True:
         # quick testing input file
@@ -40,7 +42,7 @@ if __name__ == '__main__':
                 generator.test(argv[i], False)
             exit(1)
 
-        print("\nSend 'l' for lexer test, 'p' for parser test, 's' for semantic test and 'i' for IR test ('q' to quit)")
+        print("\nSend 'l' for lexer test, 'p' for parser test, 's' for semantic test, 'g' for IR Generation test and 'i' for interpreter test ('q' to quit)")
         mode = input("Mode: ")
 
         if mode == 'l':
@@ -62,10 +64,16 @@ if __name__ == '__main__':
                     semantic.test(input("Filename or expression for Semantic Check: "), True)
                 except EOFError:
                     break
-        elif mode == 'i':
+        elif mode == 'g':
             while True:
                 try:
                     generator.test(input("Filename or expression for IR Generation: "), True)
+                except EOFError:
+                    break
+        elif mode == 'i':
+            while True:
+                try:
+                    interpreter.test(input("Filename or expression to run: "), False)
                 except EOFError:
                     break
         elif mode == 'q':

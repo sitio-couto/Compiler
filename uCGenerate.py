@@ -100,7 +100,7 @@ class uCIRGenerate(ast.NodeVisitor):
     '''
     Node visitor class that creates 3-address encoded instruction sequences.
     '''
-    def __init__(self, front_end):
+    def __init__(self, front_end=None):
         super(uCIRGenerate, self).__init__()
 
         # Adding variables tables
@@ -152,6 +152,11 @@ class uCIRGenerate(ast.NodeVisitor):
         f.write(out)
         f.close()
 
+    def generate(self, data):
+        ast = self.front_end.parser.parse(data, False)
+        self.front_end.visit(ast)
+        self.visit(ast)
+
     def test(self, data, show_ast, out_file=None, quiet=False):
         self.code = []
         self.front_end.parser.lexer.reset_line_num()
@@ -160,9 +165,8 @@ class uCIRGenerate(ast.NodeVisitor):
         if exists(data):
             with open(data, 'r') as content_file :
                 data = content_file.read()
-            ast = self.front_end.parser.parse(data, False)
-        else:
-            ast = self.front_end.parser.parse(data, False)
+
+        ast = self.front_end.parser.parse(data, False)
         
         # Check semantics
         self.front_end.visit(ast)
@@ -666,12 +670,12 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = target
         
     def visit_If(self, node):
-        # Visit condition
-        self.visit(node.cond)
-
         # Create two new temporary variable names for then/else labels
         target_then = self.new_temp()
         target_else = self.new_temp()
+        
+        # Visit condition
+        self.visit(node.cond)
 
         # Create the opcode and append to list
         inst = ('cbranch', node.cond.gen_location, target_then, target_else)
@@ -790,7 +794,7 @@ class uCIRGenerate(ast.NodeVisitor):
         # NOT is a specific case.
         if node.op == '!':
             target = self.new_temp()
-            inst1 = ('not', expr_loc, target)
+            inst1 = ('not_bool', expr_loc, target)
             self.code.append(inst1)
             node.gen_location = target
             return
@@ -802,8 +806,8 @@ class uCIRGenerate(ast.NodeVisitor):
         # Create the opcode and append to list
         ty = self.build_reg_types(node.expr.type)
         if node.op == '-':
-            inst1 = ('literal_int', -1, literal)
-            inst2 = ('mul_' + ty, expr_loc, literal, target)
+            inst1 = ('literal_' + ty, 0, literal)
+            inst2 = ('sub_' + ty, literal, expr_loc, target)
         elif '++' in node.op:
             inst1 = ('literal_int', 1, literal)
             inst2 = ('add_int', expr_loc, literal, target)

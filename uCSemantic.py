@@ -270,7 +270,7 @@ class uCSemanticCheck(ast.NodeVisitor):
     of the form visit_NodeName() for each kind of AST node that you want to process.
     Note: You will need to adjust the names of the AST nodes if you picked different names.
     '''
-    def __init__(self, parser):
+    def __init__(self, parser=None):
 
         # Set flags
         self.flags = dict(inFDef=False)
