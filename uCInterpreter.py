@@ -69,7 +69,14 @@ class uCIRInterpreter(object):
         # Extract the operation & their modifiers
         _modifier = {}
         _aux = source.split('_')
-        # ...
+        if len(_aux) == 1:
+            _opcode = _aux[0]
+        else:
+            _opcode = _aux[0] + _aux[1]
+            if len(_aux) > 2:
+                # TODO: bad
+                for mod in _aux[2:]:
+                    _modifier[mod] = mod
         return (_opcode, _modifier)
 
     def run(self, ircode):
@@ -82,6 +89,7 @@ class uCIRInterpreter(object):
         # First, store the global vars & constants in Memory
         # and hold their offsets in self.globals dictionary
         # Also, set the start pc to the main function entry
+        self.returns.append(len(ircode))
         self.pc = self.start
         while True:
             try:
@@ -265,6 +273,10 @@ class uCIRInterpreter(object):
     run_elem_char = run_elem_int
     
     # Functions
+    def run_define(self, source):
+        # What? Anything?
+        return
+    
     def run_param_int(self, source):
         self.params.append(self.vars[source])
 
@@ -278,6 +290,17 @@ class uCIRInterpreter(object):
         self.returns.append(self.pc)
         # jump to the function
         self.pc = self.globals[source]
+
+    def run_return_void(self):
+        self.pc = self.returns.pop()
+    
+    def run_return_int(self, target):
+        # TODO: correct? What is self.registers?
+        self.result = M[self.vars[target]]
+        self.pc = self.returns.pop()
+    
+    run_return_float = run_return_int
+    run_return_char = run_return_int
 
     # Builtins
     def run_print_string(self, source):
