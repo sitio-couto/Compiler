@@ -24,7 +24,7 @@ Modified by:
 University of Campinas - UNICAMP - 2020
 
 Last Modified: 07/05/2020.
-Modifications from source: changed class name, added generator and test method.
+Modifications from source: changed class name, added generator and test method, flushing prints.
 '''
 
 import sys
@@ -82,7 +82,7 @@ class uCIRInterpreter(object):
         
         self.generator = generator
 
-    def test(self, data, show_code=None):
+    def test(self, data, quiet=False):
         self.generator.front_end.parser.lexer.reset_line_num()
         
         # Scan and parse
@@ -93,7 +93,7 @@ class uCIRInterpreter(object):
         # Generate IR.
         self.generator.generate(data)
         
-        if show_code:
+        if not quiet:
             self.generator.print_code()
         
         # Run IR code.
@@ -183,7 +183,7 @@ class uCIRInterpreter(object):
                     else:
                         getattr(self, "run_" + opcode + '_')(*op[1:], **modifier)
                 else:
-                    print("Warning: No run_" + opcode + "() method")
+                    print("Warning: No run_" + opcode + "() method", flush=True)
 
     #
     # Auxiliary methods
@@ -224,7 +224,7 @@ class uCIRInterpreter(object):
                 break
             inputline = sys.stdin.readline()
             if not inputline:
-                print("Unexpected end of input file.")
+                print("Unexpected end of input file.", flush=True)
             inputline = inputline[:-1].strip().split()
 
     def _get_value(self, source):
@@ -422,10 +422,10 @@ class uCIRInterpreter(object):
     def run_print_string(self, source):
         _res = list(self._get_value((source)))
         for c in _res:
-            print(c, end="")
+            print(c, end="", flush=True)
 
     def run_print_int(self, source):
-        print(self._get_value(source), end="")
+        print(self._get_value(source), end="", flush=True)
 
     run_print_float = run_print_int
     run_print_char = run_print_int
@@ -442,7 +442,7 @@ class uCIRInterpreter(object):
             except:
                 v2 = v1
         except:
-            print("Illegal input value.")
+            print("Illegal input value.", flush=True)
         self._alloc_reg(source)
         self._store_value(source, v2)
 
@@ -457,7 +457,7 @@ class uCIRInterpreter(object):
             except:
                 v2 = v1
         except:
-            print("Illegal input value.")
+            print("Illegal input value.",flush=True)
         self._alloc_reg(source)
         self._store_value(source, v2)
 

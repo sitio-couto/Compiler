@@ -67,13 +67,13 @@ if __name__ == '__main__':
         elif mode == 'g':
             while True:
                 try:
-                    generator.test(input("Filename or expression for IR Generation: "), True)
+                    generator.test(input("Filename or expression for IR Generation: "), False)
                 except EOFError:
                     break
         elif mode == 'i':
             while True:
                 try:
-                    interpreter.test(input("Filename or expression to run: "), False)
+                    interpreter.test(input("Filename or expression to run: "), True)
                 except EOFError:
                     break
         elif mode == 'q':
