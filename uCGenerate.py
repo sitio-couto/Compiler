@@ -1039,10 +1039,10 @@ class uCIRGenerate(ast.NodeVisitor):
         if isinstance(expr, ast.BinaryOp):
             left = self.get_expr(expr.lvalue)
             right = self.get_expr(expr.rvalue)
-            ret = f"({left}{expr.op}{right})"
+            ret = eval(f"({left}{expr.op}{right})")
         elif isinstance(expr, ast.UnaryOp):
             right = self.get_expr(expr.expr)
-            ret = f"({expr.op}{right})"
+            ret = eval(f"({expr.op}{right})")
         elif isinstance(expr, ast.ID):
             ret = self.scopes.fetch_temp(expr)
         elif isinstance(expr, ast.Constant):
