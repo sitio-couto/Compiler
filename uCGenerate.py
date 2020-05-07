@@ -310,6 +310,9 @@ class uCIRGenerate(ast.NodeVisitor):
         visited = False
         if isinstance(node.lvalue, ast.ID):
             laddr = self.scopes.fetch_temp(node.lvalue)
+        elif isinstance(node.lvalue, ast.UnaryOp) and node.lvalue.op == '*':
+            laddr = self.scopes.fetch_temp(node.lvalue.expr)
+            ty += '_*'
         else:
             visited = True
             self.visit(node.lvalue)
@@ -328,8 +331,11 @@ class uCIRGenerate(ast.NodeVisitor):
             self.code.append(inst)
         else:
             loc = node.rvalue.gen_location
-            
-        inst = ('store_' + ty, loc, laddr)
+        
+        if isinstance(node.rvalue, ast.UnaryOp) and node.rvalue.op == '&':
+            inst = ('get_' + ty + '_*', loc, laddr)
+        else:
+            inst = ('store_' + ty, loc, laddr)
         self.code.append(inst)
                 
         # Store location of the result on the node        
@@ -486,17 +492,19 @@ class uCIRGenerate(ast.NodeVisitor):
                 self.code.append(inst)
             else:
                 name = None
-                # TODO: maybe only global (add "or name[0] != '@'")
                 if isinstance(node.init, ast.ID):
                     name = self.scopes.fetch_temp(node.init)
                 
-                if not name:
+                if not name or name[0] != '@':
                     # Visit initializers
                     self.visit(node.init)
                     name = node.init.gen_location
 
                 # Create opcode and append to instruction list
-                inst = ('store_' + ty, name, node.gen_location)
+                if isinstance(node.init, ast.UnaryOp) and node.init.op == '&':
+                    inst = ('get_' + ty, name, node.gen_location)
+                else:
+                    inst = ('store_' + ty, name, node.gen_location)
                 self.code.append(inst)
                 
     def visit_DeclList(self, node):
