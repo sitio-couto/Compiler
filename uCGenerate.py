@@ -591,13 +591,20 @@ class uCIRGenerate(ast.NodeVisitor):
         # Get function return type.
         ty = self.scopes.get_func_type(node.name.name)
         
+        # Get ptr if function ptr.
+        if ty.name[0].name == 'ptr':
+            self.visit(node.name)
+            name = node.name.gen_location
+        else:
+            name = '@' + node.name.name
+        
         # Create opcode and append to list.
         if ty.name[0].name != 'void':
             node.gen_location = self.new_temp()
-            inst = ('call', '@'+node.name.name, node.gen_location)
+            inst = ('call', name, node.gen_location)
         else:
             node.gen_location = None
-            inst = ('call', '@'+node.name.name)
+            inst = ('call', name)
     
         self.code.append(inst)
 
