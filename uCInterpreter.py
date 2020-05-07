@@ -21,10 +21,16 @@ Modified by:
     Victor Ferreira Ferrari  - RA 187890
     Vinicius Couto Espindola - RA 188115
 
+Modifications from source:
+    Changed class name;
+    Added generator and test method;
+    Flushed prints;
+    Added mod operation;
+    Fixed div operations.
+
 University of Campinas - UNICAMP - 2020
 
 Last Modified: 07/05/2020.
-Modifications from source: changed class name, added generator and test method, flushing prints.
 '''
 
 import sys
