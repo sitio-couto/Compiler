@@ -126,7 +126,7 @@ class uCIRGenerate(ast.NodeVisitor):
         self.code = []
         
         # Useful attributes
-        self.arr = {'offset':0, 'depth':-1}     # NOTE: only used in ArrayRef
+        self.arr = {'offset':0, 'depth':-1, 'stack':[]} 
         self.ret = {}
         self.loop_end = []
         self.alloc_phase = None
@@ -249,10 +249,18 @@ class uCIRGenerate(ast.NodeVisitor):
                     
             # Create instructions
             elem = ("elem_" + ty, addr, self.arr['offset'], target)
-
             self.code.append(elem)
+
+            # If ArrayRef in ArrayRef must manually load
+            if self.arr['stack']:
+                addr = target
+                target = self.new_temp()
+                load = (f'load_{ty}_*', addr, target)
+                self.code.append(load)
+                
+            # Update class gen_location
             node.gen_location = target
-            
+
         self.arr['depth'] -= 1
 
     def visit_Assert(self, node):
@@ -465,7 +473,6 @@ class uCIRGenerate(ast.NodeVisitor):
             
         elif self.alloc_phase:
             self.visit(node.type)
-            
             # Get gen_location
             node.gen_location = node.type.gen_location
         
@@ -503,6 +510,8 @@ class uCIRGenerate(ast.NodeVisitor):
                 # Create opcode and append to instruction list
                 if isinstance(node.init, ast.UnaryOp) and node.init.op == '&':
                     inst = ('get_' + ty, name, node.gen_location)
+                elif isinstance(node.init, ast.ArrayRef):
+                    inst = ('store_' + ty + '_*', name, node.gen_location)
                 else:
                     inst = ('store_' + ty, name, node.gen_location)
                 self.code.append(inst)
@@ -975,6 +984,17 @@ class uCIRGenerate(ast.NodeVisitor):
     
     ## AUXILIARY FUNCTIONS ##
 
+    def build_index(self, node):
+        # Fetch array access index
+        if isinstance(node.subsc, ast.ArrayRef):
+            # Stack recursion if ArraryRef of ArrayRef (x[y[i]])
+            self.arr['stack'] += [self.arr['depth']]
+            self.arr['depth'] = -1 
+            self.visit(node.subsc)
+            self.arr['depth'] = self.arr['stack'].pop()
+        else:
+            self.visit(node.subsc)
+
     def build_offset(self, node):
         ''' This function receives the root of a ArrayRef chain and creates
             the necessary instuctions to build the offset of the referenced 
@@ -992,7 +1012,7 @@ class uCIRGenerate(ast.NodeVisitor):
 
         # Multiply index by dimension's elements size
         if self.arr['depth'] == 0:
-            self.visit(node.subsc)
+            self.build_index(node)
             result = node.subsc.gen_location
         else:
             # Load dimension's element size value
@@ -1002,8 +1022,8 @@ class uCIRGenerate(ast.NodeVisitor):
             literal = ('literal_int', element_size, size)
             self.code.append(literal)
 
-            # Fetch array access index 
-            self.visit(node.subsc)
+            # Fetch array access index
+            self.build_index(node)
 
             # Multiply index and the dimension's element size
             result = self.new_temp()
