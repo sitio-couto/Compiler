@@ -813,9 +813,11 @@ class uCIRGenerate(ast.NodeVisitor):
             if isinstance(expr, ast.ID):
                 target = self.scopes.fetch_temp(expr)
             elif isinstance(expr, ast.ArrayRef):
+                self.visit(expr)
                 ty += '_*'
                 target = expr.gen_location
             else:
+                self.visit(expr)
                 target = expr.gen_location
             stor = ('store_' + ty, aux, target)
             self.code += [inst, stor]
