@@ -498,14 +498,9 @@ class uCIRGenerate(ast.NodeVisitor):
                 inst = ('store_' + ty, name, node.gen_location)
                 self.code.append(inst)
             else:
-                name = None
-                if isinstance(node.init, ast.ID):
-                    name = self.scopes.fetch_temp(node.init)
-                
-                if not name or name[0] != '@':
-                    # Visit initializers
-                    self.visit(node.init)
-                    name = node.init.gen_location
+                # Visit initializers
+                self.visit(node.init)
+                name = node.init.gen_location
 
                 # Create opcode and append to instruction list
                 if isinstance(node.init, ast.UnaryOp) and node.init.op == '&':
