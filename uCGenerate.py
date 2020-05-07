@@ -20,7 +20,6 @@ from os.path import exists
 
 # TODO:
 # - The self.scopes.dims list must be update with the scopes to work properly
-# - Other TODOs in the code body.
 
 class ScopeStack():
     '''
@@ -231,7 +230,6 @@ class uCIRGenerate(ast.NodeVisitor):
 
         self.scopes.add_to_scope(var, node.gen_location)
     
-    # TODO: a[b[i]] doesn't work.
     def visit_ArrayRef(self, node):
         self.arr['depth'] += 1
         
@@ -301,7 +299,6 @@ class uCIRGenerate(ast.NodeVisitor):
     
     def visit_Assignment(self, node):
         # Visit the expression to be assigned.
-        # NOTE: Marcio does not load rvalue if it is a function pointer.
         self.visit(node.rvalue)
         
         # Create types
@@ -332,7 +329,7 @@ class uCIRGenerate(ast.NodeVisitor):
         
         # Other assignment ops
         if node.op != '=':
-            if not visited:   self.visit(node.lvalue)            # NOTE: unnecessary but Marcio does it.
+            if not visited:   self.visit(node.lvalue)
             loc = self.new_temp()
             opcode = self.bin_ops[node.op[0]] + "_" + ty
             inst = (opcode, node.lvalue.gen_location, node.rvalue.gen_location, loc)
@@ -350,9 +347,7 @@ class uCIRGenerate(ast.NodeVisitor):
         node.gen_location = laddr
         
     def visit_BinaryOp(self, node):
-        # Visit the left and right expressions
-        # TODO: inconsistency in tests: visit l or r first? Depends if ID
-        
+        # Visit the left and right expressions        
         self.visit(node.lvalue)
         # Load if ArrayRef
         if isinstance(node.lvalue, ast.ArrayRef):
