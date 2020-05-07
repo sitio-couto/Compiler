@@ -21,10 +21,16 @@ Modified by:
     Victor Ferreira Ferrari  - RA 187890
     Vinicius Couto Espindola - RA 188115
 
+Modifications from source:
+    Changed class name;
+    Added generator and test method;
+    Flushed prints;
+    Added mod operation;
+    Fixed div operations.
+
 University of Campinas - UNICAMP - 2020
 
 Last Modified: 07/05/2020.
-Modifications from source: changed class name, added generator and test method, flushing prints.
 '''
 
 import sys
@@ -518,13 +524,21 @@ class uCIRInterpreter(object):
 
     def run_div_int(self, left, right, target):
         self._alloc_reg(target)
-        M[self.vars[target]] = M[self.vars[left]] / M[self.vars[right]]
+        M[self.vars[target]] = M[self.vars[left]] // M[self.vars[right]]
 
+    def run_div_float(self, left, right, target):
+        self._alloc_reg(target)
+        M[self.vars[target]] = M[self.vars[left]] / M[self.vars[right]]
+        
+    def run_mod_int(self, left, right, target):
+        self._alloc_reg(target)
+        M[self.vars[target]] = M[self.vars[left]] % M[self.vars[right]]
+            
     # Floating point ops (same as int)
     run_add_float = run_add_int
     run_sub_float = run_sub_int
     run_mul_float = run_mul_int
-    run_div_float = run_div_int
+    run_mod_float = run_mod_int
 
     # Integer comparisons
     def run_lt_int(self, left, right, target):
