@@ -10,16 +10,13 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/05/2020.
+Last Modified: 08/05/2020.
 '''
 
 import re
 import uCAST as ast
 from uCSemantic import SymbolTable
 from os.path import exists
-
-# TODO:
-# - The self.scopes.dims list must be update with the scopes to work properly
 
 class ScopeStack():
     '''
