@@ -3,6 +3,7 @@ __pycache__
 parser.out
 newParse.py
 *.ast
+*.ir
 lextab.py
 parsetab.py
 tests/IR_in/*.in
