@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/04/2020.
+Last Modified: 02/05/2020.
 '''
 
 import sys
@@ -36,6 +36,9 @@ class Node(object):
         indent = ''
         separator = ''
         for name in self.__slots__[:-1]:
+            skips = isinstance(self, ID)
+            skips *= name in ['type','gen_location']
+            if skips: continue
             result += separator
             result += indent
             result += name + '=' + (_repr(getattr(self, name)).replace('\n', '\n  ' + (' ' * (len(name) + len(self.__class__.__name__)))))
@@ -70,6 +73,10 @@ class Node(object):
                 attrstr = ', '.join('%s=%s' % nv for nv in nvlist)
             else:
                 vlist = [getattr(self, n) for n in self.attr_names]
+                if isinstance(self, Constant): 
+                    for i,e in enumerate(vlist):
+                        if isinstance(e, Type):
+                            vlist[i] = e.name[0]
                 attrstr = ', '.join('%s' % v for v in vlist)
                 buf.write(attrstr)
 
@@ -156,12 +163,14 @@ class Program(Node):
 #### AST NODES CLASSES ####
 
 class ArrayDecl(Node):
-    __slots__ = ('type', 'dims', 'coord')
+    __slots__ = ('type', 'dims', 'gen_location', 'coord')
     
     def __init__(self, type, dims, coord=None):
         self.type = type
         self.dims = dims
         self.coord = coord
+        #IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -170,7 +179,7 @@ class ArrayDecl(Node):
         return tuple(children)
 
 class ArrayRef(Node):
-    __slots__ = ('name', 'subsc', 'type', 'coord')
+    __slots__ = ('name', 'subsc', 'type', 'gen_location', 'coord')
     
     def __init__(self, name, subsc, coord):
         self.name = name
@@ -179,6 +188,9 @@ class ArrayRef(Node):
         
         # Semantic Only
         self.type = None
+        
+        # IR Only
+        self.gen_location = None
         
     def children(self):
         children = []
@@ -199,16 +211,17 @@ class Assert(Node):
         return tuple(children)
 
 class Assignment(Node):
-    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'coord')
+    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'gen_location', 'coord')
 
     def __init__(self, op, left, right, coord=None):
         self.op = op
         self.lvalue = left
         self.rvalue = right
         self.coord = coord
-        
         # Semantic only.
         self.type = None
+        # IR only.
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -219,7 +232,7 @@ class Assignment(Node):
     attr_names = ('op', ) 
 
 class BinaryOp(Node):
-    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'coord')
+    __slots__ = ('op', 'lvalue', 'rvalue', 'type', 'gen_location', 'coord')
     
     def __init__(self, op, left, right, coord=None):
         self.op = op
@@ -228,6 +241,8 @@ class BinaryOp(Node):
         self.coord = coord
         # Semantic only
         self.type = None
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -244,12 +259,14 @@ class Break(Node):
         self.coord = coord
 
 class Cast(Node):
-    __slots__ = ('type', 'expr', 'coord')
+    __slots__ = ('type', 'expr', 'gen_location', 'coord')
     
     def __init__(self, type, expr, coord=None):
         self.type = type
         self.expr = expr
         self.coord = coord
+        # IR only
+        self.gen_location = None
         
     def children(self):
         children = []
@@ -274,12 +291,14 @@ class Compound(Node):
         return tuple(children)
 
 class Constant(Node):
-    __slots__ = ('type', 'value', 'coord')
+    __slots__ = ('type', 'value', 'gen_location', 'coord')
     
     def __init__(self, type, value, coord=None):
         self.type = type
         self.value = value
         self.coord = coord
+        # IR only
+        self.gen_location = None
 
     attr_names = ('type', 'value', )
 
@@ -302,13 +321,15 @@ class Coord(Node):
         return coord_str 
         
 class Decl(Node):
-    __slots__ = ('name', 'type', 'init', 'coord')
+    __slots__ = ('name', 'type', 'init', 'gen_location', 'coord')
 
     def __init__(self, name, type, init, coord=None):
         self.name = name 
         self.type = type 
         self.init = init 
         self.coord = coord
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -369,15 +390,15 @@ class For(Node):
         return tuple(children)
 
 class FuncCall(Node):
-    __slots__ = ('name', 'args', 'type', 'coord')
+    __slots__ = ('name', 'args', 'type', 'gen_location', 'coord')
     
     def __init__ (self, name, args, coord=None):
         self.name = name
         self.args = args
         self.coord = coord
-        
         # Semantic Only
         self.type = None
+        self.gen_location = None
         
     def children(self):
         children = []
@@ -386,12 +407,15 @@ class FuncCall(Node):
         return tuple(children)
 
 class FuncDecl(Node):
-    __slots__ = ('type', 'params', 'coord')
+    __slots__ = ('type', 'params', 'gen_location', 'coord')
     
     def __init__(self, type, params, coord=None):
         self.type = type
         self.params = params
         self.coord = coord
+        
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -431,14 +455,15 @@ class GlobalDecl(Node):
         return tuple(children)
 
 class ID(Node):
-    __slots__ = ('name', 'type', 'coord')
+    __slots__ = ('name', 'type', 'gen_location', 'coord')
 
     def __init__(self, name, coord=None):
         self.name = name
         self.coord = coord 
-        
         # Semantic only
         self.type = None
+        # IR only
+        self.gen_location = None
 
     attr_names = ('name', )
 
@@ -459,11 +484,12 @@ class If(Node):
         return tuple(children)
 
 class InitList(Node):
-    __slots__ = ('exprs', 'coord')
+    __slots__ = ('exprs', 'gen_location', 'coord')
 
     def __init__(self, exprs, coord=None):
         self.exprs = exprs
         self.coord = coord
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -496,11 +522,13 @@ class Print(Node):
         return tuple(children)
 
 class PtrDecl(Node):
-    __slots__ = ('type', 'coord')
+    __slots__ = ('type', 'gen_location', 'coord')
     
     def __init__(self, type, coord=None):
         self.type = type
         self.coord = coord
+        # IR only
+        self.gen_location = None
 
     def children(self):
         children = []
@@ -541,13 +569,16 @@ class Type(Node):
     attr_names = ('name',)
 
 class UnaryOp(Node):
-    __slots__ = ('op', 'expr', 'type', 'coord')
+    __slots__ = ('op', 'expr', 'type', 'gen_location', 'coord')
     
     def __init__(self, op, expr, coord=None):
         self.op = op
         self.expr = expr
         self.coord = coord
+        # Semantic Only
         self.type = None
+        # IR Only
+        self.gen_location = None
     
     def children(self):
         children = []
@@ -557,12 +588,14 @@ class UnaryOp(Node):
     attr_names = ('op', )
 
 class VarDecl(Node):
-    __slots__ = ('declname', 'type', 'coord')
+    __slots__ = ('declname', 'type', 'gen_location', 'coord')
 
     def __init__(self, declname, type, coord=None):
         self.declname = declname
         self.type = type
         self.coord = coord 
+        #IR only
+        self.gen_location = None
 
     def children(self):
         children = []

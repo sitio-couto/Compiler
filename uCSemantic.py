@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/04/2020.
+Last Modified: 13/05/2020.
 '''
  
 import uCType
@@ -54,14 +54,13 @@ class SignaturesTable():
     def __init__(self):
         self.sign = dict()  # Check which functions were declared (signatures: int main(float f);)
     
-    # Register function signature (when Decl is declaring a FuncDecl)
-    # NOTE: function calls will be validate using self.sign table
+    # Register function signature (when Decl is declaring a FuncDecl)\
     # Params: 
     #   node - a FuncDecl class from the uCAST
     def sign_func(self, node, defining):
-        name      = node.type.declname.name # Get function's name
+        name      = node.type.declname.name 
         ty        = node.type.type          # get func type (FuncDecl.VarDecl.Type)
-        params    = []                      # Use to keep function params types
+        params    = []                      
         coord = f"({node.type.declname.coord.line}, {node.type.declname.coord.column}): "
 
         if node.params: 
@@ -88,8 +87,8 @@ class SignaturesTable():
             signature['defined'] = defining # Update flag if defining and not defined
 
             # Check return type and amount of paramters
-            msg = f"Function '{name}' has multiple declarations: diffrent return types."
-            ret_type = (ty.name[0] == signature['type'].name[0])
+            msg = f"Function '{name}' has multiple declarations: different return types."
+            ret_type = (ty.name == signature['type'].name)
             assert ret_type, coord+msg
             
             msg = f"Function '{name}' has exceding/missing arguments."
@@ -97,9 +96,9 @@ class SignaturesTable():
             assert num_params, coord+msg
             
             # Check paramter types
-            param_types = True # Assume their types match
+            param_types = True 
             for (new, sign) in zip(new['params'], self.sign[name]['params']):
-                param_types *= (sign.name[0] == new.name[0]) # Check if all params match
+                param_types *= (sign.name == new.name)
                 
             msg = f"Function '{name}' has incorrect parameter types."
             assert param_types, coord+msg
@@ -149,7 +148,17 @@ class SignaturesTable():
 
     # Fetches signature (node must be ast.ID)
     def get_sign(self, node):
-        return self.sign.get(node.name, None)
+        sign = self.sign.get(node.name, None)
+        if sign : sign['called'] = True # Tag as called
+        return sign
+
+    # Check it there's an undefined declaration (signature)
+    def all_defined(self):
+        for (name,sign) in zip(self.sign.keys(),self.sign.values()):
+            if not sign.get('called', None) : continue
+            defined = sign['defined']
+            msg = f"Function '{name}' was not defined."
+            assert defined, msg
     
     def __str__(self):
         text = '\n'
@@ -171,36 +180,40 @@ class ScopeStack():
     '''
     def __init__(self):
         # Index 0 is the global scope, -1 is the current scope
-        self.stack = [] # last element is the top of the stack
+        self.stack = [] 
     
     # Add new scope (if a function definition started)
     # Every function definition is considered a new scope (new symboltable)
     def add_scope(self, node=None):
         sym_tab = SymbolTable()
-        if node : node = node.decl.name # Get funcs name (None if loop)
+        if node : node = node.decl.name 
         sym_tab.add(0, node)            # Add scope name to table with key 0 (only numeric)
         self.stack.append(sym_tab) 
 
     # Add a new variable to the current function's scope (in node VarDecl)
     def add_to_scope(self, node):
-        scope = self.stack[-1]              # Get current scope (top of the stack)
-        var_name = node.declname.name       # Get declared variable name
+        scope = self.stack[-1]      
+        var_name = node.declname.name 
         
         # Check if variable is declared in scope.
         declared = scope.lookup(var_name)
         
-        scope.add(var_name, node) # Add to current scope
+        scope.add(var_name, node)
         return not declared
     
     def add_func(self, node):
         # node should be Class ast.VarDecl
-        f_name = node.declname.name  # Get declared variable name
-        glob = self.stack[0]         # Get global scope
-        loc = self.stack[-1]         # Get current scope (top of the stack)
-        if not glob.lookup(f_name):  # Add global ref if func not defined
-            glob.add(f_name, node)   # Add to global scope 
-        if loc.lookup(f_name):       # if in current scope
-            loc.pop(f_name)          # Remove from current scope.
+        f_name = node.declname.name 
+        glob = self.stack[0]        
+        loc = self.stack[-1]
+        
+        # Add to global scope if not defined
+        if not glob.lookup(f_name):  
+            glob.add(f_name, node)
+            
+        # Remove local scope
+        if loc.lookup(f_name):       
+            loc.pop(f_name)          
 
     # Remove current scope from stack (when a FuncDef node ends)
     def pop_scope(self):
@@ -257,7 +270,7 @@ class uCSemanticCheck(ast.NodeVisitor):
     of the form visit_NodeName() for each kind of AST node that you want to process.
     Note: You will need to adjust the names of the AST nodes if you picked different names.
     '''
-    def __init__(self, parser):
+    def __init__(self, parser=None):
 
         # Set flags
         self.flags = dict(inFDef=False)
@@ -300,6 +313,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             
         # Semantic test
         self.visit(ast)
+        ast.show()
     
     def visit_Program(self, node):
         # 1. Add global scope.
@@ -312,7 +326,11 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 3. Remove global scope.
         self.scopes.pop_scope()
         
-        # 4. Clear signatures table for next semantic check.
+        # 4. Checking if called funcs were defined
+        # NOTE: not needed
+        #self.signatures.all_defined()
+
+        # 5. Clear signatures table for next semantic check.
         self.signatures = SignaturesTable()
 
     def visit_ArrayDecl(self, node):
@@ -364,7 +382,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         type_int = self.types.lookup('int')
         ty = node.subsc.type.name[-1]
         
-        msg = "Array index must be of type int."
+        msg = f"Array index must be of type int, and is of type {ty.name}."
         msg = self.build_error_msg(msg, coord)
         assert ty == type_int, msg
         
@@ -378,7 +396,8 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.lvalue)
         lvalue = node.lvalue
         
-        # 2. Check if ID or ArrayRef.
+        # 2. Check if ID or ArrayRef or UnaryOp.
+        assignable = True
         if isinstance(lvalue, ast.ID):
             func = self.signatures.get_sign(lvalue)
             
@@ -387,7 +406,15 @@ class uCSemanticCheck(ast.NodeVisitor):
                 msg = f"Assigning to function '{lvalue.name}'." 
                 msg = self.build_error_msg(msg, lvalue.coord)
                 assert func['type'].name[0] == ptr, msg
+        elif isinstance(lvalue, ast.UnaryOp):
+            inner = lvalue.expr
+            while isinstance(inner, ast.UnaryOp):
+                inner = inner.expr
+            assignable = isinstance(inner, (ast.ArrayRef, ast.ID))
         elif not isinstance(lvalue, ast.ArrayRef):
+            assignable = False
+            
+        if not assignable:
             msg = "Expression is not assignable."
             msg = self.build_error_msg(msg, node.coord)
             assert False, msg
@@ -416,7 +443,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         ltype = lvalue.type.name
         rtype = rvalue.type.name
         
-        ty_msg = "Type mismatch in assignment."
+        ty_msg = f"Type mismatch in assignment ({ltype}/{rtype})."
         ty_msg = self.build_error_msg(ty_msg, node.coord)
         
         # 6.1. Special cases.
@@ -470,7 +497,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             assert not self.signatures.get_sign(rvalue), msg
 
         # 5. Check types.
-        msg = "Type mismatch in binary operation."
+        msg = f"Type mismatch in binary operation ({lvalue.type.name}/{rvalue.type.name})."
         msg = self.build_error_msg(msg, node.coord)
         assert lvalue.type.name == rvalue.type.name, msg
         
@@ -545,7 +572,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.name)
         
         # 3. Visit initializers, if defined.
-        ty_msg = "Initialization type mismatch in declaration."
+        ty_msg = "Initialization type mismatch in declaration"
         ty_msg = self.build_error_msg(ty_msg, node.name.coord)
         if node.init:
             self.visit(node.init)
@@ -583,6 +610,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                     msg = "Array declaration without explicit size needs an initializer list."
                     msg = self.build_error_msg(msg, node.name.coord)
                     assert not isinstance(ty, ast.ArrayDecl), msg
+                    ty_msg += f"({ty.type.name[0]}/{const.type.name[0]})."
                     assert ty.type.name[0] == const.type.name[0], ty_msg
             
             # 3.2. InitList
@@ -595,6 +623,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                 # 3.2.1. Variable
                 if isinstance(ty, ast.VarDecl):
                     assert len(exprs) == 1, sz_msg
+                    ty_msg += f"({ty.type.name}/{exprs[0].type.name})."
                     assert ty.type.name == exprs[0].type.name, ty_msg
                 
                 # 3.2.2. Array
@@ -602,11 +631,18 @@ class uCSemanticCheck(ast.NodeVisitor):
                     
                     # 3.2.2.1. If not explicit size of array, use initialization as size.
                     if ty.dims is None:
-                        node.type.dims = ast.Constant('int', len(exprs), node.name.coord)
-                        self.visit_Constant(node.type.dims)
-                    else:
-                        # TODO: dims can be unOp or other expression... Not worth it?
-                        assert ty.dims.value == len(exprs), sz_msg
+                        l = node.init
+                        arr = ty
+                        while isinstance(arr, ast.ArrayDecl):
+                            l = l.exprs if isinstance(l, ast.InitList) else [l]
+                            arr.dims = ast.Constant('int', len(l), node.name.coord)
+                            self.visit_Constant(arr.dims)
+                            arr = arr.type
+                            l = l[0]
+                    
+                    # TODO: dims can be unOp or other expression... Not worth it?
+                    # Check if initialization lists are OK.
+                    assert self.check_init_len(exprs, ty), sz_msg
                     
                     # 3.2.2.2. Get basic type.
                     msg = "No basic type in array declaration."
@@ -615,8 +651,9 @@ class uCSemanticCheck(ast.NodeVisitor):
                     assert ty, msg
                     
                     # 3.2.2.3. Check type.
-                    for expr in exprs:
-                        assert ty.name[-1] == expr.type.name[-1], ty_msg
+                    msg = f"Not all elements of the initializer list are of type {ty.name}"
+                    self.build_error_msg(msg, node.name.coord)
+                    assert self.check_init_list(exprs, ty), msg
                 
                 # 3.2.3. Pointer
                 elif isinstance(ty, ast.PtrDecl):
@@ -631,11 +668,14 @@ class uCSemanticCheck(ast.NodeVisitor):
                     assert ty, msg
                     
                     # 3.2.3.3. Initializer has to be of same type
+                    ty_msg += f"({ty.name}/{exprs[0].type.name})."
                     assert ty.name == exprs[0].type.name, ty_msg
 
             # 3.3. Any other expression.
             else:
-                assert ty.type.name == node.init.type.name, ty_msg
+                ty = self.get_inner_type(ty)
+                ty_msg += f"({ty.name}/{node.init.type.name})."
+                assert ty.name == node.init.type.name, ty_msg
         
         # 4. If array declaration has no init.    
         elif isinstance(ty, ast.ArrayDecl):
@@ -688,7 +728,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         # 1. Visit name ID.
         self.visit(node.name)
         name = node.name
-        
+
         # 2. Check if identifier is a function.
         msg = f"ID '{name.name}' in function call is not a function."
         msg = self.build_error_msg(msg, node.coord)
@@ -825,6 +865,16 @@ class uCSemanticCheck(ast.NodeVisitor):
     def visit_Read(self, node):
         # 1. Visit the expressions.
         self.visit(node.expr)
+        
+        if isinstance(node.expr, ast.ExprList):
+            exprs = node.expr.exprs
+        else:
+            exprs = [node.expr]
+        
+        msg = "Expression read must be ID or array reference."
+        for expr in exprs:
+            err = self.build_error_msg(msg, node.coord)
+            assert isinstance(expr, (ast.ID, ast.ArrayRef)), err
 
     def visit_Return(self, node):
         # 1. Check expression.
@@ -880,7 +930,8 @@ class uCSemanticCheck(ast.NodeVisitor):
             self.visit(ty)
         elif node.op == '&':
             ptr = self.types.lookup('ptr')
-            ty.name.insert(0, ptr)
+            ty = ast.Type([ptr]+ty.name, node.coord)
+            self.visit(ty)
         elif node.op == '!':
             ty = ast.Type(['bool'], node.coord)
             self.visit(ty)
@@ -941,6 +992,29 @@ class uCSemanticCheck(ast.NodeVisitor):
         while ty and not isinstance(ty, ast.Type):
             ty = ty.type
         return ty
+    
+    def check_init_len(self, init, ty):
+        ''' Check if every element of InitList is of the same length as array dimension.'''
+        ret = True
+        if isinstance(ty.type, ast.ArrayDecl):
+            for expr in init:
+                ret &= isinstance(expr, ast.InitList)
+                if not ret: break
+                ret &= self.check_init_len(expr.exprs, ty.type)
+        
+        ret &= ty.dims.value == len(init)
+        return ret
+    
+    def check_init_list(self, init, ty):
+        ''' Check if every element of InitList is of the same main type as array.'''
+        ret = True
+        if isinstance(init[0], ast.InitList):
+            for expr in init:
+                ret &= self.check_init_list(expr.exprs, ty)
+        else:
+            for expr in init:
+                ret &= ty.name[-1] == expr.type.name[-1]
+        return ret
     
     ## ERROR MESSAGE FUNCTIONS ##
     def build_coords(self, coord):

@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 03/04/2020.
+Last Modified: 27/04/2020.
 '''
 
 import ply.lex as lex
@@ -145,6 +145,7 @@ class uCLexer():
 
     def t_STRING (self, t) :
         r'\".*?\"'
+        t.value = t.value[1:-1]
         return t
         
     def t_LINECOMMENT (self, t) :

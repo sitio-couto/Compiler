@@ -1,0 +1,7 @@
+('global_int_4_2', '@x')
+('global_int_3', '@.str.0', [1, 2, 3])
+('define', '@main')
+('alloc_int_3', '%2')
+('store_int_3', '@.str.0', '%2')
+('1',)
+('return_void',)
