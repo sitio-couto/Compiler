@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/05/2020.
+Last Modified: 13/05/2020.
 '''
  
 import uCType
@@ -327,7 +327,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.scopes.pop_scope()
         
         # 4. Checking if called funcs were defined
-        # TODO: needed?
+        # NOTE: not needed
         #self.signatures.all_defined()
 
         # 5. Clear signatures table for next semantic check.
@@ -382,7 +382,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         type_int = self.types.lookup('int')
         ty = node.subsc.type.name[-1]
         
-        msg = "Array index must be of type int."
+        msg = f"Array index must be of type int, and is of type {ty.name}."
         msg = self.build_error_msg(msg, coord)
         assert ty == type_int, msg
         
@@ -443,7 +443,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         ltype = lvalue.type.name
         rtype = rvalue.type.name
         
-        ty_msg = "Type mismatch in assignment."
+        ty_msg = f"Type mismatch in assignment ({ltype}/{rtype})."
         ty_msg = self.build_error_msg(ty_msg, node.coord)
         
         # 6.1. Special cases.
@@ -497,7 +497,7 @@ class uCSemanticCheck(ast.NodeVisitor):
             assert not self.signatures.get_sign(rvalue), msg
 
         # 5. Check types.
-        msg = "Type mismatch in binary operation."
+        msg = f"Type mismatch in binary operation ({lvalue.type.name}/{rvalue.type.name})."
         msg = self.build_error_msg(msg, node.coord)
         assert lvalue.type.name == rvalue.type.name, msg
         
@@ -572,7 +572,7 @@ class uCSemanticCheck(ast.NodeVisitor):
         self.visit(node.name)
         
         # 3. Visit initializers, if defined.
-        ty_msg = "Initialization type mismatch in declaration."
+        ty_msg = "Initialization type mismatch in declaration"
         ty_msg = self.build_error_msg(ty_msg, node.name.coord)
         if node.init:
             self.visit(node.init)
@@ -610,6 +610,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                     msg = "Array declaration without explicit size needs an initializer list."
                     msg = self.build_error_msg(msg, node.name.coord)
                     assert not isinstance(ty, ast.ArrayDecl), msg
+                    ty_msg += f"({ty.type.name[0]}/{const.type.name[0]})."
                     assert ty.type.name[0] == const.type.name[0], ty_msg
             
             # 3.2. InitList
@@ -622,6 +623,7 @@ class uCSemanticCheck(ast.NodeVisitor):
                 # 3.2.1. Variable
                 if isinstance(ty, ast.VarDecl):
                     assert len(exprs) == 1, sz_msg
+                    ty_msg += f"({ty.type.name}/{exprs[0].type.name})."
                     assert ty.type.name == exprs[0].type.name, ty_msg
                 
                 # 3.2.2. Array
@@ -649,7 +651,9 @@ class uCSemanticCheck(ast.NodeVisitor):
                     assert ty, msg
                     
                     # 3.2.2.3. Check type.
-                    assert self.check_init_list(exprs, ty), ty_msg
+                    msg = f"Not all elements of the initializer list are of type {ty.name}"
+                    self.build_error_msg(msg, node.name.coord)
+                    assert self.check_init_list(exprs, ty), msg
                 
                 # 3.2.3. Pointer
                 elif isinstance(ty, ast.PtrDecl):
@@ -664,11 +668,13 @@ class uCSemanticCheck(ast.NodeVisitor):
                     assert ty, msg
                     
                     # 3.2.3.3. Initializer has to be of same type
+                    ty_msg += f"({ty.name}/{exprs[0].type.name})."
                     assert ty.name == exprs[0].type.name, ty_msg
 
             # 3.3. Any other expression.
             else:
                 ty = self.get_inner_type(ty)
+                ty_msg += f"({ty.name}/{node.init.type.name})."
                 assert ty.name == node.init.type.name, ty_msg
         
         # 4. If array declaration has no init.    
