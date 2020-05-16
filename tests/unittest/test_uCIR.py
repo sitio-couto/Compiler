@@ -101,47 +101,47 @@ class TestAST(unittest.TestCase):
         else:
             print('TRUE - The Output Is Correct\n')
 
-    # def test_t0(self):
-    #     self.runNcmp(0)
+    def test_t0(self):
+        self.runNcmp(0)
 
-    def test_t1(self):
-        self.runNcmp(1)
+    # def test_t1(self):
+    #     self.runNcmp(1)
 
-    def test_t2(self):
-        self.runNcmp(2)
+    # def test_t2(self):
+    #     self.runNcmp(2)
 
-    def test_t3(self):
-        self.runNcmp(3)
+    # def test_t3(self):
+    #     self.runNcmp(3)
 
-    def test_t4(self):
-        self.runNcmp(4)
+    # def test_t4(self):
+    #     self.runNcmp(4)
 
-    def test_t5(self):
-        self.runNcmp(5)
+    # def test_t5(self):
+    #     self.runNcmp(5)
 
-    def test_t6(self):
-        self.runNcmp(6)
+    # def test_t6(self):
+    #     self.runNcmp(6)
 
-    def test_t7(self):
-        self.runNcmp(7)
+    # def test_t7(self):
+    #     self.runNcmp(7)
 
-    def test_t8(self):
-        self.runNcmp(8)
+    # def test_t8(self):
+    #     self.runNcmp(8)
 
-    def test_t9(self):
-        self.runNcmp(9)
+    # def test_t9(self):
+    #     self.runNcmp(9)
 
-    def test_t10(self):
-        self.runNcmp(10)
+    # def test_t10(self):
+    #     self.runNcmp(10)
 
-    def test_t11(self):
-        self.runNcmp(11)
+    # def test_t11(self):
+    #     self.runNcmp(11)
     
-    def test_t12(self):
-        self.runNcmp(12)
+    # def test_t12(self):
+    #     self.runNcmp(12)
     
-    def test_t13(self):
-        self.runNcmp(13)
+    # def test_t13(self):
+    #     self.runNcmp(13)
 
 if __name__ == '__main__':
     unittest.main()    

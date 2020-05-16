@@ -1,20 +1,30 @@
-int a = (2*2)+100-13;
-int x[][] = {{-1,-1},{-1,-1}};
+int b = 0;
+
+int test(){
+    return 1;
+}
 
 void main () {
-    float x[] = {.0,.1,.2,.3};
-}
+    int x = 0;
 
-int test() {
-   return x[1][1]; 
-}
+    if (b==0) {
+        x = 1;
+    } else {
+        x = 2;
+    }
 
-int test1() {   
-    int x[][] = {{40},{50}};
-    int a = x[1][0];
-    return a;
-}
+    b = test();
 
-int test2() {
-   return x[1][0]; 
+    for (x=0; x<10; ++x) {
+        x++;
+    }
+
+    while (x > 0) {
+        ++x;
+        break;
+    }
+
+    assert 1==1;
+
+    return;
 }

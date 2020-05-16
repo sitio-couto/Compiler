@@ -13,6 +13,13 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 14/05/2020.
 '''
 
+# HOW TO RUN:
+# get IR: python tests/unittest/test_uCIR.py
+# pass IR: python tests/IR_in/test.in
+# REFERENCES:
+# https://en.wikipedia.org/wiki/Basic_block
+# https://stackoverflow.com/questions/31305423/how-do-you-include-subroutine-calls-in-a-control-flow-graph
+
 import re
 
 class Block(object):
@@ -49,40 +56,41 @@ class BasicBlock(Block):
     '''
     pass
 
-class IfBlock(Block):
-    '''
-    Class for a basic-block representing an if-else.  There are
-    two branches to handle each possibility.
-    '''
-    def __init__(self):
-        super(IfBlock,self).__init__()
-        self.if_branch = None
-        self.else_branch = None
-        self.test = None
+# class IfBlock(Block):
+#     '''
+#     Class for a basic-block representing an if-else.  There are
+#     two branches to handle each possibility.
+#     '''
+#     def __init__(self):
+#         super(IfBlock,self).__init__()
+#         self.if_branch = None
+#         self.else_branch = None
+#         self.test = None
 
-class WhileBlock(Block):
-    def __init__(self):
-        super(WhileBlock, self).__init__()
-        self.test = None
-        self.body = None
+# class WhileBlock(Block):
+#     def __init__(self):
+#         super(WhileBlock, self).__init__()
+#         self.test = None
+#         self.body = None
 
-class BlockVisitor(object):
-    '''
-    Class for visiting basic blocks.  Define a subclass and define
-    methods such as visit_BasicBlock or visit_IfBlock to implement
-    custom processing (similar to ASTs).
-    '''
-    def visit(self,block):
-        while isinstance(block,Block):
-            name = "visit_%s" % type(block).__name__
-            if hasattr(self,name):
-                getattr(self,name)(block)
-            block = block.next_block
+# class BlockVisitor(object):
+#     '''
+#     Class for visiting basic blocks.  Define a subclass and define
+#     methods such as visit_BasicBlock or visit_IfBlock to implement
+#     custom processing (similar to ASTs).
+#     '''
+#     def visit(self,block):
+#         while isinstance(block,Block):
+#             name = "visit_%s" % type(block).__name__
+#             if hasattr(self,name):
+#                 getattr(self,name)(block)
+#             block = block.next_block
 
 #### Auxiliary Functions ####
 
 targets = ['define','\d+'] # Possible branch targets
-branches = ['return','call','jump','cbranch'] # Possible branching statements
+# NOTE: not including 'call'
+branches = ['return','jump','cbranch'] # Possible branching statements
 is_target = lambda x : bool([True for t in targets if re.match(t, x)])
 is_branch = lambda x : bool([True for b in branches if re.match(b, x)])
 
@@ -104,12 +112,13 @@ def link_blocks(blocks):
         first = b.instructions[0]
         last = b.instructions[-1]
 
-        # Save Blocks Which Can be Jumped to
+        # Save blocks that can be jumped to
+        # NOTE: Functions (define) are saved but ignored
         if is_target(first[0]):
-            if first[0]!="define":
-                labels[first[0]] = b # get label
+            labels[first[0]] = b # get label
         
-        # Save Which Blocks Jumps Where
+        # Save where the block jumps to
+        # NOTE: Returns and calls are ignored
         if is_branch(last[0]):
             if last[0]=="jump":
                 jumps[b] = [last[1][1:]]
