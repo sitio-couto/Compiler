@@ -1,7 +1,16 @@
 int b = 0;
 
-int test(){
+int testA(){
     return 1;
+}
+
+void testB(){
+    
+}
+
+char testC(){
+    b = 3;
+    return 'c';
 }
 
 void main () {
@@ -13,7 +22,7 @@ void main () {
         x = 2;
     }
 
-    b = test();
+    b = testA();
 
     for (x=0; x<10; ++x) {
         x++;

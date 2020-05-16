@@ -23,9 +23,14 @@ Last Modified: 14/05/2020.
 import re
 
 class Block(object):
+    __count__ = 0
+
     def __init__(self):
+        Block.__count__ += 1
+        self.ID = Block.__count__
         self.instructions = []   # Instructions in the block
-        self.next_block = []   # Link to the next block
+        self.pred = [] # Link to parent blocks
+        self.succ = [] # Link to the next block
 
     def append(self,instr):
         self.instructions.append(instr)
@@ -33,19 +38,28 @@ class Block(object):
     def concat(self,inst_list):
         self.instructions += inst_list
 
+    def add_pred(self, block):
+        self.pred.append(block)
+
     def add_succ(self, block):
-        self.next_block.append(block)
+        self.succ.append(block)
 
     def __iter__(self):
         return iter(self.instructions)
 
+    def dfs_search(self, func):
+        pass
+
     def __str__(self):
-        txt = "New Block:\n"
+        txt = f"Block {self.ID}:\n"
+        for i,b in enumerate(self.pred):
+            txt += f"   Pred{i+1}: {b.ID}\n"
+        txt += '\n'
         for inst in self.instructions:
             txt += f"   {inst}\n"
         txt += '\n'
-        for i,n in enumerate(self.next_block):
-            txt += f"   Branch{i+1}: {n.instructions[0]}\n"
+        for i,b in enumerate(self.succ):
+            txt += f"   Succ{i+1}: {b.ID}\n"
 
         return txt
 
@@ -94,7 +108,15 @@ branches = ['return','jump','cbranch'] # Possible branching statements
 is_target = lambda x : bool([True for t in targets if re.match(t, x)])
 is_branch = lambda x : bool([True for b in branches if re.match(b, x)])
 
+##### Building the CFG ####
+
 def get_leaders(code):
+    ''' Given a list with IR code instructions, find all leaders indexes.
+        Params:
+            code - List of tupes where each element is a IR instruction
+        Return:
+            List - indexes of the leades in the code
+    '''
     leaders = set([0])
     for i in range(len(code)):
         prev = code[i-1][0]
@@ -105,20 +127,34 @@ def get_leaders(code):
     return sorted(list(leaders))
 
 def link_blocks(blocks):
+    ''' Given a list of basic blocks, link then creating a CFG.
+        Subroutines are handled as ambigous statements.
+        Every subroutine is connected to the header block (global statements).
+        Params:
+            Blocks - List of unconnected BasicBlocks 
+    '''
     jumps  = dict() # Block : Label
     labels = dict() # Label : Block
 
-    for i,b in enumerate(blocks):
+    # Separate global variables from funcs
+    glob_vars = blocks[0]
+    code_blocks = blocks[1:]
+
+    # Define blocks edges (jumps and labels)
+    for i,b in enumerate(code_blocks):
         first = b.instructions[0]
         last = b.instructions[-1]
 
         # Save blocks that can be jumped to
-        # NOTE: Functions (define) are saved but ignored
         if is_target(first[0]):
-            labels[first[0]] = b # get label
+            # Either a define or a label
+            if first[0]=='define':
+                glob_vars.add_succ(b) # Link header to function
+                b.add_pred(glob_vars)
+            else:
+                labels[first[0]] = b
         
         # Save where the block jumps to
-        # NOTE: Returns and calls are ignored
         if is_branch(last[0]):
             if last[0]=="jump":
                 jumps[b] = [last[1][1:]]
@@ -126,12 +162,18 @@ def link_blocks(blocks):
                 jumps[b] = [last[2][1:], last[3][1:]]
 
         # Link Consecutive Blocks
-        if not is_branch(last[0]) or last[0]=='call':
-            b.add_succ(blocks[i+1])
+        # NOTE: Seems like it's never used for our code
+        if not is_branch(last[0]):
+            b.add_succ(code_blocks[i+1])
 
-    for b in jumps.keys():
-        for label in jumps[b]:
-            b.add_succ(labels[label])
+    # Link successors and predecessors
+    for pred in jumps.keys():
+        for label in jumps[pred]:
+            succ = labels[label]
+            pred.add_succ(succ)
+            succ.add_pred(pred)
+
+    return 
 
 def build_cfg(code):
     # Get leaders
@@ -146,10 +188,9 @@ def build_cfg(code):
     
     # Link Blocks
     link_blocks(blocks)
-
-    for b in blocks: print(b)
-
-    return None
+    
+    list(map(print, blocks))
+    return blocks[0]
 
 ### TESTING STUB ###
 
@@ -165,3 +206,4 @@ if __name__ == "__main__":
         code = list(map(literal_eval,code))
 
     cfg = build_cfg(code)
+    
