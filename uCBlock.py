@@ -126,22 +126,43 @@ def get_leaders(code):
     
     return sorted(list(leaders))
 
-def link_blocks(blocks):
-    ''' Given a list of basic blocks, link then creating a CFG.
-        Subroutines are handled as ambigous statements.
-        Every subroutine is connected to the header block (global statements).
+def isolate_functions(blocks):
+    ''' Given a list of basic blocks, group blocks by enclosing function.
+        Functions are sequential instructions in the IR, so we take the 
+        blocks and group then until a new 'define' statement is found, or
+        until we reach the end of the code.
         Params:
             Blocks - List of unconnected BasicBlocks 
+    '''
+    globs = blocks[0] # Separe globals block
+    funcs = [] # List of lists (each element is the blocks of a function)
+    aux = []
+    
+    # Group blocks by functions
+    for b in blocks[1:]:
+        inst = b.instructions[0][0]
+        if inst=='define': # Reset every time a define is found
+            if aux: funcs.append(aux)
+            aux = [b]
+        else:
+            aux.append(b)
+    if aux: funcs.append(aux) # Append rest if eof
+
+    return globs,funcs
+
+def link_blocks(globs, blocks):
+    ''' Given the globals block and a list of basic blocks, link them 
+        creating a CFG. Subroutines are handled separatedly.
+        Every subroutine is connected to the globals block.
+        Params:
+            globs - Basic block containing global vars (program entrypoint)
+            Blocks - List of unconnected BasicBlocks of a subroutine 
     '''
     jumps  = dict() # Block : Label
     labels = dict() # Label : Block
 
-    # Separate global variables from funcs
-    glob_vars = blocks[0]
-    code_blocks = blocks[1:]
-
     # Define blocks edges (jumps and labels)
-    for i,b in enumerate(code_blocks):
+    for i,b in enumerate(blocks):
         first = b.instructions[0]
         last = b.instructions[-1]
 
@@ -149,8 +170,8 @@ def link_blocks(blocks):
         if is_target(first[0]):
             # Either a define or a label
             if first[0]=='define':
-                glob_vars.add_succ(b) # Link header to function
-                b.add_pred(glob_vars)
+                globs.add_succ(b) # Link header to function
+                b.add_pred(globs)
             else:
                 labels[first[0]] = b
         
@@ -164,7 +185,7 @@ def link_blocks(blocks):
         # Link Consecutive Blocks
         # NOTE: Seems like it's never used for our code
         if not is_branch(last[0]):
-            b.add_succ(code_blocks[i+1])
+            b.add_succ(blocks[i+1])
 
     # Link successors and predecessors
     for pred in jumps.keys():
@@ -186,11 +207,19 @@ def build_cfg(code):
         new_block.concat(code[s:t])
         blocks.append(new_block)
     
+    # Split blocks by function
+    glob,funcs = isolate_functions(blocks) 
+
     # Link Blocks
-    link_blocks(blocks)
+    for blocks in funcs: 
+        link_blocks(glob, blocks)
     
-    list(map(print, blocks))
-    return blocks[0]
+    ### DEBBUGING
+    print(glob)
+    for blocks in funcs:
+        list(map(print, blocks))
+
+    return glob
 
 ### TESTING STUB ###
 

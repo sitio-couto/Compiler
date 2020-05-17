@@ -13,6 +13,22 @@ char testC(){
     return 'c';
 }
 
+float testD(int i){
+    float f = (float)i;
+    return f;
+}
+
+int testE(){
+    int b = 1;
+    if (b==1) {
+        return 1;
+    } else {
+        return 0;
+    }
+
+    return -1;
+}
+
 void main () {
     int x = 0;
 
