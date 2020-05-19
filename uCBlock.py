@@ -59,19 +59,26 @@ class Block(object):
     def __iter__(self):
         return iter(self.instructions.values())
 
-    def dfs_search(self, func):
-        pass
-
+    def dfs_sort(self, visits=[]):
+        if self.ID not in visits:
+            visits.append(self.ID)
+            for b in self.succ:
+                visits = b.dfs_sort(visits=visits)
+        return visits
+        
     def __str__(self):
         txt = f"BLOCK {self.ID}:\n"
+        
         txt += f"   Preds:"
         for b in self.pred:
             txt += f" {b.ID}"
         txt += '\n\n'
+        
         for lin,inst in self.instructions.items():
             txt += f"   {lin} : {inst}\n"
         txt += '\n'
         txt += f"   Succs:"
+        
         for b in self.succ:
             txt += f" {b.ID}"
         txt += "\n"
@@ -148,12 +155,18 @@ def isolate_functions(blocks):
         Params:
             Blocks - List of unconnected BasicBlocks 
     '''
-    globs = blocks[0] # Separe globals block
-    funcs = [] # List of lists (each element is the blocks of a function)
+    # Create the program entry block
+    entry = blocks[0].get_inst(0)[0]
+    if 'global' in entry:
+        globs = blocks.pop(0)    # Separe globals block
+    else:
+        globs = BasicBlock() # Create dummy block
+
     aux = []
+    funcs = [] # List of lists (each element is the blocks of a function)
     
     # Group blocks by functions
-    for b in blocks[1:]:
+    for b in blocks:
         inst = b.get_inst(0)[0]
         if inst=='define': # Reset every time a define is found
             if aux: funcs.append(aux)
@@ -211,6 +224,14 @@ def link_blocks(globs, blocks):
     return 
 
 def build_cfg(code):
+    ''' Given the IR code as a list of tuples, build a CFG.
+        The CFG considers subroutines as independent subtrees.
+        If there are no global variables, the global block is empty.
+        Params:
+            code - List of tuples where each tuple is a IR statement
+        Return:
+            BasicBlock - Return the global basic block (links to every subroutine) 
+    '''
     # Get leaders
     leads = get_leaders(code)
     blocks = []
@@ -220,7 +241,7 @@ def build_cfg(code):
         new_block = BasicBlock()
         new_block.concat(code[s:t])
         blocks.append(new_block)
-    
+
     # Split blocks by function
     glob,funcs = isolate_functions(blocks) 
 
@@ -232,6 +253,8 @@ def build_cfg(code):
     print(glob)
     for blocks in funcs:
         list(map(print, blocks))
+
+    print(glob.dfs_sort())
 
     return glob
 
