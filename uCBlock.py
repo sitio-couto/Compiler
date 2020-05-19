@@ -26,6 +26,7 @@ import re
 class Block(object):
     __blockID__ = 0
     __lineID__ = 0
+    __index__ = dict()
 
     def __init__(self):
         Block.__blockID__ += 1
@@ -33,6 +34,7 @@ class Block(object):
         self.instructions = OrderedDict()    # Instructions in the block
         self.pred = []              # Link to parent blocks
         self.succ = []              # Link to the next block
+        Block.__index__[self.ID] = self
 
     def append(self,instr):
         Block.__lineID__ += 1
@@ -65,7 +67,14 @@ class Block(object):
             for b in self.succ:
                 visits = b.dfs_sort(visits=visits)
         return visits
-        
+
+    def delete(self):
+        for s in self.succ:
+            s.pred.remove(self)
+        for p in self.pred:
+            p.succ.remove(self)
+        del Block.__index__[self.ID]
+
     def __str__(self):
         txt = f"BLOCK {self.ID}:\n"
         
@@ -224,6 +233,16 @@ def link_blocks(globs, blocks):
 
     return 
 
+def clean_cfg(glob):
+    # Removing unreachable blocks
+    all_ids = list(range(1, 1 + Block.__blockID__))
+    reachable = glob.dfs_sort()
+    dead = set(all_ids)-set(reachable)
+    print(f"\nRemoving deadblocks: {dead}\n")
+    for idx in dead:
+        block = Block.__index__[idx]
+        block.delete()
+
 def build_cfg(code):
     ''' Given the IR code as a list of tuples, build a CFG.
         The CFG considers subroutines as independent subtrees.
@@ -250,6 +269,9 @@ def build_cfg(code):
     for blocks in funcs: 
         link_blocks(glob, blocks)
     
+    # Remove unreacheble blocks
+    clean_cfg(glob)
+
     ### DEBBUGING
     print(glob)
     for blocks in funcs:
