@@ -15,6 +15,7 @@ from uCParser import uCParser as Parser
 from uCSemantic import uCSemanticCheck as Semantic
 from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
+from uCBlock import uCCFG as CFG
 from os.path import exists
 from sys import argv
 
@@ -30,19 +31,22 @@ if __name__ == '__main__':
     # Building parser
     parser = Parser(tokenizer)
     parser.build()
-    
+
     semantic = Semantic(parser)
     generator = Generator(semantic)
+    
+    # Interpret or optimize IR.
     interpreter = Interpreter(generator)
+    cfg = CFG(generator)
     
     while True:
         # quick testing input file
         if len(argv) > 1 :
             for i in range(1,len(argv)):
-                generator.test(argv[i], False)
+                cfg.test(argv[i], False)
             exit(1)
 
-        print("\nSend 'l' for lexer test, 'p' for parser test, 's' for semantic test, 'g' for IR Generation test and 'i' for interpreter test ('q' to quit)")
+        print("\nSend 'l' for lexer test, 'p' for parser test, 's' for semantic test, 'g' for IR Generation test, 'i' for interpreter test and 'b' for basic block test ('q' to quit)")
         mode = input("Mode: ")
 
         if mode == 'l':
@@ -74,6 +78,12 @@ if __name__ == '__main__':
             while True:
                 try:
                     interpreter.test(input("Filename or expression to run: "), True)
+                except EOFError:
+                    break
+        elif mode == 'b':
+            while True:
+                try:
+                    cfg.test(input("Filename or expression to run: "), True)
                 except EOFError:
                     break
         elif mode == 'q':
