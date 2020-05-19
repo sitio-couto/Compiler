@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 08/05/2020.
+Last Modified: 19/05/2020.
 '''
 
 import re
@@ -497,11 +497,15 @@ class uCIRGenerate(ast.NodeVisitor):
                 # Create opcode and append to instruction list
                 if isinstance(node.init, ast.UnaryOp) and node.init.op == '&':
                     inst = ('get_' + ty, name, node.gen_location)
+                    self.code.append(inst)
                 elif isinstance(node.init, ast.ArrayRef):
-                    inst = ('store_' + ty + '_*', name, node.gen_location)
+                    target = self.new_temp()
+                    inst1 = ('load_' + ty + '_*', name, target)
+                    inst2 = ('store_' + ty, target, node.gen_location)
+                    self.code += [inst1, inst2]
                 else:
                     inst = ('store_' + ty, name, node.gen_location)
-                self.code.append(inst)
+                    self.code.append(inst)
                 
     def visit_DeclList(self, node):
         for decl in node.decls:
