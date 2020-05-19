@@ -124,8 +124,8 @@ class BasicBlock(Block):
 
 #### Auxiliary Functions ####
 
-targets = ['define','\d+'] # Possible branch targets
-branches = ['return','jump','cbranch'] # Possible branching statements
+targets = [r'define',r'\d+'] # Possible branch targets
+branches = [r'return',r'jump',r'cbranch'] # Possible branching statements
 is_target = lambda x : bool([True for t in targets if re.match(t, x)])
 is_branch = lambda x : bool([True for b in branches if re.match(b, x)])
 
@@ -190,6 +190,7 @@ def link_blocks(globs, blocks):
 
     # Define blocks edges (jumps and labels)
     for i,b in enumerate(blocks):
+        jumps[b] = [] # Make some ops easier
         first = b.get_inst(0)
         last = b.get_inst(-1)
 
@@ -205,17 +206,17 @@ def link_blocks(globs, blocks):
         # Save where the block jumps to
         if is_branch(last[0]):
             if last[0]=="jump":
-                jumps[b] = [last[1][1:]]
+                jumps[b] += [last[1][1:]]
             if last[0]=="cbranch":
-                jumps[b] = [last[2][1:], last[3][1:]]
+                jumps[b] += [last[2][1:], last[3][1:]]
 
         # Link Consecutive Blocks
-        # NOTE: Seems like it's never used for our code
         if not is_branch(last[0]):
             b.add_succ(blocks[i+1])
+            blocks[i+1].add_pred(b)
 
     # Link successors and predecessors
-    for pred in jumps.keys():
+    for pred in jumps:
         for label in jumps[pred]:
             succ = labels[label]
             pred.add_succ(succ)
