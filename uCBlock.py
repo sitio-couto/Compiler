@@ -65,14 +65,14 @@ class Block(object):
     def __str__(self):
         txt = f"BLOCK {self.ID}:\n"
         txt += f"   Preds:"
-        for i,b in enumerate(self.pred):
+        for b in self.pred:
             txt += f" {b.ID}"
         txt += '\n\n'
         for lin,inst in self.instructions.items():
             txt += f"   {lin} : {inst}\n"
         txt += '\n'
         txt += f"   Succs:"
-        for i,b in enumerate(self.succ):
+        for b in self.succ:
             txt += f" {b.ID}"
         txt += "\n"
 
@@ -118,7 +118,6 @@ class BasicBlock(Block):
 #### Auxiliary Functions ####
 
 targets = ['define','\d+'] # Possible branch targets
-# NOTE: not including 'call'
 branches = ['return','jump','cbranch'] # Possible branching statements
 is_target = lambda x : bool([True for t in targets if re.match(t, x)])
 is_branch = lambda x : bool([True for b in branches if re.match(b, x)])
