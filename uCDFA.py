@@ -45,10 +45,13 @@ class Optimization(object):
         # Testing... ?
 
     def reaching_definitions(self, cfg):
-        # TODO: gen/kill
         
         # DFS in CFG
         dfs = cfg.dfs_sort()
+        
+        # Get gen/kill sets.
+        # TODO: needs to be here?
+        self.rd_gen_kill(dfs)
         
         # Initialize
         for b in dfs:
@@ -79,6 +82,45 @@ class Optimization(object):
             # All successors to the 'changed' set.
             if self.out_set[b.ID] != old_out:
                 changed.update(b.succ)
+
+    def rd_gen_kill(self, dfs):
+        # TODO: any missing def type?
+        # TODO: Are we doing this with temporaries or memory variables? Commented is the version with temporaries.
+        # TODO: PROBLEM! MULTIPLE FUNCTIONS AND SCOPE
+        defs = dict()
+        #def_types = ['load', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
+        
+        # Find all definitions and create gen set.
+        for b in dfs:
+            self.gen[b.ID] = set()
+            
+            # Go through all instructions.
+            for num, inst in b.instructions.items():
+                #call_return = inst[0] == 'call' and len(inst)== 3
+                #local_def = inst[0].split('_')[0] in def_types
+                
+                #if local_def or call_return:
+                if inst[0].split('_')[0] == 'store':
+                    self.gen[b.ID].update([num])
+                    
+                    # Update DEFS.
+                    if not defs[inst[-1]]:
+                        defs[inst[-1]] = set([num])
+                    else:
+                        defs[inst[-1]].update([num])
+        
+        # Kill definitions
+        for b in dfs:
+            self.kill[b.ID] = set()
+            
+            # Go through all instructions.
+            for inst in b:
+                #call_return = inst[0] == 'call' and len(inst)== 3
+                #local_def = inst[0].split('_')[0] in def_types
+                
+                #if local_def or call_return:
+                if if inst[0].split('_')[0] == 'store':
+                    self.kill[b.ID].update(defs[inst[-1]])
 
     def liveness_analysis(self, cfg):
         pass
