@@ -20,23 +20,31 @@ Last Modified: 14/05/2020.
 # https://en.wikipedia.org/wiki/Basic_block
 # https://stackoverflow.com/questions/31305423/how-do-you-include-subroutine-calls-in-a-control-flow-graph
 
+from collections import OrderedDict
 import re
 
 class Block(object):
-    __count__ = 0
+    __blockID__ = 0
+    __lineID__ = 0
 
     def __init__(self):
-        Block.__count__ += 1
-        self.ID = Block.__count__
-        self.instructions = []   # Instructions in the block
-        self.pred = [] # Link to parent blocks
-        self.succ = [] # Link to the next block
+        Block.__blockID__ += 1
+        self.ID = Block.__blockID__   # Iteger to identify block
+        self.instructions = OrderedDict()    # Instructions in the block
+        self.pred = []              # Link to parent blocks
+        self.succ = []              # Link to the next block
 
     def append(self,instr):
-        self.instructions.append(instr)
+        Block.__lineID__ += 1
+        key = Block.__lineID__
+        self.instructions[key] = instr
 
     def concat(self,inst_list):
-        self.instructions += inst_list
+        base = Block.__lineID__ + 1
+        top = base + len(inst_list)
+        Block.__lineID__ += len(inst_list)
+        new = zip(range(base, top), inst_list)
+        self.instructions.update(new)
 
     def add_pred(self, block):
         self.pred.append(block)
@@ -44,22 +52,29 @@ class Block(object):
     def add_succ(self, block):
         self.succ.append(block)
 
+    def get_inst(self, idx):
+        insts = list(self.instructions.values())
+        return insts[idx]
+
     def __iter__(self):
-        return iter(self.instructions)
+        return iter(self.instructions.values())
 
     def dfs_search(self, func):
         pass
 
     def __str__(self):
-        txt = f"Block {self.ID}:\n"
+        txt = f"BLOCK {self.ID}:\n"
+        txt += f"   Preds:"
         for i,b in enumerate(self.pred):
-            txt += f"   Pred{i+1}: {b.ID}\n"
+            txt += f" {b.ID}"
+        txt += '\n\n'
+        for lin,inst in self.instructions.items():
+            txt += f"   {lin} : {inst}\n"
         txt += '\n'
-        for inst in self.instructions:
-            txt += f"   {inst}\n"
-        txt += '\n'
+        txt += f"   Succs:"
         for i,b in enumerate(self.succ):
-            txt += f"   Succ{i+1}: {b.ID}\n"
+            txt += f" {b.ID}"
+        txt += "\n"
 
         return txt
 
@@ -140,7 +155,7 @@ def isolate_functions(blocks):
     
     # Group blocks by functions
     for b in blocks[1:]:
-        inst = b.instructions[0][0]
+        inst = b.get_inst(0)[0]
         if inst=='define': # Reset every time a define is found
             if aux: funcs.append(aux)
             aux = [b]
@@ -163,8 +178,8 @@ def link_blocks(globs, blocks):
 
     # Define blocks edges (jumps and labels)
     for i,b in enumerate(blocks):
-        first = b.instructions[0]
-        last = b.instructions[-1]
+        first = b.get_inst(0)
+        last = b.get_inst(-1)
 
         # Save blocks that can be jumped to
         if is_target(first[0]):
