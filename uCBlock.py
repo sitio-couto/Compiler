@@ -266,11 +266,14 @@ class uCCFG(object):
         return 
 
     def clean_cfg(self):
+        ''' Uses a DFS search stargin from the global block to check
+            which blocks are unreacheable, and removes then from the instance.
+        '''
         # Removing unreachable blocks
         all_ids = list(range(1, 1 + Block.__blockID__))
-        reachable = self.first_block.dfs_sort()
+        reachable = [b.ID for b in self.first_block.dfs_sort()]
         dead = set(all_ids)-set(reachable)
-        print(f"\nRemoving deadblocks: {dead}\n")
+        if dead: print(f"\nRemoving deadblocks: {dead}\n")
         for idx in dead:
             block = Block.__index__[idx]
             block.delete()
