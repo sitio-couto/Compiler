@@ -12,6 +12,8 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 19/05/2020.
 '''
 
+from os.path import exists
+
 class Optimization(object):
     def __init__(self, generator, block_constructor):
         self.generator = generator
@@ -38,21 +40,23 @@ class Optimization(object):
         
         if not quiet:
             self.generator.print_code()
-        
+            print("\n")
+
         # Build CFG.
         self.blocker.build_cfg(self.generator.code)
         
         # Testing... ?
+        self.reaching_definitions(self.blocker.first_block)
+        print(self)
 
     def reaching_definitions(self, cfg):
-        
         # DFS in CFG
         dfs = cfg.dfs_sort()
         
         # Get gen/kill sets.
         # TODO: needs to be here?
         self.rd_gen_kill(dfs)
-        
+        print(self)
         # Initialize
         for b in dfs:
             self.out_set[b.ID] = set()
@@ -88,7 +92,7 @@ class Optimization(object):
         # TODO: Are we doing this with temporaries or memory variables? Commented is the version with temporaries.
         # TODO: PROBLEM! MULTIPLE FUNCTIONS AND SCOPE
         defs = dict()
-        #def_types = ['load', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
+        def_types = ['load', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
         
         # Find all definitions and create gen set.
         for b in dfs:
@@ -96,15 +100,15 @@ class Optimization(object):
             
             # Go through all instructions.
             for num, inst in b.instructions.items():
-                #call_return = inst[0] == 'call' and len(inst)== 3
-                #local_def = inst[0].split('_')[0] in def_types
+                call_return = inst[0] == 'call' and len(inst)== 3
+                local_def = inst[0].split('_')[0] in def_types
                 
-                #if local_def or call_return:
-                if inst[0].split('_')[0] == 'store':
+                # if inst[0].split('_')[0] == 'store':
+                if local_def or call_return:
                     self.gen[b.ID].update([num])
                     
                     # Update DEFS.
-                    if not defs[inst[-1]]:
+                    if not defs.get(inst[-1], None):
                         defs[inst[-1]] = set([num])
                     else:
                         defs[inst[-1]].update([num])
@@ -115,11 +119,11 @@ class Optimization(object):
             
             # Go through all instructions.
             for inst in b:
-                #call_return = inst[0] == 'call' and len(inst)== 3
-                #local_def = inst[0].split('_')[0] in def_types
+                call_return = inst[0] == 'call' and len(inst)== 3
+                local_def = inst[0].split('_')[0] in def_types
                 
-                #if local_def or call_return:
-                if if inst[0].split('_')[0] == 'store':
+                # if inst[0].split('_')[0] == 'store':
+                if local_def or call_return:
                     self.kill[b.ID].update(defs[inst[-1]])
 
     def liveness_analysis(self, cfg):
@@ -127,3 +131,20 @@ class Optimization(object):
     
     def optimize(self):
         raise NotImplementedError
+
+    def __str__(self):
+        IDs = [b.ID for b in self.blocker.first_block.dfs_sort()]
+        
+        show = lambda x,i : x[i] if x.get(i,None) else '{}'
+
+        txt = ''
+        for idx in IDs:
+            txt += f"BLOCK {idx}:\n"
+            txt += f"   IN: {show(self.in_set,idx)}\n"
+            txt += f"   GEN: {show(self.gen,idx)}\n"
+            txt += f"   KILL: {show(self.kill,idx)}\n"
+            txt += f"   OUT: {show(self.out_set,idx)}\n"
+            txt += '\n'
+        return txt
+        
+        
