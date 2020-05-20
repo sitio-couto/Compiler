@@ -104,6 +104,7 @@ class uCCFG(object):
         self.generator = generator
         self.first_block = None
         
+        self.vars = None
         self.targets = [r'define',r'\d+']              # Possible branch targets
         self.branches = [r'return',r'jump',r'cbranch'] # Possible branching statements
 
@@ -166,11 +167,21 @@ class uCCFG(object):
         # Link Blocks
         for blocks in funcs: 
             self.link_blocks(glob, blocks)
-
         self.first_block = glob
                 
         # Remove unreachable blocks
         self.clean_cfg()
+    
+        # Get existing variables in code
+        self.udpate_vars()
+
+    def udpate_vars(self):
+        aux = set()
+        blocks = list(Block.__index__.values())
+        for b in blocks:
+            for inst in b.instructions.values():
+                aux.update(re.findall(r'%\d+', str(inst)))
+        self.vars = sorted(list(aux), key=lambda x: int(x[1:]))
     
     def get_leaders(self, code):
         ''' Given a list with IR code instructions, find all leaders indexes.
