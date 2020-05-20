@@ -16,6 +16,7 @@ from uCSemantic import uCSemanticCheck as Semantic
 from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCCFG as CFG
+from uCDFA import Optimization as opt
 from os.path import exists
 from sys import argv
 
@@ -38,15 +39,25 @@ if __name__ == '__main__':
     # Interpret or optimize IR.
     interpreter = Interpreter(generator)
     cfg = CFG(generator)
+    dfa = opt(generator, CFG(generator))
     
     while True:
         # quick testing input file
         if len(argv) > 1 :
             for i in range(1,len(argv)):
-                cfg.test(argv[i], False)
+                dfa.test(argv[i], False)
             exit(1)
 
-        print("\nSend 'l' for lexer test, 'p' for parser test, 's' for semantic test, 'g' for IR Generation test, 'i' for interpreter test and 'b' for basic block test ('q' to quit)")
+        print('''\nType one of the following keys:
+        l - for lexer test 
+        p - for parser test 
+        s - for semantic test 
+        g - for IR Generation test 
+        i - for interpreter test 
+        b - for basic block test
+        d - for dataflow analysis test
+        q - to quit
+        ''')
         mode = input("Mode: ")
 
         if mode == 'l':
@@ -84,6 +95,12 @@ if __name__ == '__main__':
             while True:
                 try:
                     cfg.test(input("Filename or expression to run: "), True)
+                except EOFError:
+                    break
+        elif mode == 'd':
+            while True:
+                try:
+                    dfa.test(input("Filename or expression to run: "), True)
                 except EOFError:
                     break
         elif mode == 'q':
