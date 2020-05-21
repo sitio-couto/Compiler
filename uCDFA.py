@@ -142,7 +142,7 @@ class Optimization(object):
                 
                 if local_def or call_return:
                     curr_kill = defs[inst[-1]] - set([num])
-                    curr_gen  = set(num).union(self.gen[b.ID] - curr_kill)
+                    curr_gen  = set([num]).union(self.gen[b.ID] - curr_kill)
                     self.kill[b.ID].update(curr_kill)
                     self.gen[b.ID].update(curr_gen)
 
