@@ -13,6 +13,7 @@ Last Modified: 19/05/2020.
 '''
 
 from os.path import exists
+import re
 
 class Optimization(object):
     def __init__(self, generator, block_constructor):
@@ -87,10 +88,30 @@ class Optimization(object):
             if self.out_set[b.ID] != old_out:
                 changed.update(b.succ)
 
+    def map_vars(self, blocks):
+        ''' Given a list of basic blocks, maps which variables are 
+            referenced by which statements (identified by lineID).
+            Param:
+                blocks - List of the code's basic blocks
+            Return:
+                table - dictionary where keys are the vars in the code and
+                    values are the lineIDs which reference such variable
+        '''
+        keys = self.blocker.update_vars()
+        vals = [set() for i in range(len(keys))]
+        table = dict(zip(keys,vals))
+        for b in blocks:
+            for lin,inst in b.instructions.items():
+                for var in re.findall(r'%\d+', str(inst)):
+                    table[var].add(lin)
+        return table
+
+
     def rd_gen_kill(self, dfs):
         # TODO: any missing def type?
-        # TODO: Are we doing this with temporaries or memory variables? Commented is the version with temporaries.
         # TODO: PROBLEM! MULTIPLE FUNCTIONS AND SCOPE
+        print(self.map_vars(dfs))
+
         defs = dict()
         def_types = ['load', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
         
