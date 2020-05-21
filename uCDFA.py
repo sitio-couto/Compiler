@@ -116,7 +116,6 @@ class Optimization(object):
         
         # Find all definitions and create gen set.
         for b in dfs:
-            self.gen[b.ID] = set()
             
             # Go through all instructions.
             for num, inst in b.instructions.items():
@@ -124,7 +123,6 @@ class Optimization(object):
                 local_def = inst[0].split('_')[0] in def_types
                 
                 if local_def or call_return:
-                    self.gen[b.ID].update([num])
                     
                     # Update DEFS.
                     if not defs.get(inst[-1], None):
@@ -132,17 +130,20 @@ class Optimization(object):
                     else:
                         defs[inst[-1]].update([num])
         
-        # Kill definitions
+        # Gen/Kill definitions
         for b in dfs:
+            self.gen[b.ID] = set()
             self.kill[b.ID] = set()
             
             # Go through all instructions.
-            for inst in b:
+            for num, inst in b.instructions.items():
                 call_return = inst[0] == 'call' and len(inst)== 3
                 local_def = inst[0].split('_')[0] in def_types
                 
                 if local_def or call_return:
-                    self.kill[b.ID].update(defs[inst[-1]])
+                    curr_kill = defs[inst[-1]] - set([num])
+                    self.kill[b.ID].update(curr_kill)
+                    self.gen[b.ID].update(set(num).union(self.gen[b.ID] - curr_kill))
 
     def liveness_analysis(self, cfg):
         pass
