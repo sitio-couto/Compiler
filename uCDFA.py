@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 19/05/2020.
+Last Modified: 21/05/2020.
 '''
 
 from os.path import exists
@@ -109,11 +109,10 @@ class Optimization(object):
 
     def rd_gen_kill(self, dfs):
         # TODO: any missing def type?
-        # TODO: PROBLEM! MULTIPLE FUNCTIONS AND SCOPE
         print(self.map_vars(dfs))
 
         defs = dict()
-        def_types = ['load', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
+        def_types = ['load', 'read', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
         
         # Find all definitions and create gen set.
         for b in dfs:
@@ -124,7 +123,6 @@ class Optimization(object):
                 call_return = inst[0] == 'call' and len(inst)== 3
                 local_def = inst[0].split('_')[0] in def_types
                 
-                # if inst[0].split('_')[0] == 'store':
                 if local_def or call_return:
                     self.gen[b.ID].update([num])
                     
@@ -143,7 +141,6 @@ class Optimization(object):
                 call_return = inst[0] == 'call' and len(inst)== 3
                 local_def = inst[0].split('_')[0] in def_types
                 
-                # if inst[0].split('_')[0] == 'store':
                 if local_def or call_return:
                     self.kill[b.ID].update(defs[inst[-1]])
 
@@ -167,5 +164,3 @@ class Optimization(object):
             txt += f"   OUT: {show(self.out_set,idx)}\n"
             txt += '\n'
         return txt
-        
-        
