@@ -12,6 +12,7 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 21/05/2020.
 '''
 
+from collections import OrderedDict
 from os.path import exists
 import re
 
@@ -47,7 +48,8 @@ class Optimization(object):
         self.blocker.build_cfg(self.generator.code)
         
         # Testing... ?
-        self.reaching_definitions(self.blocker.first_block)
+        # self.reaching_definitions(self.blocker.first_block)
+        self.liveness_analysis(self.blocker.first_block)
         print(self)
 
     def reaching_definitions(self, cfg):
@@ -109,8 +111,6 @@ class Optimization(object):
 
     def rd_gen_kill(self, dfs):
         # TODO: any missing def type?
-        print(self.map_vars(dfs))
-
         defs = dict()
         def_types = ['load', 'read', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
         
@@ -146,8 +146,77 @@ class Optimization(object):
                     self.kill[b.ID].update(curr_kill)
                     self.gen[b.ID].update(curr_gen)
 
+    def la_gen_kill(self, dfs):
+        # Create use/def tables
+        defs = dict([(num,set()) for num in range(1,dfs[0].__lineID__+1)])
+        uses = dict([(num,set()) for num in range(1,dfs[0].__lineID__+1)])
+
+        # Maps which instruction DEFINES which register (according to tuple position)
+        use_map = {
+            # Variables & Values
+            ('store','elem'):[1,2],
+            ('load','get'):[1],
+            # Binary Operations
+            ('add','sub','mul','div','mod'):[1,2], 
+            # Cast Operations
+            ('fptosi','sitofp'):[1],
+            # Relational/Equality/Logical 
+            ('lt','le','ge','gt','eq','ne','and','or','not'):[1,2],
+            # Functions & Builtins
+            ('param','print','return'):[1] 
+            }
+        
+        # Maps which instruction DEFINES which register (according to tuple position)
+        def_map = {
+            # Variables & Values
+            ('elem','literal'):[3],
+            ('load','get'):[2],
+            # Binary Operations
+            ('add','sub','mul','div','mod'):[3], 
+            # Cast Operations
+            ('fptosi','sitofp'):[1], # TODO: is it a use and def simultaneously?
+            # Relational/Equality/Logical 
+            ('lt','le','ge','gt','eq','ne','and','or','not'):[3],
+            # Functions
+            ('call','print'):[2]
+            }
+
+        def get_vars(inst, inst_map):
+            '''Get variables mapped from instruction'''
+            for keys,vals in inst_map.items():
+                local_def = inst[0].split('_')[0]
+                if local_def in keys:
+                    if len(inst) <= max(vals): return [] # for optional registers (return,)
+                    else: return [inst[i] for i in vals]
+            return []
+
+        is_use = lambda x: get_vars(x, use_map)
+        is_def = lambda x: get_vars(x, def_map)
+
+        # Find use/def sets for each instruction
+        for b in dfs:
+            # Get use/def of each instruction in the block
+            for num, inst in b.instructions.items():
+                uses[num].update(is_use(inst))
+                defs[num].update(is_def(inst)) 
+
+        self.print_gd(uses, "USES:")
+        self.print_gd(defs, "DEFS:")
+
+    def print_gd(self, table, name):
+        print(name)
+        for k,v in table.items():
+            print(f"  {k:3}", end='')
+            if v: print(" ",v, end='')
+            print()
+        print()
+
     def liveness_analysis(self, cfg):
-        pass
+        # DFS in CFG
+        dfs = cfg.dfs_sort()
+        
+        # Get gen/kill sets.
+        self.la_gen_kill(dfs)
     
     def optimize(self):
         raise NotImplementedError
