@@ -32,6 +32,10 @@ class Block(object):
         self.instructions = OrderedDict()    # Instructions in the block
         self.pred = []                       # Link to parent blocks
         self.succ = []                       # Link to the next block
+        self.gen  = set()
+        self.kill = set()
+        self.in_set  = set()
+        self.out_set = set()
         Block.__index__[self.ID] = self
 
     def append(self,instr):
@@ -72,6 +76,19 @@ class Block(object):
         for p in self.pred:
             p.succ.remove(self)
         del Block.__index__[self.ID]
+
+    def show_sets(self):
+        show = lambda x : ', '.join(x) if x else ''
+
+        txt = ''
+        for b in self.dfs_sort():
+            txt += f"BLOCK {b.ID}:\n"
+            txt += f"   IN: {show(b.in_set)}\n"
+            txt += f"   GEN: {show(b.gen)}\n"
+            txt += f"   KILL: {show(b.kill)}\n"
+            txt += f"   OUT: {show(b.out_set)}\n"
+            txt += '\n'
+        print(txt)
 
     def __str__(self):
         txt = f"BLOCK {self.ID}:\n"

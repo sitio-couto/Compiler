@@ -50,7 +50,7 @@ class Optimization(object):
         # Testing... ?
         # self.reaching_definitions(self.blocker.first_block)
         self.liveness_analysis(self.blocker.first_block)
-        print(self)
+        self.blocker.first_block.show_sets()
 
     def reaching_definitions(self, cfg):
         # DFS in CFG
@@ -200,23 +200,50 @@ class Optimization(object):
                 uses[num].update(is_use(inst))
                 defs[num].update(is_def(inst)) 
 
-        self.print_gd(uses, "USES:")
-        self.print_gd(defs, "DEFS:")
+        # self.print_table(uses, "USES:")
+        # self.print_table(defs, "DEFS:")
 
-    def print_gd(self, table, name):
-        print(name)
-        for k,v in table.items():
-            print(f"  {k:3}", end='')
-            if v: print(" ",v, end='')
-            print()
-        print()
-
+        gen = uses
+        kill = defs
+        # Unify block instructions gen/kill sets
+        for b in dfs:
+            # Reverse unify instructions gen/kill sets
+            rev_insts = list(reversed(list(b.instructions)))
+            for n in rev_insts[:-1]:
+                b.gen = gen[n].union(b.gen - kill[n])
+                b.kill.update(kill[n])
+    
     def liveness_analysis(self, cfg):
         # DFS in CFG
-        dfs = cfg.dfs_sort()
+        dfs = list(reversed(cfg.dfs_sort()))
         
         # Get gen/kill sets.
         self.la_gen_kill(dfs)
+        
+        # All blocks in "changed" set.
+        changed = set(dfs)
+        
+        # Reverse data flow iteration
+        while changed:
+            b = changed.pop()
+
+            # Calculate out_set set from successors in_set.
+            for succ in b.succ:
+                b.out_set.update(succ.in_set)
+            
+            # Build new in_set from new out_set
+            new_in = b.gen.union(b.out_set - b.kill)
+            
+            # Check if there are changes in out_set
+            if b.in_set != new_in:
+                b.in_set = new_in
+                changed.update(b.pred)
+
+    def print_table(self, table, name):
+        txt = f"{name}:\n"
+        for k,v in table.items():
+            txt += f"  {k:3}  {', '.join(map(str,v))}\n"
+        print(txt)
     
     def optimize(self):
         raise NotImplementedError
