@@ -17,7 +17,10 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 20/05/2020.
 '''
 
+import os
+os.environ["PATH"] += os.pathsep + 'C:\Program Files (x86)/Graphviz2.38/bin'
 from collections import OrderedDict
+from graphviz import Digraph
 from os.path import exists
 import re
 
@@ -101,8 +104,8 @@ class Block(object):
         for lin,inst in self.instructions.items():
             txt += f"   {lin} : {inst}\n"
         txt += '\n'
+
         txt += f"   Succs:"
-        
         for b in self.succ:
             txt += f" {b.ID}"
         txt += "\n"
@@ -301,3 +304,22 @@ class uCCFG(object):
         for idx in dead:
             block = Block.__index__[idx]
             block.delete()
+
+    def view(self):
+        blocks = self.first_block.__index__.items()
+        graph = Digraph(comment='Control Flow Graph')
+        graph.attr('node', shape='box',fontname="helvetica")
+
+        # Create blocks
+        for i,b in blocks: 
+            txt = ''
+            for lin,inst in b.instructions.items():
+                txt += f"{lin:3}  {'  '.join(map(str,inst))}\l"
+            graph.node(str(i),txt)
+
+        # Connect blocks
+        for i,b in blocks:
+            for p in b.pred: graph.edge(str(p.ID),str(b.ID))
+
+        # Show CFG
+        graph.view()
