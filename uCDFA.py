@@ -263,9 +263,6 @@ class Optimization(object):
                     b.remove_inst(n)
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
 
-    def liveness_analysis(self, cfg):
-        pass
-
     def print_table(self, table, name):
         txt = f"{name}:\n"
         for k,v in table.items():
