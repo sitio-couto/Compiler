@@ -16,7 +16,7 @@ from uCSemantic import uCSemanticCheck as Semantic
 from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCCFG as CFG
-from uCDFA import Optimization as opt
+from uCDFA import Optimization as DFA
 from os.path import exists
 from sys import argv
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # Interpret or optimize IR.
     interpreter = Interpreter(generator)
     cfg = CFG(generator)
-    dfa = opt(generator, CFG(generator))
+    dfa = DFA(generator, cfg)
     
     while True:
         # quick testing input file

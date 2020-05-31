@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 21/05/2020.
+Last Modified: 31/05/2020.
 '''
 
 from collections import OrderedDict
@@ -47,9 +47,8 @@ class Optimization(object):
         # Build CFG.
         self.blocker.build_cfg(self.generator.code)
         
-        # Testing... ?
-        # self.reaching_definitions(self.blocker.first_block)
-        self.deadcode_elimination(self.blocker.first_block)
+        # Testing.
+        self.optimize(self.blocker.first_block)
         self.blocker.print_blocks()
 
     def reaching_definitions(self, cfg):
@@ -247,30 +246,18 @@ class Optimization(object):
 
         return dfs
 
-    def deadcode_elimination(self, cfg):
-        # Run dataflow analysis preparing block sets
-        blocks = self.liveness_analysis(cfg)
-
-        # Iterate through blocks eliminating code
-        for b in blocks:
-            # Reverse unify instructions gen/kill sets
-            rev_insts = list(reversed(list(b.instructions)))
-            alive = b.out_set.copy()
-            for n in rev_insts:
-                var_def = b.inst_kill[n]
-                if var_def and var_def in alive:
-                    print("OK")
-                    b.remove_inst(n)
-                alive = b.inst_gen[n] | (alive - b.inst_kill[n])
-
     def print_table(self, table, name):
         txt = f"{name}:\n"
         for k,v in table.items():
             txt += f"  {k:3}  {', '.join(map(str,v))}\n"
         print(txt)
     
-    def optimize(self):
-        raise NotImplementedError
+    def optimize(self, cfg):
+        print("Reaching Definitions:")
+        self.reaching_definitions(self.blocker.first_block)
+        print(self)
+        print("Liveness Analysis:\n\n")
+        self.liveness_analysis(self.blocker.first_block)
 
     def __str__(self):
         IDs = [b.ID for b in self.blocker.first_block.dfs_sort()]
