@@ -49,8 +49,8 @@ class Optimization(object):
         
         # Testing... ?
         # self.reaching_definitions(self.blocker.first_block)
-        self.liveness_analysis(self.blocker.first_block)
-        self.blocker.first_block.show_sets()
+        self.deadcode_elimination(self.blocker.first_block)
+        self.blocker.print_blocks()
 
     def reaching_definitions(self, cfg):
         # DFS in CFG
@@ -210,8 +210,14 @@ class Optimization(object):
             # Reverse unify instructions gen/kill sets
             rev_insts = list(reversed(list(b.instructions)))
             for n in rev_insts[:-1]:
-                b.gen = gen[n].union(b.gen - kill[n])
+                b.gen = gen[n] | (b.gen - kill[n])
                 b.kill.update(kill[n])
+
+        # Keep individual inst genkill sets
+        for b in dfs:
+            for n in b.instructions:
+                b.inst_gen[n] = gen[n]
+                b.inst_kill[n] = kill[n]
     
     def liveness_analysis(self, cfg):
         # DFS in CFG
@@ -232,12 +238,33 @@ class Optimization(object):
                 b.out_set.update(succ.in_set)
             
             # Build new in_set from new out_set
-            new_in = b.gen.union(b.out_set - b.kill)
+            new_in = b.gen | (b.out_set - b.kill)
             
             # Check if there are changes in out_set
             if b.in_set != new_in:
                 b.in_set = new_in
                 changed.update(b.pred)
+
+        return dfs
+
+    def deadcode_elimination(self, cfg):
+        # Run dataflow analysis preparing block sets
+        blocks = self.liveness_analysis(cfg)
+
+        # Iterate through blocks eliminating code
+        for b in blocks:
+            # Reverse unify instructions gen/kill sets
+            rev_insts = list(reversed(list(b.instructions)))
+            alive = b.out_set.copy()
+            for n in rev_insts:
+                var_def = b.inst_kill[n]
+                if var_def and var_def in alive:
+                    print("OK")
+                    b.remove_inst(n)
+                alive = b.inst_gen[n] | (alive - b.inst_kill[n])
+
+    def liveness_analysis(self, cfg):
+        pass
 
     def print_table(self, table, name):
         txt = f"{name}:\n"

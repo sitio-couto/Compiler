@@ -33,10 +33,12 @@ class Block(object):
         Block.__blockID__ += 1
         self.ID = Block.__blockID__          # Integer to identify block
         self.instructions = OrderedDict()    # Instructions in the block
+        self.inst_gen = OrderedDict()        # Gen set for each instruction
+        self.inst_kill = OrderedDict()       # Kill set for each instruction
         self.pred = []                       # Link to parent blocks
-        self.succ = []                       # Link to the next block
-        self.gen  = set()
-        self.kill = set()
+        self.succ = []                       # Link to the next block   
+        self.gen  = set()                    # Block accumulated gen set
+        self.kill = set()                    # Block accumulated kill set
         self.in_set  = set()
         self.out_set = set()
         Block.__index__[self.ID] = self
@@ -45,13 +47,18 @@ class Block(object):
         Block.__lineID__ += 1
         key = Block.__lineID__
         self.instructions[key] = instr
+        self.inst_gen[key] = set()
+        self.inst_kill[key] = set()
 
     def concat(self,inst_list):
         base = Block.__lineID__ + 1
         top = base + len(inst_list)
+        section = range(base, top)
         Block.__lineID__ += len(inst_list)
-        new = zip(range(base, top), inst_list)
-        self.instructions.update(new)
+        new_insts = zip(range(base, top), inst_list)
+        self.instructions.update(new_insts)
+        self.inst_gen.update([(i,set()) for i in section])
+        self.inst_kill.update([(i,set()) for i in section])
 
     def add_pred(self, block):
         self.pred.append(block)
@@ -62,6 +69,14 @@ class Block(object):
     def get_inst(self, idx):
         insts = list(self.instructions.values())
         return insts[idx]
+
+    def remove_inst(self, line):
+        try:
+            del(self.instructions[line])
+            del(self.inst_gen[line])
+            del(self.inst_kill[line])
+        except KeyError:
+            print(f"Line {line} not found in block {self.ID}")
 
     def __iter__(self):
         return iter(self.instructions.values())
@@ -102,7 +117,9 @@ class Block(object):
         txt += '\n\n'
         
         for lin,inst in self.instructions.items():
-            txt += f"   {lin} : {inst}\n"
+            gen = self.inst_gen[lin] if self.inst_gen[lin] else ''
+            kill = self.inst_kill[lin] if self.inst_kill[lin] else ''
+            txt += f"   {lin} : {inst} \t<{gen} | {kill}>\n"
         txt += '\n'
 
         txt += f"   Succs:"
