@@ -27,9 +27,11 @@ class DeadCodeElimination(Optimization):
             alive = b.out_set.copy()
             for n in rev_insts:
                 var_def = b.inst_kill[n]
-                if var_def and var_def in alive:
+                # Check if there's a definition and if it's alive
+                if var_def and not var_def <= alive:
                     print("OK")
                     b.remove_inst(n)
+                    continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
 
 class ConstantPropagation(Optimization):

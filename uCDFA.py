@@ -158,8 +158,8 @@ class Optimization(object):
         # Maps which instruction DEFINES which register (according to tuple position)
         use_map = {
             # Variables & Values
-            ('store','elem'):[1,2],
-            ('load','get'):[1],
+            ('elem'):[1,2],
+            ('store','load','get'):[1],
             # Binary Operations
             ('add','sub','mul','div','mod'):[1,2], 
             # Cast Operations
@@ -167,22 +167,22 @@ class Optimization(object):
             # Relational/Equality/Logical 
             ('lt','le','ge','gt','eq','ne','and','or','not'):[1,2],
             # Functions & Builtins
-            ('param','print','return'):[1] 
+            ('param','print','return','cbranch'):[1] 
             }
         
         # Maps which instruction DEFINES which register (according to tuple position)
         def_map = {
             # Variables & Values
-            ('elem','literal'):[3],
-            ('load','get'):[2],
+            ('elem'):[3],
+            ('store','load','literal','get'):[2],
             # Binary Operations
             ('add','sub','mul','div','mod'):[3], 
             # Cast Operations
-            ('fptosi','sitofp'):[1], # TODO: is it a use and def simultaneously?
+            ('alloc','fptosi','sitofp'):[1], 
             # Relational/Equality/Logical 
             ('lt','le','ge','gt','eq','ne','and','or','not'):[3],
             # Functions
-            ('call','print'):[2]
+            ('call'):[2]
             }
 
         def get_vars(inst, inst_map):
