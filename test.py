@@ -17,6 +17,7 @@ from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCCFG as CFG
 from uCDFA import Optimization as DFA
+from uCOptimize import DeadCodeElimination as DeadCode
 from os.path import exists
 from sys import argv
 
@@ -40,6 +41,7 @@ if __name__ == '__main__':
     interpreter = Interpreter(generator)
     cfg = CFG(generator)
     dfa = DFA(generator, cfg)
+    opt = DeadCode(generator, cfg)
     
     while True:
         # quick testing input file
@@ -56,6 +58,7 @@ if __name__ == '__main__':
         i - for interpreter test 
         b - for basic block test
         d - for dataflow analysis test
+        o - for optimization test
         q - to quit
         ''')
         mode = input("Mode: ")
@@ -94,13 +97,20 @@ if __name__ == '__main__':
         elif mode == 'b':
             while True:
                 try:
-                    cfg.test(input("Filename or expression to run: "), True)
+                    cfg.test(input("Filename or expression to separate: "), True)
                 except EOFError:
                     break
         elif mode == 'd':
             while True:
                 try:
-                    dfa.test(input("Filename or expression to run: "), True)
+                    dfa.test(input("Filename or expression to analyze: "), True)
+                except EOFError:
+                    break
+        elif mode == 'o':
+            while True:
+                try:
+                    opt.test(input("Filename or expression to optimize and run: "), False)
+                    interpreter.run(opt.get_code())
                 except EOFError:
                     break
         elif mode == 'q':

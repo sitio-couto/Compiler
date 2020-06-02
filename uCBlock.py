@@ -14,7 +14,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 20/05/2020.
+Last Modified: 02/06/2020.
 '''
 
 import os
@@ -153,12 +153,15 @@ class uCCFG(object):
                 data = content_file.read()
         
         # Generate IR.
+        self.generator.code = []
         self.generator.generate(data)
         
         if not quiet:
             self.generator.print_code()
         
         # Build CFG.
+        if self.first_block:
+            self.delete_blocks()
         self.build_cfg(self.generator.code)
         
         self.print_blocks()
@@ -321,6 +324,10 @@ class uCCFG(object):
         for idx in dead:
             block = Block.__index__[idx]
             block.delete()
+
+    def delete_blocks(self):
+        for b in self.first_block.dfs_sort():
+            b.delete()
 
     def view(self):
         blocks = self.first_block.__index__.items()

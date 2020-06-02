@@ -9,14 +9,13 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 31/05/2020.
+Last Modified: 02/06/2020.
 '''
 
 from uCDFA import Optimization
 from os.path import exists
 
 class DeadCodeElimination(Optimization):
-    
     def optimize(self, cfg):
         # Run dataflow analysis preparing block sets
         blocks = self.liveness_analysis(cfg)

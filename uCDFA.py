@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 31/05/2020.
+Last Modified: 02/06/2020.
 '''
 
 from collections import OrderedDict
@@ -38,6 +38,7 @@ class Optimization(object):
                 data = content_file.read()
         
         # Generate IR.
+        self.generator.code = []
         self.generator.generate(data)
         
         if not quiet:
@@ -45,18 +46,32 @@ class Optimization(object):
             print("\n")
 
         # Build CFG.
+        if self.blocker.first_block:
+            self.blocker.delete_blocks()
         self.blocker.build_cfg(self.generator.code)
         
         # Testing.
         self.optimize(self.blocker.first_block)
         self.blocker.print_blocks()
+        self.print_code()
+
+    def get_code(self):
+        code = []
+        dfs = self.blocker.first_block.dfs_sort()
+        for b in dfs:
+            code += b.instructions.items()
+        code.sort(key=lambda x: x[0])
+        return [x[1] for x in code]
+    
+    def print_code(self):
+        for inst in self.get_code():
+            print(inst)
 
     def reaching_definitions(self, cfg):
         # DFS in CFG
         dfs = cfg.dfs_sort()
         
         # Get gen/kill sets.
-        # TODO: needs to be here?
         self.rd_gen_kill(dfs)
         print(self)
         # Initialize
@@ -111,10 +126,10 @@ class Optimization(object):
     def rd_gen_kill(self, dfs):
         # TODO: any missing def type?
         defs = dict()
-        def_types = ['load', 'read', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'fptosi', 'sitofp']
+        def_types = ('load', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'read')
         
         # Find all definitions and create gen set.
-        for b in dfs:
+        for i, b in enumerate(dfs):
             
             # Go through all instructions.
             for num, inst in b.instructions.items():
@@ -125,12 +140,12 @@ class Optimization(object):
                     
                     # Update DEFS.
                     if not defs.get(inst[-1], None):
-                        defs[inst[-1]] = set([num])
+                        defs[inst[-1]] = set([(i,num)])
                     else:
-                        defs[inst[-1]].update([num])
+                        defs[inst[-1]].update([(i,num)])
         
         # Gen/Kill definitions
-        for b in dfs:
+        for i, b in enumerate(dfs):
             self.gen[b.ID] = set()
             self.kill[b.ID] = set()
             
@@ -140,8 +155,8 @@ class Optimization(object):
                 local_def = inst[0].split('_')[0] in def_types
                 
                 if local_def or call_return:
-                    curr_kill = defs[inst[-1]] - set([num])
-                    curr_gen  = set([num]).union(self.gen[b.ID] - curr_kill)
+                    curr_kill = defs[inst[-1]] - set([(i,num)])
+                    curr_gen  = set([(i,num)]).union(self.gen[b.ID] - curr_kill)
                     self.kill[b.ID].update(curr_kill)
                     self.gen[b.ID].update(curr_gen)
 
