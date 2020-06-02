@@ -44,6 +44,7 @@ class Optimization(object):
         
         # Testing.
         self.optimize(self.blocker.first_block)
+        print(self)
         self.blocker.print_blocks()
         if not quiet:
             self.print_code()
@@ -66,7 +67,6 @@ class Optimization(object):
         
         # Get gen/kill sets.
         self.rd_gen_kill(dfs)
-        print(self)
         
         # All blocks in "changed" set.
         changed = set(dfs)
@@ -234,7 +234,7 @@ class Optimization(object):
         # Reverse data flow iteration
         while changed:
             b = changed.pop()
-
+            
             # Calculate out_set set from successors in_set.
             for succ in b.succ:
                 b.out_set.update(succ.in_set)
@@ -258,7 +258,8 @@ class Optimization(object):
     def optimize(self, cfg):
         print("Reaching Definitions:")
         self.reaching_definitions(self.blocker.first_block)
-        self.blocker.print_blocks()
+        print(self)
+        # TODO: reset IN, OUT, GEN and KILL inside each block (or separate)
         print("Liveness Analysis:\n\n")
         self.liveness_analysis(self.blocker.first_block)
 
