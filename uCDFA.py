@@ -90,6 +90,8 @@ class Optimization(object):
             # All successors to the 'changed' set.
             if b.out_set != old_out:
                 changed.update(b.succ)
+                
+        return dfs
 
     def map_vars(self, blocks):
         ''' Given a list of basic blocks, maps which variables are 
