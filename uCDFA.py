@@ -20,14 +20,6 @@ class Optimization(object):
     def __init__(self, generator, block_constructor):
         self.generator = generator
         self.blocker = block_constructor
-        
-        # Gen/Kill sets
-        self.gen = dict()
-        self.kill = dict()
-        
-        # In/Out sets
-        self.in_set = dict()
-        self.out_set = dict()
 
     def test(self, data, quiet=False):
         self.generator.front_end.parser.lexer.reset_line_num()
@@ -53,7 +45,8 @@ class Optimization(object):
         # Testing.
         self.optimize(self.blocker.first_block)
         self.blocker.print_blocks()
-        self.print_code()
+        if not quiet:
+            self.print_code()
 
     def get_code(self):
         code = []
@@ -74,9 +67,6 @@ class Optimization(object):
         # Get gen/kill sets.
         self.rd_gen_kill(dfs)
         print(self)
-        # Initialize
-        for b in dfs:
-            self.out_set[b.ID] = set()
         
         # All blocks in "changed" set.
         changed = set(dfs)
@@ -85,23 +75,20 @@ class Optimization(object):
         while changed:
             b = changed.pop()
             
-            # Empty 'in' set
-            self.in_set[b.ID] = set()
-            
             # Calculate 'in' set from predecessors 'out' set.
             for p in b.pred:
-                self.in_set[b.ID].update(self.out_set[p.ID])
+                b.in_set.update(b.out_set)
             
             # Save old 'out'
-            old_out = self.out_set[b.ID].copy()
+            old_out = b.out_set.copy()
             
             # Update 'out'
-            new = self.in_set[b.ID] - self.kill[b.ID]
-            self.out_set[b.ID] = self.gen[b.ID].union(new)
+            new = b.in_set - b.kill
+            b.out_set = b.gen.union(new)
             
             # Check changes to 'out'
             # All successors to the 'changed' set.
-            if self.out_set[b.ID] != old_out:
+            if b.out_set != old_out:
                 changed.update(b.succ)
 
     def map_vars(self, blocks):
@@ -124,9 +111,12 @@ class Optimization(object):
 
 
     def rd_gen_kill(self, dfs):
-        # TODO: any missing def type?
         defs = dict()
-        def_types = ('load', 'elem', 'literal', 'get', 'add', 'sub', 'mul', 'div', 'mod', 'read')
+        def_types = ('load', 'store', 'elem', 'literal', 'get', 
+                     'add', 'sub', 'mul', 'div', 'mod', 
+                     'le', 'lt', 'ge', 'gt', 'eq', 'ne',
+                     'and', 'or', 'not',
+                     'read')
         
         # Find all definitions and create gen set.
         for i, b in enumerate(dfs):
@@ -146,9 +136,7 @@ class Optimization(object):
         
         # Gen/Kill definitions
         for i, b in enumerate(dfs):
-            self.gen[b.ID] = set()
-            self.kill[b.ID] = set()
-            
+                        
             # Go through all instructions.
             for num, inst in b.instructions.items():
                 call_return = inst[0] == 'call' and len(inst)== 3
@@ -156,9 +144,9 @@ class Optimization(object):
                 
                 if local_def or call_return:
                     curr_kill = defs[inst[-1]] - set([(i,num)])
-                    curr_gen  = set([(i,num)]).union(self.gen[b.ID] - curr_kill)
-                    self.kill[b.ID].update(curr_kill)
-                    self.gen[b.ID].update(curr_gen)
+                    curr_gen  = set([(i,num)]).union(b.gen - curr_kill)
+                    b.kill.update(curr_kill)
+                    b.gen.update(curr_gen)
 
     def la_gen_kill(self, dfs):
         # Create use/def tables
@@ -270,21 +258,21 @@ class Optimization(object):
     def optimize(self, cfg):
         print("Reaching Definitions:")
         self.reaching_definitions(self.blocker.first_block)
-        print(self)
+        self.blocker.print_blocks()
         print("Liveness Analysis:\n\n")
         self.liveness_analysis(self.blocker.first_block)
 
     def __str__(self):
-        IDs = [b.ID for b in self.blocker.first_block.dfs_sort()]
+        dfs = self.blocker.first_block.dfs_sort()
         
-        show = lambda x,i : x[i] if x.get(i,None) else '{}'
+        show = lambda x : x if x else '{}'
 
         txt = ''
-        for idx in IDs:
-            txt += f"BLOCK {idx}:\n"
-            txt += f"   IN: {show(self.in_set,idx)}\n"
-            txt += f"   GEN: {show(self.gen,idx)}\n"
-            txt += f"   KILL: {show(self.kill,idx)}\n"
-            txt += f"   OUT: {show(self.out_set,idx)}\n"
+        for b in dfs:
+            txt += f"BLOCK {b.ID}:\n"
+            txt += f"   IN: {show(b.in_set)}\n"
+            txt += f"   GEN: {show(b.gen)}\n"
+            txt += f"   KILL: {show(b.kill)}\n"
+            txt += f"   OUT: {show(b.out_set)}\n"
             txt += '\n'
         return txt

@@ -33,5 +33,21 @@ class DeadCodeElimination(Optimization):
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
 
 class ConstantPropagation(Optimization):
+    folding = {
+        'add': lambda a,b: a + b,
+        'sub': lambda a,b: a - b,
+        'mul': lambda a,b: a * b,
+        'div': lambda a,b: a // b,
+        'mod': lambda a,b: a % b,
+        'or':  lambda a,b: int(a or b),
+        'and': lambda a,b: int(a and b),
+        'gt':  lambda a,b: int(a > b),
+        'ge':  lambda a,b: int(a >= b),
+        'lt':  lambda a,b: int(a < b),
+        'le':  lambda a,b: int(a <= b),
+        'eq':  lambda a,b: int(a == b),
+        'ne':  lambda a,b: int(a != b),
+    }
+    
     def optimize(self, cfg):
         raise NotImplementedError
