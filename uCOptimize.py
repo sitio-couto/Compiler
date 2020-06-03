@@ -12,13 +12,52 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 02/06/2020.
 '''
 
-from uCDFA import Optimization
+from uCBlock import uCCFG
+from uCDFA import uCDFA
 from os.path import exists
 
-class DeadCodeElimination(Optimization):
-    def optimize(self, cfg):
+
+class Optimizer(object):
+    def __init__(self, generator):
+        self.generator = generator
+        self.cfg = uCCFG(generator)
+        self.dfa = uCDFA(generator, self.cfg)
+
+    def optimize(self, dead=True, fold=True, prop=True, single=False):
+        ''' This method will run iterativelly all optimizations.
+            When executed, it assumes the generator has already 
+            created the IR code. The method stops when there's 
+            no new enchancements to be done in the code.
+            Return:
+             - list of tuples: Optimized IR code
+        '''
+        # Build CFG.
+        self.cfg.build_cfg(self.generator.code)
+        current_code = self.generator.code.copy()
+        new_code = None
+        print(f"Raw Size: {len(current_code)}")
+        # TODO: Carefully think what needs to be done in the CFG
+        # before running a consecutive optimization. As I see, 
+        # it doesn't seem to need any special care in between 
+        # optimizations, as long as each method ensures the 
+        # cohesion of it's changes in the CFG:
+        # - deadcode removes some lines, so there will non consecutive 
+        #   linesIDs in the new CFG.
+        while new_code != current_code:
+            current_code = new_code
+
+            if dead: self.deadcode_elimination()
+
+            new_code = self.cfg.retrieve_ir()
+            if single: break
+
+        print(f"Opt Size: {len(new_code)}")
+        list(map(print, new_code))
+        return new_code
+
+    def deadcode_elimination(self):
         # Run dataflow analysis preparing block sets
-        blocks = self.liveness_analysis(cfg)
+        blocks = self.dfa.liveness_analysis()
 
         # Iterate through blocks eliminating code
         for b in blocks:
@@ -29,39 +68,21 @@ class DeadCodeElimination(Optimization):
                 var_def = b.inst_kill[n]
                 # Check if there's a definition and if it's alive
                 if var_def and not var_def <= alive:
+                    print(f"Removing {n} : {b.instructions[n]}")
                     b.remove_inst(n)
                     continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
-
-class ConstantPropagation(Optimization):
-    folding = {
-        'add' : lambda self,a,b: a + b,
-        'sub' : lambda self,a,b: a - b,
-        'mul' : lambda self,a,b: a * b,
-        'divi': lambda self,a,b: a // b,
-        'divf': lambda self,a,b: a / b,
-        'mod' : lambda self,a,b: a % b,
-        'or'  : lambda self,a,b: int(a or b), # a | b?
-        'and' : lambda self,a,b: int(a and b), # a & b?
-        'gt'  : lambda self,a,b: int(a > b),
-        'ge'  : lambda self,a,b: int(a >= b),
-        'lt'  : lambda self,a,b: int(a < b),
-        'le'  : lambda self,a,b: int(a <= b),
-        'eq'  : lambda self,a,b: int(a == b),
-        'ne'  : lambda self,a,b: int(a != b),
-    }
+        self.cfg.view()
     
-    binary = ('add', 'sub', 'mul', 'div', 'mod',
-              'le', 'lt', 'ge', 'gt', 'eq', 'ne',
-              'and', 'or', 'not')
-    
-    memory = ('load', 'store')
-    
-    def optimize(self, cfg):
+    def constant_opt(self, cfg):
+        binary = ('add', 'sub', 'mul', 'div', 'mod',
+                  'le', 'lt', 'ge', 'gt', 'eq', 'ne',
+                  'and', 'or', 'not')
+        memory = ('load', 'store')
         const = dict()
         
         # Run dataflow analysis preparing block sets
-        blocks = self.reaching_definitions(cfg)
+        blocks = self.dfa.reaching_definitions(cfg)
         
         # Pass through all blocks.
         # TODO: Figure out the best solution for CONST
@@ -118,6 +139,23 @@ class ConstantPropagation(Optimization):
 
     def fold_constants(self, inst, left, right):
         ''' Fold constant: apply binary function to two constants. '''
+        folding = {
+            'add' : lambda self,a,b: a + b,
+            'sub' : lambda self,a,b: a - b,
+            'mul' : lambda self,a,b: a * b,
+            'divi': lambda self,a,b: a // b,
+            'divf': lambda self,a,b: a / b,
+            'mod' : lambda self,a,b: a % b,
+            'or'  : lambda self,a,b: int(a or b), # a | b?
+            'and' : lambda self,a,b: int(a and b), # a & b?
+            'gt'  : lambda self,a,b: int(a > b),
+            'ge'  : lambda self,a,b: int(a >= b),
+            'lt'  : lambda self,a,b: int(a < b),
+            'le'  : lambda self,a,b: int(a <= b),
+            'eq'  : lambda self,a,b: int(a == b),
+            'ne'  : lambda self,a,b: int(a != b),
+        }
+
         op, ty = inst[0].split('_')
         
         # Int or float division

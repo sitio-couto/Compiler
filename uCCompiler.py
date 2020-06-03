@@ -29,6 +29,7 @@ from uCParser import uCParser
 from uCSemantic import uCSemanticCheck
 from uCGenerate import uCIRGenerate
 from uCInterpreter import uCIRInterpreter
+from uCOptimize import Optimizer
 
 """
 One of the most important (and difficult) parts of writing a compiler
@@ -160,11 +161,17 @@ class Compiler:
         except AssertionError as e:
             error(None, e)
 
+    def _optimize(self, generator):
+        self.optimizer = Optimizer(generator)
+        code = self.optimizer.optimize()
+        exit()
+        return code
+
     def _gencode(self, susy, ir_file):
         """ Generate uCIR Code for the decorated AST. """
         self.gen = uCIRGenerate(self.sema)
         self.gen.visit(self.ast)
-        self.gencode = self.gen.code
+        self.gencode = self._optimize(self.gen)
         _str = ''
         if not susy and ir_file is not None:
             for _code in self.gencode:

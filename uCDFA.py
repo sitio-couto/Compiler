@@ -16,15 +16,15 @@ from collections import OrderedDict
 from os.path import exists
 import re
 
-class Optimization(object):
+class uCDFA(object):
     def __init__(self, generator, block_constructor):
         self.generator = generator
-        self.blocker = block_constructor
+        self.cfg = block_constructor
 
     def usedef_sets(self, blocks):
         # Create use/def tables
-        defs = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
-        uses = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
+        defs = dict([(num,set()) for num in range(1,self.cfg.lineID+1)])
+        uses = dict([(num,set()) for num in range(1,self.cfg.lineID+1)])
 
         # Maps which instruction USES which register (according to tuple position)
         use_map = {
@@ -49,7 +49,7 @@ class Optimization(object):
             # Binary Operations
             ('add','sub','mul','div','mod'):[3], 
             # Cast Operations
-            ('alloc','fptosi','sitofp'):[1], 
+            ('fptosi','sitofp'):[1], 
             # Relational/Equality/Logical 
             ('lt','le','ge','gt','eq','ne','and','or','not'):[3],
             # Functions
@@ -95,16 +95,16 @@ class Optimization(object):
             print("\n")
 
         # Build CFG.
-        if self.blocker.first_block:
-            self.blocker.delete_cfg()
-        self.blocker.build_cfg(self.generator.code)
+        if self.cfg.first_block:
+            self.cfg.delete_cfg()
+        self.cfg.build_cfg(self.generator.code)
         
         # Testing.
-        self.optimize(self.blocker)
+        self.optimize(self.cfg)
         print(self)
-        self.blocker.print_blocks()
+        self.cfg.print_blocks()
         if not quiet:
-            self.blocker.print_code()
+            self.cfg.print_code()
 
     def reaching_definitions(self, cfg):
         # DFS in CFG
@@ -151,8 +151,8 @@ class Optimization(object):
             
             # Go through all instructions.
             for num, inst in b.instructions.items():
-                call_return = inst[0] == 'call' and len(inst)== 3
-                local_def = inst[0].split('_')[0] in def_types
+                call_return = (inst[0] == 'call') and (len(inst) == 3)
+                local_def = (inst[0].split('_')[0] in def_types)
                 
                 if local_def or call_return:
                     
@@ -176,9 +176,9 @@ class Optimization(object):
                     b.kill.update(curr_kill)
                     b.gen.update(curr_gen)
 
-    def liveness_analysis(self, cfg):
+    def liveness_analysis(self):
         # DFS in CFG
-        dfs = list(reversed(cfg.dfs_sort()))
+        dfs = list(reversed(self.cfg.dfs_sort()))
         
         ### INTRA BLOCK STAGE ###
 
@@ -230,18 +230,18 @@ class Optimization(object):
     
     def optimize(self, cfg):
         print("Reaching Definitions:")
-        self.reaching_definitions(self.blocker)
+        self.reaching_definitions(self.cfg)
         print(self)
-        self.blocker.clear_sets() # Wipes every block set
+        self.cfg.clear_sets() # Wipes every block set
         print("Liveness Analysis:\n\n")
-        self.liveness_analysis(self.blocker)
+        self.liveness_analysis()
 
     def __str__(self):
-        dfs = self.blocker.dfs_sort()
+        dfs = self.cfg.dfs_sort()
         
         show = lambda x : x if x else '{}'
 
-        txt = ''
+        txt = '\n'
         for b in dfs:
             txt += f"BLOCK {b.ID}:\n"
             txt += f"   IN: {show(b.in_set)}\n"
