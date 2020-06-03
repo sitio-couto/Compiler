@@ -91,8 +91,6 @@ class Block(object):
             s.pred.remove(self)
         for p in self.pred:
             p.succ.remove(self)
-        self.pred = []
-        self.succ = []
         del Block.meta.index[self.ID]
 
     ### Reusability Control ###
