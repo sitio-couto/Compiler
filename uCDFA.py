@@ -47,19 +47,7 @@ class Optimization(object):
         print(self)
         self.blocker.print_blocks()
         if not quiet:
-            self.print_code()
-
-    def get_code(self):
-        code = []
-        dfs = self.blocker.dfs_sort()
-        for b in dfs:
-            code += b.instructions.items()
-        code.sort(key=lambda x: x[0])
-        return [x[1] for x in code]
-    
-    def print_code(self):
-        for inst in self.get_code():
-            print(inst)
+            self.blocker.print_code()
 
     def reaching_definitions(self, cfg):
         # DFS in CFG
@@ -136,7 +124,7 @@ class Optimization(object):
         defs = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
         uses = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
 
-        # Maps which instruction DEFINES which register (according to tuple position)
+        # Maps which instruction USES which register (according to tuple position)
         use_map = {
             # Variables & Values
             ('elem'):[1,2],
@@ -242,7 +230,7 @@ class Optimization(object):
         print("Reaching Definitions:")
         self.reaching_definitions(self.blocker)
         print(self)
-        # TODO: reset IN, OUT, GEN and KILL inside each block (or separate)
+        self.blocker.clear_sets() # Wipes every block set
         print("Liveness Analysis:\n\n")
         self.liveness_analysis(self.blocker)
 

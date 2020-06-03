@@ -95,6 +95,19 @@ class Block(object):
         self.succ = []
         del Block.meta.index[self.ID]
 
+    ### Reusability Control ###
+
+    def clear_sets(self):
+        self.gen  = set()
+        self.kill = set()
+        self.in_set  = set()
+        self.out_set = set()
+
+    def retrieve_ir(self, code):
+        statements = self.instructions.items()
+        for lin,inst in statements:
+            code[lin] = inst
+
     ### Exhibition Control ###
 
     def show_sets(self):
@@ -153,6 +166,17 @@ class uCCFG(object):
         self.blockID = 0
         self.lineID  = 0
         self.index = dict()
+
+    def clear_sets(self):
+        for b in self.index.values():
+            b.clear_sets()
+
+    def retrieve_ir(self):
+        code = [None]*(self.lineID+1)
+        blocks = self.dfs_sort()
+        for b in blocks:
+            b.retrieve_ir(code)
+        return list(filter((None).__ne__, code))
 
     def dfs_sort(self):
         ''''Topology sort blocks starting from global node.'''
@@ -336,6 +360,11 @@ class uCCFG(object):
             block.delete()
 
     ### Exhibition Control ###
+
+    def print_code(self):
+        '''Shows the current state of the IR code.'''
+        print("Current Code:")
+        list(map(print,self.retrieve_ir()))
 
     def print_blocks(self):
         '''Prints the CGF aspect of the block and the instruction wise 
