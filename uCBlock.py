@@ -25,13 +25,15 @@ from os.path import exists
 import re
 
 class Block(object):
-    __blockID__ = 0
-    __lineID__ = 0
-    __index__ = dict()
+    meta = None # Reference to UCCFG metaclass
 
-    def __init__(self):
-        Block.__blockID__ += 1
-        self.ID = Block.__blockID__          # Integer to identify block
+    def __init__(self, meta):
+        # Update Metainformation
+        Block.meta = meta
+        Block.meta.blockID += 1
+        Block.meta.index[Block.meta.blockID] = self
+
+        self.ID = Block.meta.blockID         # Integer to identify block
         self.instructions = OrderedDict()    # Instructions in the block
         self.inst_gen = OrderedDict()        # Gen set for each instruction
         self.inst_kill = OrderedDict()       # Kill set for each instruction
@@ -41,30 +43,25 @@ class Block(object):
         self.kill = set()                    # Block accumulated kill set
         self.in_set  = set()
         self.out_set = set()
-        Block.__index__[self.ID] = self
 
-    def append(self,instr):
-        Block.__lineID__ += 1
-        key = Block.__lineID__
+    ### Instruction List Control ###
+    
+    def append(self, instr):
+        Block.meta.lineID += 1
+        key = Block.meta.lineID
         self.instructions[key] = instr
         self.inst_gen[key] = set()
         self.inst_kill[key] = set()
 
-    def concat(self,inst_list):
-        base = Block.__lineID__ + 1
+    def concat(self, inst_list):
+        base = Block.meta.lineID + 1
         top = base + len(inst_list)
         section = range(base, top)
-        Block.__lineID__ += len(inst_list)
+        Block.meta.lineID += len(inst_list)
         new_insts = zip(range(base, top), inst_list)
         self.instructions.update(new_insts)
         self.inst_gen.update([(i,set()) for i in section])
         self.inst_kill.update([(i,set()) for i in section])
-
-    def add_pred(self, block):
-        self.pred.append(block)
-
-    def add_succ(self, block):
-        self.succ.append(block)
 
     def get_inst(self, idx):
         insts = list(self.instructions.values())
@@ -81,32 +78,36 @@ class Block(object):
     def __iter__(self):
         return iter(self.instructions.values())
 
-    def dfs_sort(self, visits=[]):
-        if self not in visits:
-            visits.append(self)
-            for b in self.succ:
-                visits = b.dfs_sort(visits=visits)
-        return visits
+    ### Node Control ###
+
+    def add_pred(self, block):
+        self.pred.append(block)
+
+    def add_succ(self, block):
+        self.succ.append(block)
 
     def delete(self):
         for s in self.succ:
             s.pred.remove(self)
         for p in self.pred:
             p.succ.remove(self)
-        del Block.__index__[self.ID]
+        self.pred = []
+        self.succ = []
+        del Block.meta.index[self.ID]
+
+    ### Exhibition Control ###
 
     def show_sets(self):
         show = lambda x : ', '.join(x) if x else ''
 
-        txt = ''
-        for b in self.dfs_sort():
-            txt += f"BLOCK {b.ID}:\n"
-            txt += f"   IN: {show(b.in_set)}\n"
-            txt += f"   GEN: {show(b.gen)}\n"
-            txt += f"   KILL: {show(b.kill)}\n"
-            txt += f"   OUT: {show(b.out_set)}\n"
-            txt += '\n'
-        print(txt)
+        txt = f"BLOCK {self.ID}:\n"
+        txt += f"   IN: {show(self.in_set)}\n"
+        txt += f"   GEN: {show(self.gen)}\n"
+        txt += f"   KILL: {show(self.kill)}\n"
+        txt += f"   OUT: {show(self.out_set)}\n"
+        txt += '\n'
+
+        return txt
 
     def __str__(self):
         txt = f"BLOCK {self.ID}:\n"
@@ -129,20 +130,44 @@ class Block(object):
 
         return txt
 
-class BasicBlock(Block):
-    '''
-    Class for a simple basic block.  Control flow unconditionally
-    flows to the next block.
-    '''
-    pass
-
 class uCCFG(object):
     def __init__(self, generator):
+        # Metavariables (retains CFG info)
+        self.blockID = 0 # Count blocks ids
+        self.lineID  = 0 # Count lines/statements ids
+        self.index = dict() # Maps blockID to block objects
+
         self.generator = generator
         self.first_block = None
         
         self.targets = [r'define',r'\d+']              # Possible branch targets
         self.branches = [r'return',r'jump',r'cbranch'] # Possible branching statements
+
+    def delete_cfg(self):
+        '''Erases metadata and CFG blocks for garbage collection'''
+        # Wipe all block references
+        for b in self.dfs_sort(): 
+            b.delete()
+        # Wipe CFG metadata
+        self.first_block = None
+        self.blockID = 0
+        self.lineID  = 0
+        self.index = dict()
+
+    def dfs_sort(self, node=None, visits=None):
+        ''''Topology sort blocks starting from global node.'''
+        # If in root, prepare variables
+        if not node: 
+            node = self.first_block
+            visits=[]
+
+        # Run DFS search
+        if node not in visits:
+            visits.append(node)
+            # print(f"{node.ID} succs: {node.succ}|visits: {visits}")
+            for b in node.succ:
+                visits = self.dfs_sort(node=b, visits=visits)
+        return visits
 
     def test(self, data, quiet=False):
         self.generator.front_end.parser.lexer.reset_line_num()
@@ -161,26 +186,17 @@ class uCCFG(object):
         
         # Build CFG.
         if self.first_block:
-            self.delete_blocks()
+            self.delete_cfg()
         self.build_cfg(self.generator.code)
         
         self.print_blocks()
 
-    def print_blocks(self):
-        dfs = self.first_block.dfs_sort()
-        ids = []
-        for block in dfs:
-            print(block)
-            ids.append(block.ID)
-        
-        print('DFS Sequence: ', ids)
-
+    ##### Building the CFG ####
+    
     # Lambda functions
     is_target = lambda self, x : bool([True for t in self.targets if re.match(t, x)])
     is_branch = lambda self, x : bool([True for b in self.branches if re.match(b, x)])
 
-    ##### Building the CFG ####
-    
     def build_cfg(self, code):
         ''' Given the IR code as a list of tuples, build a CFG.
             The CFG considers subroutines as independent subtrees.
@@ -188,7 +204,7 @@ class uCCFG(object):
             Params:
                 code - List of tuples where each tuple is a IR statement
             Return:
-                BasicBlock - Return the global basic block (links to every subroutine) 
+                Block - Return the global basic block (links to every subroutine) 
         '''
         # Get leaders
         leads = self.get_leaders(code)
@@ -196,13 +212,13 @@ class uCCFG(object):
 
         # Create blocks
         for s,t in zip(leads, leads[1:]+[len(code)]):
-            new_block = BasicBlock()
+            new_block = Block(self)
             new_block.concat(code[s:t])
             blocks.append(new_block)
 
         # Split blocks by function
         glob,funcs = self.isolate_functions(blocks) 
-
+        
         # Link Blocks
         for blocks in funcs: 
             self.link_blocks(glob, blocks)
@@ -210,14 +226,6 @@ class uCCFG(object):
                 
         # Remove unreachable blocks
         self.clean_cfg()
-
-    def update_vars(self):
-        aux = set()
-        blocks = list(Block.__index__.values())
-        for b in blocks:
-            for inst in b.instructions.values():
-                aux.update(re.findall(r'%\d+', str(inst)))
-        return sorted(list(aux), key=lambda x: int(x[1:]))
     
     def get_leaders(self, code):
         ''' Given a list with IR code instructions, find all leaders indexes.
@@ -241,14 +249,14 @@ class uCCFG(object):
             blocks and group then until a new 'define' statement is found, or
             until we reach the end of the code.
             Params:
-                Blocks - List of unconnected BasicBlocks 
+                Blocks - List of unconnected Blocks 
         '''
         # Create the program entry block
         entry = blocks[0].get_inst(0)[0]
         if 'global' in entry:
             globs = blocks.pop(0)    # Separe globals block
         else:
-            globs = BasicBlock() # Create dummy block
+            globs = Block(self) # Create dummy block
 
         aux = []
         funcs = [] # List of lists (each element is the blocks of a function)
@@ -271,7 +279,7 @@ class uCCFG(object):
             Every subroutine is connected to the globals block.
             Params:
                 globs - Basic block containing global vars (program entrypoint)
-                Blocks - List of unconnected BasicBlocks of a subroutine 
+                Blocks - List of unconnected Blocks of a subroutine 
         '''
         jumps  = dict() # Block : Label
         labels = dict() # Label : Block
@@ -317,20 +325,38 @@ class uCCFG(object):
             which blocks are unreacheable, and removes then from the instance.
         '''
         # Removing unreachable blocks
-        all_ids = list(range(1, 1 + Block.__blockID__))
-        reachable = [b.ID for b in self.first_block.dfs_sort()]
+        all_ids = list(range(1, 1 + self.blockID))
+        reachable = [b.ID for b in self.dfs_sort()]
         dead = set(all_ids)-set(reachable)
         if dead: print(f"\nRemoving deadblocks: {dead}\n")
         for idx in dead:
-            block = Block.__index__[idx]
+            block = self.index[idx]
             block.delete()
 
-    def delete_blocks(self):
-        for b in self.first_block.dfs_sort():
-            b.delete()
+    ### Exhibition Control ###
+
+    def print_blocks(self):
+        '''Prints the CGF aspect of the block and the instruction wise 
+           genkill sets: Predecessors, instructions and successors
+        '''
+        dfs = self.dfs_sort()
+        ids = []
+        for block in dfs:
+            print(block)
+            ids.append(block.ID)
+        
+        print('DFS Sequence: ', ids)
+
+    def print_sets(self):
+        '''Prints block wise genkill accumulated sets and in-out sets'''
+        txt = ''
+        for b in self.dfs_sort():
+            txt += b.show_sets()
+        print(txt)
 
     def view(self):
-        blocks = self.first_block.__index__.items()
+        '''Uses graphviz to print the prgram's CFG'''
+        blocks = self.index.items()
         graph = Digraph(comment='Control Flow Graph')
         graph.attr('node', shape='box',fontname="helvetica")
 

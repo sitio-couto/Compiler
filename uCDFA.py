@@ -39,11 +39,11 @@ class Optimization(object):
 
         # Build CFG.
         if self.blocker.first_block:
-            self.blocker.delete_blocks()
+            self.blocker.delete_cfg()
         self.blocker.build_cfg(self.generator.code)
         
         # Testing.
-        self.optimize(self.blocker.first_block)
+        self.optimize(self.blocker)
         print(self)
         self.blocker.print_blocks()
         if not quiet:
@@ -51,7 +51,7 @@ class Optimization(object):
 
     def get_code(self):
         code = []
-        dfs = self.blocker.first_block.dfs_sort()
+        dfs = self.blocker.dfs_sort()
         for b in dfs:
             code += b.instructions.items()
         code.sort(key=lambda x: x[0])
@@ -77,7 +77,7 @@ class Optimization(object):
             
             # Calculate 'in' set from predecessors 'out' set.
             for p in b.pred:
-                b.in_set.update(b.out_set)
+                b.in_set.update(p.out_set)
             
             # Save old 'out'
             old_out = b.out_set.copy()
@@ -92,25 +92,6 @@ class Optimization(object):
                 changed.update(b.succ)
                 
         return dfs
-
-    def map_vars(self, blocks):
-        ''' Given a list of basic blocks, maps which variables are 
-            referenced by which statements (identified by lineID).
-            Param:
-                blocks - List of the code's basic blocks
-            Return:
-                table - dictionary where keys are the vars in the code and
-                    values are the lineIDs which reference such variable
-        '''
-        keys = self.blocker.update_vars()
-        vals = [set() for i in range(len(keys))]
-        table = dict(zip(keys,vals))
-        for b in blocks:
-            for lin,inst in b.instructions.items():
-                for var in re.findall(r'%\d+', str(inst)):
-                    table[var].add(lin)
-        return table
-
 
     def rd_gen_kill(self, dfs):
         defs = dict()
@@ -152,8 +133,8 @@ class Optimization(object):
 
     def la_gen_kill(self, dfs):
         # Create use/def tables
-        defs = dict([(num,set()) for num in range(1,dfs[0].__lineID__+1)])
-        uses = dict([(num,set()) for num in range(1,dfs[0].__lineID__+1)])
+        defs = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
+        uses = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
 
         # Maps which instruction DEFINES which register (according to tuple position)
         use_map = {
@@ -259,14 +240,14 @@ class Optimization(object):
     
     def optimize(self, cfg):
         print("Reaching Definitions:")
-        self.reaching_definitions(self.blocker.first_block)
+        self.reaching_definitions(self.blocker)
         print(self)
         # TODO: reset IN, OUT, GEN and KILL inside each block (or separate)
         print("Liveness Analysis:\n\n")
-        self.liveness_analysis(self.blocker.first_block)
+        self.liveness_analysis(self.blocker)
 
     def __str__(self):
-        dfs = self.blocker.first_block.dfs_sort()
+        dfs = self.blocker.dfs_sort()
         
         show = lambda x : x if x else '{}'
 

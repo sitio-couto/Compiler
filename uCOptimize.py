@@ -29,7 +29,6 @@ class DeadCodeElimination(Optimization):
                 var_def = b.inst_kill[n]
                 # Check if there's a definition and if it's alive
                 if var_def and not var_def <= alive:
-                    print("OK")
                     b.remove_inst(n)
                     continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
