@@ -21,6 +21,63 @@ class Optimization(object):
         self.generator = generator
         self.blocker = block_constructor
 
+    def usedef_sets(self, blocks):
+        # Create use/def tables
+        defs = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
+        uses = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
+
+        # Maps which instruction USES which register (according to tuple position)
+        use_map = {
+            # Variables & Values
+            ('elem'):[1,2],
+            ('store','load','get'):[1],
+            # Binary Operations
+            ('add','sub','mul','div','mod'):[1,2], 
+            # Cast Operations
+            ('fptosi','sitofp'):[1],
+            # Relational/Equality/Logical 
+            ('lt','le','ge','gt','eq','ne','and','or','not'):[1,2],
+            # Functions & Builtins
+            ('param','print','return','cbranch'):[1] 
+            }
+
+        # Maps which instruction DEFINES which register (according to tuple position)
+        def_map = {
+            # Variables & Values
+            ('elem'):[3],
+            ('store','load','literal','get'):[2],
+            # Binary Operations
+            ('add','sub','mul','div','mod'):[3], 
+            # Cast Operations
+            ('alloc','fptosi','sitofp'):[1], 
+            # Relational/Equality/Logical 
+            ('lt','le','ge','gt','eq','ne','and','or','not'):[3],
+            # Functions
+            ('call'):[2]
+            }
+
+        def get_vars(inst, inst_map):
+            '''Get variables mapped from instruction'''
+            for keys,vals in inst_map.items():
+                local_def = inst[0].split('_')[0]
+                if local_def in keys:
+                    if len(inst) <= max(vals): return [] # for optional registers (return,)
+                    else: return [inst[i] for i in vals]
+            return []
+
+        is_use = lambda x: get_vars(x, use_map)
+        is_def = lambda x: get_vars(x, def_map)
+
+        # Find use/def sets for each instruction
+        for b in blocks:
+            # Get use/def of each instruction in the block
+            for num, inst in b.instructions.items():
+                uses[num].update(is_use(inst))
+                defs[num].update(is_def(inst))
+
+        # Return usedef statement wise sets
+        return uses,defs
+
     def test(self, data, quiet=False):
         self.generator.front_end.parser.lexer.reset_line_num()
         
@@ -115,69 +172,14 @@ class Optimization(object):
                 
                 if local_def or call_return:
                     curr_kill = defs[inst[-1]] - set([(i,num)])
-                    curr_gen  = set([(i,num)]).union(b.gen - curr_kill)
+                    curr_gen  = set([(i,num)]) | (b.gen - curr_kill)
                     b.kill.update(curr_kill)
                     b.gen.update(curr_gen)
 
     def la_gen_kill(self, dfs):
-        # Create use/def tables
-        defs = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
-        uses = dict([(num,set()) for num in range(1,self.blocker.lineID+1)])
+        # Get genkill from usedef sets
+        gen,kill = self.usedef_sets(dfs)
 
-        # Maps which instruction USES which register (according to tuple position)
-        use_map = {
-            # Variables & Values
-            ('elem'):[1,2],
-            ('store','load','get'):[1],
-            # Binary Operations
-            ('add','sub','mul','div','mod'):[1,2], 
-            # Cast Operations
-            ('fptosi','sitofp'):[1],
-            # Relational/Equality/Logical 
-            ('lt','le','ge','gt','eq','ne','and','or','not'):[1,2],
-            # Functions & Builtins
-            ('param','print','return','cbranch'):[1] 
-            }
-        
-        # Maps which instruction DEFINES which register (according to tuple position)
-        def_map = {
-            # Variables & Values
-            ('elem'):[3],
-            ('store','load','literal','get'):[2],
-            # Binary Operations
-            ('add','sub','mul','div','mod'):[3], 
-            # Cast Operations
-            ('alloc','fptosi','sitofp'):[1], 
-            # Relational/Equality/Logical 
-            ('lt','le','ge','gt','eq','ne','and','or','not'):[3],
-            # Functions
-            ('call'):[2]
-            }
-
-        def get_vars(inst, inst_map):
-            '''Get variables mapped from instruction'''
-            for keys,vals in inst_map.items():
-                local_def = inst[0].split('_')[0]
-                if local_def in keys:
-                    if len(inst) <= max(vals): return [] # for optional registers (return,)
-                    else: return [inst[i] for i in vals]
-            return []
-
-        is_use = lambda x: get_vars(x, use_map)
-        is_def = lambda x: get_vars(x, def_map)
-
-        # Find use/def sets for each instruction
-        for b in dfs:
-            # Get use/def of each instruction in the block
-            for num, inst in b.instructions.items():
-                uses[num].update(is_use(inst))
-                defs[num].update(is_def(inst)) 
-
-        # self.print_table(uses, "USES:")
-        # self.print_table(defs, "DEFS:")
-
-        gen = uses
-        kill = defs
         # Unify block instructions gen/kill sets
         for b in dfs:
             # Reverse unify instructions gen/kill sets
