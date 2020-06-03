@@ -23,7 +23,7 @@ class Optimizer(object):
         self.cfg = uCCFG(generator)
         self.dfa = uCDFA(generator, self.cfg)
 
-    def optimize(self, dead=True, fold=True, prop=True, single=False):
+    def optimize(self, quiet, dead, fold, prop, single):
         ''' This method will run iterativelly all optimizations.
             When executed, it assumes the generator has already 
             created the IR code. The method stops when there's 
@@ -35,7 +35,7 @@ class Optimizer(object):
         self.cfg.build_cfg(self.generator.code)
         current_code = self.generator.code.copy()
         new_code = None
-        print(f"Raw Size: {len(current_code)}")
+        initial_size = len(current_code)
         # TODO: Carefully think what needs to be done in the CFG
         # before running a consecutive optimization. As I see, 
         # it doesn't seem to need any special care in between 
@@ -49,10 +49,14 @@ class Optimizer(object):
             if dead: self.deadcode_elimination()
 
             new_code = self.cfg.retrieve_ir()
-            if single: break
+            if single: 
+                # print stuff
+                input() # wait key
 
-        print(f"Opt Size: {len(new_code)}")
-        list(map(print, new_code))
+        if not quiet:
+            print(f"Opt Size: {len(new_code)}")
+            self.cfg.view()
+            list(map(print, new_code))
         return new_code
 
     def deadcode_elimination(self):
@@ -72,7 +76,6 @@ class Optimizer(object):
                     b.remove_inst(n)
                     continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
-        self.cfg.view()
     
     def constant_opt(self, cfg):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
@@ -163,3 +166,36 @@ class Optimizer(object):
             op += 'i' if ty == 'int' else 'f'
         res = folding[op](left,right)
         return ('literal_'+ty, res, inst[-1])
+    
+    def test(self, data, quiet=False, dead=True, fold=True, prop=True, single=False):
+        self.generator.front_end.parser.lexer.reset_line_num()
+        
+        # Scan and parse
+        if exists(data):
+            with open(data, 'r') as content_file :
+                data = content_file.read()
+        
+        # Generate IR.
+        self.generator.code = []
+        self.generator.generate(data)
+        
+        if not quiet:
+            self.generator.print_code()
+            print("\n")
+
+        # Build CFG.
+        if self.cfg.first_block:
+            self.cfg.delete_cfg()
+        self.cfg.build_cfg(self.generator.code)
+        
+        # Testing.
+        self.optimize(quiet=quiet, 
+                      dead=dead, 
+                      fold=fold, 
+                      prop=prop, 
+                      single=single)
+        if not quiet:
+            self.cfg.print_blocks()
+            self.cfg.print_code()
+        
+        return self.cfg.retrieve_ir()
