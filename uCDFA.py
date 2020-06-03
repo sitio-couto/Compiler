@@ -176,8 +176,13 @@ class Optimization(object):
                     b.kill.update(curr_kill)
                     b.gen.update(curr_gen)
 
-    def la_gen_kill(self, dfs):
-        # Get genkill from usedef sets
+    def liveness_analysis(self, cfg):
+        # DFS in CFG
+        dfs = list(reversed(cfg.dfs_sort()))
+        
+        ### INTRA BLOCK STAGE ###
+
+        # Get genkill sets from usedef sets
         gen,kill = self.usedef_sets(dfs)
 
         # Unify block instructions gen/kill sets
@@ -193,14 +198,9 @@ class Optimization(object):
             for n in b.instructions:
                 b.inst_gen[n] = gen[n]
                 b.inst_kill[n] = kill[n]
-    
-    def liveness_analysis(self, cfg):
-        # DFS in CFG
-        dfs = list(reversed(cfg.dfs_sort()))
         
-        # Get gen/kill sets.
-        self.la_gen_kill(dfs)
-        
+        ### INTER BLOCK STAGE ###
+
         # All blocks in "changed" set.
         changed = set(dfs)
         
