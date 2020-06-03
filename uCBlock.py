@@ -154,20 +154,22 @@ class uCCFG(object):
         self.lineID  = 0
         self.index = dict()
 
-    def dfs_sort(self, node=None, visits=None):
+    def dfs_sort(self):
         ''''Topology sort blocks starting from global node.'''
         # If in root, prepare variables
-        if not node: 
-            node = self.first_block
-            visits=[]
+        node = self.first_block
+        visits=[]
 
         # Run DFS search
-        if node not in visits:
-            visits.append(node)
-            # print(f"{node.ID} succs: {node.succ}|visits: {visits}")
-            for b in node.succ:
-                visits = self.dfs_sort(node=b, visits=visits)
-        return visits
+        def dfs(node, visits):
+            if node not in visits:
+                visits.append(node)
+                # print(f"{node.ID} succs: {node.succ}|visits: {visits}")
+                for next_node in node.succ:
+                    visits = dfs(next_node, visits)
+            return visits
+
+        return dfs(node, visits)
 
     def test(self, data, quiet=False):
         self.generator.front_end.parser.lexer.reset_line_num()
