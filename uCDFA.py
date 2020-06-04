@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/06/2020.
+Last Modified: 03/06/2020.
 '''
 
 from collections import OrderedDict
@@ -100,9 +100,17 @@ class uCDFA(object):
         self.cfg.build_cfg(self.generator.code)
         
         # Testing.
-        self.optimize(self.cfg)
+        print("Reaching Definitions:\n")
+        self.reaching_definitions(self.cfg)
+        print(self)
+        
+        self.cfg.clear_sets() # Wipes every block set
+        
+        print("Liveness Analysis:\n")
+        self.liveness_analysis()
         print(self)
         self.cfg.print_blocks()
+        
         if not quiet:
             self.cfg.print_code()
 
@@ -129,7 +137,7 @@ class uCDFA(object):
             
             # Update 'out'
             new = b.in_set - b.kill
-            b.out_set = b.gen.union(new)
+            b.out_set = b.gen | new
             
             # Check changes to 'out'
             # All successors to the 'changed' set.
@@ -227,14 +235,6 @@ class uCDFA(object):
         for k,v in table.items():
             txt += f"  {k:3}  {', '.join(map(str,v))}\n"
         print(txt)
-    
-    def optimize(self, cfg):
-        print("Reaching Definitions:")
-        self.reaching_definitions(self.cfg)
-        print(self)
-        self.cfg.clear_sets() # Wipes every block set
-        print("Liveness Analysis:\n\n")
-        self.liveness_analysis()
 
     def __str__(self):
         dfs = self.cfg.dfs_sort()

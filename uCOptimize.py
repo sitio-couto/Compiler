@@ -9,19 +9,51 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/06/2020.
+Last Modified: 04/06/2020.
 '''
 
 from uCBlock import uCCFG
 from uCDFA import uCDFA
 from os.path import exists
 
-
 class Optimizer(object):
     def __init__(self, generator):
         self.generator = generator
         self.cfg = uCCFG(generator)
         self.dfa = uCDFA(generator, self.cfg)
+    
+    def test(self, data, quiet=False, dead=True, fold=True, prop=True, single=False):
+        self.generator.front_end.parser.lexer.reset_line_num()
+        
+        # Scan and parse
+        if exists(data):
+            with open(data, 'r') as content_file :
+                data = content_file.read()
+        
+        # Generate IR.
+        self.generator.code = []
+        self.generator.generate(data)
+        
+        if not quiet:
+            self.generator.print_code()
+            print("\n")
+
+        # Build CFG.
+        if self.cfg.first_block:
+            self.cfg.delete_cfg()
+        self.cfg.build_cfg(self.generator.code)
+        
+        # Testing.
+        self.optimize(quiet=quiet, 
+                      dead=dead, 
+                      fold=fold, 
+                      prop=prop, 
+                      single=single)
+        if not quiet:
+            self.cfg.print_blocks()
+            self.cfg.print_code()
+        
+        return self.cfg.retrieve_ir()
 
     def optimize(self, quiet, dead, fold, prop, single):
         ''' This method will run iterativelly all optimizations.
@@ -156,7 +188,7 @@ class Optimizer(object):
             'lt'  : lambda self,a,b: int(a < b),
             'le'  : lambda self,a,b: int(a <= b),
             'eq'  : lambda self,a,b: int(a == b),
-            'ne'  : lambda self,a,b: int(a != b),
+            'ne'  : lambda self,a,b: int(a != b)
         }
 
         op, ty = inst[0].split('_')
@@ -166,36 +198,3 @@ class Optimizer(object):
             op += 'i' if ty == 'int' else 'f'
         res = folding[op](left,right)
         return ('literal_'+ty, res, inst[-1])
-    
-    def test(self, data, quiet=False, dead=True, fold=True, prop=True, single=False):
-        self.generator.front_end.parser.lexer.reset_line_num()
-        
-        # Scan and parse
-        if exists(data):
-            with open(data, 'r') as content_file :
-                data = content_file.read()
-        
-        # Generate IR.
-        self.generator.code = []
-        self.generator.generate(data)
-        
-        if not quiet:
-            self.generator.print_code()
-            print("\n")
-
-        # Build CFG.
-        if self.cfg.first_block:
-            self.cfg.delete_cfg()
-        self.cfg.build_cfg(self.generator.code)
-        
-        # Testing.
-        self.optimize(quiet=quiet, 
-                      dead=dead, 
-                      fold=fold, 
-                      prop=prop, 
-                      single=single)
-        if not quiet:
-            self.cfg.print_blocks()
-            self.cfg.print_code()
-        
-        return self.cfg.retrieve_ir()
