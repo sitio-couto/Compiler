@@ -114,28 +114,32 @@ class Optimizer(object):
                   'le', 'lt', 'ge', 'gt', 'eq', 'ne',
                   'and', 'or', 'not')
         memory = ('load', 'store')
-        const = dict()
+        other_defs = ('elem', 'get', 'read')
         
         # Run dataflow analysis preparing block sets
         blocks = self.dfa.reaching_definitions(cfg)
         
         # Pass through all blocks.
-        # TODO: Figure out the best solution for CONST
         for b in blocks:
+            const = dict()
             
             # Initialize const dictionary.
             # NAC: not a constant
-            for inst in b:
-                # TODO: ?? Maybe use RD here.
-                target = inst[-1] # ?
-                # Check DRAGON BOOK for algorithm.
+            for in_bl, num in b.in_set:
+                
+                # Get instruction target and op
+                inst_block = b.meta.index[in_bl]    # TODO: correct?
+                inst = inst_block.instructions[num]
+                target = inst[-1]
                 op = inst[0].split('_')[0]
+                
+                # Const dict.
                 if op == 'literal':
                     if target not in const:
                         const[target] = inst[1]
                     elif const[target] != inst[1]:
                         const[target] = 'NAC'
-                elif target in const:
+                else:
                     const[target] = 'NAC'
             
             # Propagate/fold.
@@ -163,12 +167,30 @@ class Optimizer(object):
                         inst = ('literal_'+ty, const[src], inst[2])
                         b.instructions[num] = inst
                         op = inst[0].split('_')[0]
+                        
+                # Branch: check jump optimization and branch elimination.
+                elif op == 'cbranch':
+                    if inst[1] in const and const[inst[1]] != 'NAC':
+                        
+                        # Test and replace.
+                        result = inst[3] if not inst[1] else inst[2]
+                        op = 'jump'
+                        inst = (op, result)
+                        b.instructions[num] = inst
+
+                        # TODO: update blocks (pred of other block, succ of this block)
+                        # TODO: short_circuit? Maybe do in in dead code elimination.
                 
+                # Update const dictionary within block
                 target = inst[-1]
                 if op == 'literal':
-                    if target not in ctes:
-                        # TODO: ?? 
-                        continue
+                    if target not in const:
+                        const[target] = inst[1]
+                    elif const[target] != inst[1]:
+                        const[target] = 'NAC'
+                elif op in (binary+memory+other_defs):
+                    if target in const:
+                        const[target] = 'NAC'
                     
         raise NotImplementedError
 
@@ -181,8 +203,8 @@ class Optimizer(object):
             'divi': lambda self,a,b: a // b,
             'divf': lambda self,a,b: a / b,
             'mod' : lambda self,a,b: a % b,
-            'or'  : lambda self,a,b: int(a or b), # a | b?
-            'and' : lambda self,a,b: int(a and b), # a & b?
+            'or'  : lambda self,a,b: a | b,
+            'and' : lambda self,a,b: a & b,
             'gt'  : lambda self,a,b: int(a > b),
             'ge'  : lambda self,a,b: int(a >= b),
             'lt'  : lambda self,a,b: int(a < b),

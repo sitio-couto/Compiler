@@ -153,6 +153,28 @@ class uCCFG(object):
         
         self.targets = [r'define',r'\d+']              # Possible branch targets
         self.branches = [r'return',r'jump',r'cbranch'] # Possible branching statements
+    
+    def test(self, data, quiet=False):
+        self.generator.front_end.parser.lexer.reset_line_num()
+        
+        # Scan and parse
+        if exists(data):
+            with open(data, 'r') as content_file :
+                data = content_file.read()
+        
+        # Generate IR.
+        self.generator.code = []
+        self.generator.generate(data)
+        
+        if not quiet:
+            self.generator.print_code()
+        
+        # Build CFG.
+        if self.first_block:
+            self.delete_cfg()
+        self.build_cfg(self.generator.code)
+        
+        self.print_blocks()
 
     def delete_cfg(self):
         '''Erases metadata and CFG blocks for garbage collection'''
@@ -192,28 +214,6 @@ class uCCFG(object):
             return visits
 
         return dfs(node, visits)
-
-    def test(self, data, quiet=False):
-        self.generator.front_end.parser.lexer.reset_line_num()
-        
-        # Scan and parse
-        if exists(data):
-            with open(data, 'r') as content_file :
-                data = content_file.read()
-        
-        # Generate IR.
-        self.generator.code = []
-        self.generator.generate(data)
-        
-        if not quiet:
-            self.generator.print_code()
-        
-        # Build CFG.
-        if self.first_block:
-            self.delete_cfg()
-        self.build_cfg(self.generator.code)
-        
-        self.print_blocks()
 
     ##### Building the CFG ####
     
