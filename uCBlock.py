@@ -86,6 +86,20 @@ class Block(object):
     def add_succ(self, block):
         self.succ.append(block)
 
+    def concat_block(self, block):
+        self.instructions.update(block.instructions)
+        self.inst_gen.update(block.inst_gen)
+        self.inst_kill.update(block.inst_kill)
+        self.gen.update(block.gen)
+        self.kill.update(block.kill)
+        self.succ = block.succ.copy()   
+        self.out_set = block.out_set.copy()
+
+        for s in self.succ:
+            s.pred.remove(block)
+            s.pred.append(self)
+        del Block.meta.index[block.ID]
+
     def delete(self):
         for s in self.succ:
             s.pred.remove(self)
@@ -356,6 +370,16 @@ class uCCFG(object):
         for idx in dead:
             block = self.index[idx]
             block.delete()
+
+    # NOTE: I think the only case where this will be called is when
+    # the last inst from pred is a jump and the first from succ is a
+    # label, however, if that's not the case, this method is wrong.
+    def collapse_edge(self, pred, succ):
+        last_inst = max(pred.instructions.keys())
+        first_inst = min(succ.instructions.keys())
+        pred.remove_inst(last_inst)
+        succ.remove_inst(first_inst)
+        pred.concat_block(succ)
 
     ### Exhibition Control ###
 

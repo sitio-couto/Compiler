@@ -38,8 +38,6 @@ parser.add_argument('-q','--quiet', action='store_true',
                     help='No prints or graphs, only output file.')
 parser.add_argument('--dead', action='store_true', 
                     help='Run deadcode elimination optimization.')
-parser.add_argument('--fold', action='store_true', 
-                    help='Run constan folding optimization.')
 parser.add_argument('--prop', action='store_true', 
                     help='Run constan propagation optimization.')
 parser.add_argument('--single', action='store_true', 
@@ -75,7 +73,7 @@ if __name__ == '__main__':
     interpreter = Interpreter(generator)
     cfg = CFG(generator)
     dfa = DFA(generator, cfg)
-    opt = Optimizer(generator)
+    opt = Optimizer(generator,cfg=cfg,dfa=dfa)
     
     while True:
         if args.lexer:
@@ -131,9 +129,9 @@ if __name__ == '__main__':
         elif args.file:
             # quick testing input file
             if args.file:
-                if not sum([args.dead,args.fold,args.prop]):
-                    args.dead,args.fold,args.prop = True,True,True
-                opt.test(args.file, args.quiet, args.dead, args.fold, args.prop, args.single)
+                if not sum([args.dead,args.prop]):
+                    args.dead,args.prop = True,True
+                opt.test(args.file, args.quiet, args.dead, args.prop, args.single)
                 exit(1)
         else:
             print("No valid option selected.")

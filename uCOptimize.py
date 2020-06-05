@@ -12,17 +12,19 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 04/06/2020.
 '''
 
+import re
 from uCBlock import uCCFG
 from uCDFA import uCDFA
 from os.path import exists
 
 class Optimizer(object):
-    def __init__(self, generator):
+    def __init__(self, generator, cfg=None, dfa=None):
         self.generator = generator
-        self.cfg = uCCFG(generator)
-        self.dfa = uCDFA(generator, self.cfg)
+        self.cfg = uCCFG(generator) if not cfg else cfg
+        self.dfa = uCDFA(generator, self.cfg) if not dfa else dfa
     
-    def test(self, data, quiet=False, dead=True, fold=True, prop=True, single=False):
+    def test(self, data, quiet=False, dead=True, prop=True, single=False):
+        # Generating code
         self.generator.front_end.parser.lexer.reset_line_num()
         
         # Scan and parse
@@ -34,6 +36,7 @@ class Optimizer(object):
         self.generator.code = []
         self.generator.generate(data)
         
+        # Pre-testing steps
         if not quiet:
             self.generator.print_code()
             print("\n")
@@ -45,17 +48,18 @@ class Optimizer(object):
         
         # Testing.
         self.optimize(quiet=quiet, 
-                      dead=dead, 
-                      fold=fold, 
+                      dead=dead,
                       prop=prop, 
                       single=single)
+        
+        # Post processing
         if not quiet:
             self.cfg.print_blocks()
             self.cfg.print_code()
         
         return self.cfg.retrieve_ir()
 
-    def optimize(self, quiet, dead, fold, prop, single):
+    def optimize(self, quiet, dead, prop, single):
         ''' This method will run iterativelly all optimizations.
             When executed, it assumes the generator has already 
             created the IR code. The method stops when there's 
@@ -85,6 +89,8 @@ class Optimizer(object):
                 # print stuff
                 input() # wait key
 
+        self.clean_allocations()
+
         if not quiet:
             print(f"Opt Size: {len(new_code)}")
             self.cfg.view()
@@ -108,7 +114,24 @@ class Optimizer(object):
                     b.remove_inst(n)
                     continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
-    
+
+        # Short circuit CFG
+        for b in blocks:
+            # First Case: Relax Edges
+            single_edge = (len(b.pred)==1) and (len(b.pred[0].succ)==1)
+            not_root = (self.cfg.first_block not in b.pred)
+            if single_edge and not_root:
+                self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])                
+
+            # allow = [r'\d+','jump']
+            # expendable = True
+            # for _,inst in b.instructions.items():
+            #     if 'alloc' in inst[0]: 
+            #         allc_map[inst[-1]] = (b,lin)
+            #         allocs.add(inst[-1])
+            #     else:
+            #         temps.update(set(re.findall(r'%\d+', str(inst))))
+
     def constant_opt(self, cfg):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
                   'le', 'lt', 'ge', 'gt', 'eq', 'ne',
@@ -220,3 +243,28 @@ class Optimizer(object):
             op += 'i' if ty == 'int' else 'f'
         res = folding[op](left,right)
         return ('literal_'+ty, res, inst[-1])
+
+    # NOTE: executing this every time deadcode was called
+    # would create a unnecessary overhead. Only call after
+    # all optimizations are done
+    def clean_allocations(self):
+        '''Eliminates any unused temporary allocations'''
+        allc_map = dict()
+        allocs = set()
+        temps = set()
+        
+        # Fetch allocated temps and used temps
+        for b in self.cfg.index.values():
+            for lin,inst in b.instructions.items():
+                if 'alloc' in inst[0]: 
+                    allc_map[inst[-1]] = (b,lin)
+                    allocs.add(inst[-1])
+                else:
+                    temps.update(set(re.findall(r'%\d+', str(inst))))
+        
+        # Kill any allocated but unused temps
+        to_kill = allocs - temps
+        for allc in to_kill:
+            b,lin = allc_map[allc]
+            b.remove_inst(lin)
+
