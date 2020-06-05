@@ -91,10 +91,11 @@ class Optimizer(object):
         self.clean_allocations()
 
         if not quiet:
+            print(f"Raw Size: {initial_size}")
             print(f"Opt Size: {len(new_code)}")
             self.cfg.view()
-            list(map(print, new_code))
-        return new_code
+
+        return self.cfg.retrieve_ir()
 
     def deadcode_elimination(self):
         # Run dataflow analysis preparing block sets

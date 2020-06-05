@@ -118,7 +118,7 @@ class Block(object):
     def retrieve_ir(self, code):
         statements = self.instructions.items()
         for lin,inst in statements:
-            code[lin] = inst
+            code[lin] = (lin,inst)
 
     ### Exhibition Control ###
 
@@ -210,7 +210,10 @@ class uCCFG(object):
         blocks = self.dfs_sort()
         for b in blocks:
             b.retrieve_ir(code)
-        return list(filter((None).__ne__, code))
+        code = list(filter((None).__ne__, code))
+        code = sorted(code, key=lambda x: x[0])
+        code = list(map(lambda x: x[1], code))
+        return code
 
     def dfs_sort(self):
         ''''Topology sort blocks starting from global node.'''
