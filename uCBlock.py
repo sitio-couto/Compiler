@@ -375,6 +375,7 @@ class uCCFG(object):
     # the last inst from pred is a jump and the first from succ is a
     # label, however, if that's not the case, this method is wrong.
     def collapse_edge(self, pred, succ):
+        print(f"Collapsing Edge {pred.ID}->{succ.ID}")
         last_inst = max(pred.instructions.keys())
         first_inst = min(succ.instructions.keys())
         pred.remove_inst(last_inst)

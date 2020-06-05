@@ -41,11 +41,6 @@ class Optimizer(object):
             self.generator.print_code()
             print("\n")
 
-        # Build CFG.
-        if self.cfg.first_block:
-            self.cfg.delete_cfg()
-        self.cfg.build_cfg(self.generator.code)
-        
         # Testing.
         self.optimize(quiet=quiet, 
                       dead=dead,
@@ -83,6 +78,10 @@ class Optimizer(object):
             current_code = new_code
 
             if dead: self.deadcode_elimination()
+            self.cfg.clear_sets()
+
+            if prop: self.constant_propagation()
+            self.cfg.clear_sets()
 
             new_code = self.cfg.retrieve_ir()
             if single: 
@@ -132,7 +131,7 @@ class Optimizer(object):
             #     else:
             #         temps.update(set(re.findall(r'%\d+', str(inst))))
 
-    def constant_opt(self, cfg):
+    def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
                   'le', 'lt', 'ge', 'gt', 'eq', 'ne',
                   'and', 'or', 'not')
@@ -140,18 +139,20 @@ class Optimizer(object):
         other_defs = ('elem', 'get', 'read')
         
         # Run dataflow analysis preparing block sets
-        blocks = self.dfa.reaching_definitions(cfg)
+        blocks = self.dfa.reaching_definitions(self.cfg)
         
+        self.cfg.print_blocks()
+
         # Pass through all blocks.
         for b in blocks:
             const = dict()
             
             # Initialize const dictionary.
             # NAC: not a constant
-            for in_bl, num in b.in_set:
+            for in_bl,num in b.in_set:
                 
                 # Get instruction target and op
-                inst_block = b.meta.index[in_bl]    # TODO: correct?
+                inst_block = b.meta.index[in_bl]
                 inst = inst_block.instructions[num]
                 target = inst[-1]
                 op = inst[0].split('_')[0]
@@ -167,16 +168,18 @@ class Optimizer(object):
             
             # Propagate/fold.
             for num, inst in b.instructions.items():
+                if 'define' in inst[0]: continue
                 op,ty = inst[0].split('_')
                 
                 # Binary operation: fold.
                 if op in binary:
                     left,right = inst[1:3]
-                    both_exist = all(x in const for x in (left,right))
-                    both_const = all(const[x] != 'NAC' for x in (left,right))
+                    # both_exist = all(x in const for x in (left,right))
+                    # NOTE: if doesnt exists, return NAC and, therefore, False
+                    valid = all(const.get(x,'NAC') != 'NAC' for x in (left,right))
                     
                     # If are both in 'const' dict and are not NAC, fold.
-                    if both_exist and both_const:
+                    if valid:
                         l,r = const[left], const[right]
                         inst = self.fold_constants(inst, l, r)
                         b.instructions[num] = inst
@@ -214,26 +217,24 @@ class Optimizer(object):
                 elif op in (binary+memory+other_defs):
                     if target in const:
                         const[target] = 'NAC'
-                    
-        raise NotImplementedError
 
     def fold_constants(self, inst, left, right):
         ''' Fold constant: apply binary function to two constants. '''
         folding = {
-            'add' : lambda self,a,b: a + b,
-            'sub' : lambda self,a,b: a - b,
-            'mul' : lambda self,a,b: a * b,
-            'divi': lambda self,a,b: a // b,
-            'divf': lambda self,a,b: a / b,
-            'mod' : lambda self,a,b: a % b,
-            'or'  : lambda self,a,b: a | b,
-            'and' : lambda self,a,b: a & b,
-            'gt'  : lambda self,a,b: int(a > b),
-            'ge'  : lambda self,a,b: int(a >= b),
-            'lt'  : lambda self,a,b: int(a < b),
-            'le'  : lambda self,a,b: int(a <= b),
-            'eq'  : lambda self,a,b: int(a == b),
-            'ne'  : lambda self,a,b: int(a != b)
+            'add' : lambda a,b: a + b,
+            'sub' : lambda a,b: a - b,
+            'mul' : lambda a,b: a * b,
+            'divi': lambda a,b: a // b,
+            'divf': lambda a,b: a / b,
+            'mod' : lambda a,b: a % b,
+            'or'  : lambda a,b: a | b,
+            'and' : lambda a,b: a & b,
+            'gt'  : lambda a,b: int(a > b),
+            'ge'  : lambda a,b: int(a >= b),
+            'lt'  : lambda a,b: int(a < b),
+            'le'  : lambda a,b: int(a <= b),
+            'eq'  : lambda a,b: int(a == b),
+            'ne'  : lambda a,b: int(a != b)
         }
 
         op, ty = inst[0].split('_')
