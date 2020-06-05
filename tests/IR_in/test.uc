@@ -4,7 +4,6 @@ void main () {
     a = a+a+a;
     a = a-3;
     a--;
-    return;
 }
 
 // int b = 0;
