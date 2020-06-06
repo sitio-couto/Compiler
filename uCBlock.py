@@ -430,3 +430,46 @@ class uCCFG(object):
 
         # Show CFG
         graph.view()
+
+
+def view(self):
+    '''Uses graphviz to print the prgram's CFG'''
+    C = "[constraint=false]"
+    blocks = self.index.items()
+    graph = Digraph('Digraph', 
+                    comment='Control Flow Graph',
+                    node_attr={'shape': 'record'})
+
+# # Create blocks
+# for i,b in blocks: 
+#     header = f"Block ID: {i:>3}"
+
+#     body = ''
+#     for lin,inst in b.instructions.items():
+#         body += f"{lin:3}  {'  '.join(map(str,inst))}\l"
+
+#     footer = ''
+#     inst = b.get_inst(-1)
+#     if inst and "cbranch" in inst[0]:
+#         footer = f"|{{<t>T|<f>F}}"
+
+#     graph.node(str(i),f"{{<h>{header}|<m>{body}{footer}}}")
+
+# # Connect blocks
+# for _,b in blocks:
+#     inst = b.get_inst(-1)
+#     if inst and "cbranch" in inst[0]:
+#         t_label,f_label = inst[2:]
+#         for s in b.succ:
+#             if s.get_inst(0)[0] in t_label:
+#                 graph.edge(f"{b.ID}:t {C}",f"{s.ID}:h {C}")
+#             elif s.get_inst(0)[0] in f_label:
+#                 graph.edge(f"{b.ID}:f {C}",f"{s.ID}:h {C}")
+#             else:
+#                 graph.edge(f"{b.ID}:m {C}",f"{s.ID}:h {C}")
+#     else:
+#         for s in b.succ: 
+#             graph.edge(f"{b.ID}:m {C}",f"{s.ID}:h {C}")
+
+# # Show CFG
+# graph.view()
