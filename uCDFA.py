@@ -155,8 +155,8 @@ class uCDFA(object):
                      'read')
         
         # Find all definitions and create gen set.
-        for i, b in enumerate(dfs):
-            
+        for b in dfs:
+
             # Go through all instructions.
             for num, inst in b.instructions.items():
                 call_return = (inst[0] == 'call') and (len(inst) == 3)
@@ -166,12 +166,12 @@ class uCDFA(object):
                     
                     # Update DEFS.
                     if not defs.get(inst[-1], None):
-                        defs[inst[-1]] = set([(i,num)])
+                        defs[inst[-1]] = set([(b.ID,num)])
                     else:
-                        defs[inst[-1]].update([(i,num)])
+                        defs[inst[-1]].update([(b.ID,num)])
         
         # Gen/Kill definitions
-        for i, b in enumerate(dfs):
+        for b in dfs:
                         
             # Go through all instructions.
             for num, inst in b.instructions.items():
@@ -179,8 +179,8 @@ class uCDFA(object):
                 local_def = inst[0].split('_')[0] in def_types
                 
                 if local_def or call_return:
-                    curr_kill = defs[inst[-1]] - set([(i,num)])
-                    curr_gen  = set([(i,num)]) | (b.gen - curr_kill)
+                    curr_kill = defs[inst[-1]] - set([(b.ID,num)])
+                    curr_gen  = set([(b.ID,num)]) | (b.gen - curr_kill)
                     b.kill.update(curr_kill)
                     b.gen.update(curr_gen)
 
