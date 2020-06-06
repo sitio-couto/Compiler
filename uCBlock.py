@@ -135,8 +135,11 @@ class Block(object):
             if old_label in inst[1]:
                 inst[1] = f'%{new_label}'
                 pred.instructions[lin] = tuple(inst)
-            elif old_label in inst[3]:
+            elif old_label in inst[2]:
                 inst[2] = f'%{new_label}'
+                pred.instructions[lin] = tuple(inst)
+            elif old_label in inst[3]:
+                inst[3] = f'%{new_label}'
                 pred.instructions[lin] = tuple(inst)
 
         self.delete()
