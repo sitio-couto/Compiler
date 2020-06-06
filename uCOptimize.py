@@ -91,7 +91,7 @@ class Optimizer(object):
                 self.cfg.view()
                 input() # wait key
                 
-        # TODO: change root if empty?
+        # TODO: change root if empty? Just for view.
         self.clean_allocations()
         new_code = self.cfg.retrieve_ir()
 
@@ -126,7 +126,8 @@ class Optimizer(object):
             is_root = (self.cfg.first_block == b)
             has_pred_succ = (len(b.pred)>0 and len(b.succ)>0)
             # First Case: Collapse Blocks
-            # TODO: problems?
+            # TODO: problems - test01 of IR_in, test05 of IR_in.
+            # TODO: double edge and no true branch: test07 of IR_in (bubble)
             if has_pred_succ and not (is_root or b.gen or b.kill):
                 b.collapse()        
 
@@ -135,6 +136,8 @@ class Optimizer(object):
             # Second Case: Collapse Edges
             if single_edge and not root_child:
                 self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])
+        
+        # TODO: remove "param" when "call" is removed (test08 of IR_in)
         
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
@@ -267,7 +270,7 @@ class Optimizer(object):
                     allc_map[inst[1]] = (b,lin)
                     allocs.add(inst[1])
                 else:
-                    temps.update(set(re.findall(r'%\d+|@.str.\d+', str(inst))))
+                    temps.update(set(re.findall(r'%\d+|@.str.\d+|@[a-zA-Z_][0-9a-zA-Z_]*', str(inst))))
         
         # Kill any allocated but unused temps
         to_kill = allocs - temps

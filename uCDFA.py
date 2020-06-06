@@ -20,7 +20,43 @@ class uCDFA(object):
     def __init__(self, generator, block_constructor):
         self.generator = generator
         self.cfg = block_constructor
+        
+    def test(self, data, quiet=False):
+        self.generator.front_end.parser.lexer.reset_line_num()
+        
+        # Scan and parse
+        if exists(data):
+            with open(data, 'r') as content_file :
+                data = content_file.read()
+        
+        # Generate IR.
+        self.generator.code = []
+        self.generator.generate(data)
+        
+        if not quiet:
+            self.generator.print_code()
+            print("\n")
 
+        # Build CFG.
+        if self.cfg.first_block:
+            self.cfg.delete_cfg()
+        self.cfg.build_cfg(self.generator.code)
+        
+        # Testing.
+        print("Reaching Definitions:\n")
+        self.reaching_definitions()
+        print(self)
+        
+        self.cfg.clear_sets() # Wipes every block set
+        
+        print("Liveness Analysis:\n")
+        self.liveness_analysis()
+        print(self)
+        self.cfg.print_blocks()
+        
+        if not quiet:
+            self.cfg.print_code()
+            
     def usedef_sets(self, blocks):
         # Create use/def tables
         defs = dict([(num,set()) for num in range(1,self.cfg.lineID+1)])
@@ -38,7 +74,7 @@ class uCDFA(object):
             # Relational/Equality/Logical 
             ('lt','le','ge','gt','eq','ne','and','or','not'):[1,2],
             # Functions & Builtins
-            ('param','print','return','cbranch'):[1] 
+            ('param','print','return','cbranch', 'call'):[1] 
             }
 
         # Maps which instruction DEFINES which register (according to tuple position)
@@ -77,42 +113,6 @@ class uCDFA(object):
 
         # Return usedef statement wise sets
         return uses,defs
-
-    def test(self, data, quiet=False):
-        self.generator.front_end.parser.lexer.reset_line_num()
-        
-        # Scan and parse
-        if exists(data):
-            with open(data, 'r') as content_file :
-                data = content_file.read()
-        
-        # Generate IR.
-        self.generator.code = []
-        self.generator.generate(data)
-        
-        if not quiet:
-            self.generator.print_code()
-            print("\n")
-
-        # Build CFG.
-        if self.cfg.first_block:
-            self.cfg.delete_cfg()
-        self.cfg.build_cfg(self.generator.code)
-        
-        # Testing.
-        print("Reaching Definitions:\n")
-        self.reaching_definitions()
-        print(self)
-        
-        self.cfg.clear_sets() # Wipes every block set
-        
-        print("Liveness Analysis:\n")
-        self.liveness_analysis()
-        print(self)
-        self.cfg.print_blocks()
-        
-        if not quiet:
-            self.cfg.print_code()
 
     def reaching_definitions(self):
         # DFS in CFG

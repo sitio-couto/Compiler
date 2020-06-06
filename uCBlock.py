@@ -135,7 +135,7 @@ class Block(object):
             if old_label in inst[1]:
                 inst[1] = f'%{new_label}'
                 pred.instructions[lin] = tuple(inst)
-            elif old_label in inst[2]:
+            elif old_label in inst[3]:
                 inst[2] = f'%{new_label}'
                 pred.instructions[lin] = tuple(inst)
 
@@ -232,6 +232,7 @@ class uCCFG(object):
         self.build_cfg(self.generator.code)
         
         self.print_blocks()
+        self.view()
 
     def delete_cfg(self):
         '''Erases metadata and CFG blocks for garbage collection'''
@@ -253,6 +254,7 @@ class uCCFG(object):
         blocks = self.dfs_sort()
         for b in blocks:
             b.retrieve_ir(code)
+        
         code = list(filter((None).__ne__, code))
         code = sorted(code, key=lambda x: x[0])
         code = list(map(lambda x: x[1], code))
@@ -491,6 +493,7 @@ class uCCFG(object):
         graph.attr('node', shape='record')
 
         # Create blocks
+        # TODO: create separate block for "define"
         for i,b in blocks: 
             header = f"Block ID: {i:>3}"
 
