@@ -58,10 +58,8 @@ class Optimizer(object):
         # Build CFG.
         self.cfg.build_cfg(self.generator.code)
         current_code = self.generator.code.copy()
-        new_code = None
-        
-        self.cfg.view()
         initial_size = len(current_code)
+        new_code = None
         # TODO: Carefully think what needs to be done in the CFG
         # before running a consecutive optimization. As I see, 
         # it doesn't seem to need any special care in between 
@@ -69,6 +67,13 @@ class Optimizer(object):
         # cohesion of it's changes in the CFG:
         # - deadcode removes some lines, so there will non consecutive 
         #   linesIDs in the new CFG.
+        if single:
+            self.cfg.print_blocks()
+            self.dfa.reaching_definitions()
+            self.cfg.print_sets()
+            self.cfg.view()
+            input()
+
         while new_code != current_code:
             current_code = new_code
 
@@ -79,17 +84,19 @@ class Optimizer(object):
             self.cfg.clear_sets()
 
             new_code = self.cfg.retrieve_ir()
-            if single: 
-                # print stuff
+            if single:
+                self.cfg.print_blocks()
+                self.cfg.view()
                 input() # wait key
 
+        # self.cfg.clean_cfg()
         self.clean_allocations()
 
         if not quiet:
             print(f"Raw Size: {initial_size}")
             print(f"Opt Size: {len(new_code)}")
             self.cfg.print_code()
-            self.cfg.view()
+            # self.cfg.view()
 
         return self.cfg.retrieve_ir()
 
@@ -127,7 +134,8 @@ class Optimizer(object):
         other_defs = ('elem', 'get', 'read')
         
         # Run dataflow analysis preparing block sets
-        blocks = self.dfa.reaching_definitions(self.cfg)
+        blocks = self.dfa.reaching_definitions()
+        self.cfg.print_sets()
 
         # Pass through all blocks.
         for b in blocks:
@@ -153,9 +161,9 @@ class Optimizer(object):
             
             # Propagate/fold.
             for num, inst in b.instructions.items():
-                if len(inst[0].split('_')) < 2: continue
-                op,ty = inst[0].split('_')
-                
+                try: op,ty = inst[0].split('_')
+                except: op,ty = inst[0],None
+
                 # Binary operation: fold.
                 if op in binary:
                     left,right = inst[1:3]
@@ -181,16 +189,18 @@ class Optimizer(object):
                         
                 # Branch: check jump optimization and branch elimination.
                 elif op == 'cbranch':
-                    if inst[1] in const and const[inst[1]] != 'NAC':
-                        
+                    if const.get(inst[1],'NAC') != 'NAC':
                         # Test and replace.
-                        result = inst[3] if not inst[1] else inst[2]
+                        live,dead = inst[2:] if inst[1] else inst[:1:-1]
                         op = 'jump'
-                        inst = (op, result)
+                        inst = (op, live)
                         b.instructions[num] = inst
-
+                        for s in b.succ:
+                            if s.get_inst(0)[0] in dead:       
+                                print(f"Removing Edge {b.ID}->{s.ID}")
+                                b.succ.remove(s)
+                                s.pred.remove(b)
                         # TODO: update blocks (pred of other block, succ of this block)
-                        # TODO: short_circuit? Maybe do in in dead code elimination.
                 
                 # Update const dictionary within block
                 target = inst[-1]

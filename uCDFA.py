@@ -114,9 +114,9 @@ class uCDFA(object):
         if not quiet:
             self.cfg.print_code()
 
-    def reaching_definitions(self, cfg):
+    def reaching_definitions(self):
         # DFS in CFG
-        dfs = cfg.dfs_sort()
+        dfs = self.cfg.dfs_sort()
         
         # Get gen/kill sets.
         self.rd_gen_kill(dfs)
@@ -158,7 +158,7 @@ class uCDFA(object):
         for b in dfs:
 
             # Go through all instructions.
-            for num, inst in b.instructions.items():
+            for num,inst in b.instructions.items():
                 call_return = (inst[0] == 'call') and (len(inst) == 3)
                 local_def = (inst[0].split('_')[0] in def_types)
                 
@@ -174,7 +174,7 @@ class uCDFA(object):
         for b in dfs:
                         
             # Go through all instructions.
-            for num, inst in b.instructions.items():
+            for num,inst in b.instructions.items():
                 call_return = inst[0] == 'call' and len(inst)== 3
                 local_def = inst[0].split('_')[0] in def_types
                 
