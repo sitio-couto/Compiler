@@ -46,13 +46,6 @@ class Optimizer(object):
                       dead=dead,
                       prop=prop, 
                       single=single)
-        
-        # Post processing
-        if not quiet:
-            self.cfg.print_blocks()
-            self.cfg.print_code()
-        
-        return self.cfg.retrieve_ir()
 
     def optimize(self, quiet, dead, prop, single):
         ''' This method will run iterativelly all optimizations.
@@ -66,6 +59,8 @@ class Optimizer(object):
         self.cfg.build_cfg(self.generator.code)
         current_code = self.generator.code.copy()
         new_code = None
+        
+        self.cfg.view()
         initial_size = len(current_code)
         # TODO: Carefully think what needs to be done in the CFG
         # before running a consecutive optimization. As I see, 
@@ -93,6 +88,7 @@ class Optimizer(object):
         if not quiet:
             print(f"Raw Size: {initial_size}")
             print(f"Opt Size: {len(new_code)}")
+            self.cfg.print_code()
             self.cfg.view()
 
         return self.cfg.retrieve_ir()
@@ -123,15 +119,6 @@ class Optimizer(object):
             if single_edge and not_root:
                 self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])                
 
-            # allow = [r'\d+','jump']
-            # expendable = True
-            # for _,inst in b.instructions.items():
-            #     if 'alloc' in inst[0]: 
-            #         allc_map[inst[-1]] = (b,lin)
-            #         allocs.add(inst[-1])
-            #     else:
-            #         temps.update(set(re.findall(r'%\d+', str(inst))))
-
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
                   'le', 'lt', 'ge', 'gt', 'eq', 'ne',
@@ -141,8 +128,6 @@ class Optimizer(object):
         
         # Run dataflow analysis preparing block sets
         blocks = self.dfa.reaching_definitions(self.cfg)
-        
-        self.cfg.print_blocks()
 
         # Pass through all blocks.
         for b in blocks:
@@ -151,7 +136,6 @@ class Optimizer(object):
             # Initialize const dictionary.
             # NAC: not a constant
             for in_bl,num in b.in_set:
-                
                 # Get instruction target and op
                 inst_block = b.meta.index[in_bl]
                 inst = inst_block.instructions[num]
@@ -169,7 +153,7 @@ class Optimizer(object):
             
             # Propagate/fold.
             for num, inst in b.instructions.items():
-                if 'define' in inst[0]: continue
+                if len(inst[0].split('_')) < 2: continue
                 op,ty = inst[0].split('_')
                 
                 # Binary operation: fold.
