@@ -126,7 +126,7 @@ class Block(object):
     ### Exhibition Control ###
 
     def show_sets(self):
-        show = lambda x : ', '.join(x) if x else ''
+        show = lambda x : ', '.join(map(str,x)) if x else ''
 
         txt = f"BLOCK {self.ID}:\n"
         txt += f"   IN: {show(self.in_set)}\n"
@@ -439,9 +439,9 @@ class uCCFG(object):
         '''Uses graphviz to print the prgram's CFG'''
         C = "[constraint=false]"
         blocks = self.index.items()
-        graph = Digraph('Digraph', 
-                        comment='Control Flow Graph',
-                        node_attr={'shape': 'record'})
+        graph = Digraph('Digraph',comment='Control Flow Graph')
+        graph.attr(size='10',fontname="helvetica",nodesep="1",overlap="False")
+        graph.attr('node', shape='record')
 
         # Create blocks
         for i,b in blocks: 
@@ -449,14 +449,14 @@ class uCCFG(object):
 
             body = ''
             for lin,inst in b.instructions.items():
-                body += f"{lin:3}  {'  '.join(map(str,inst))}\l"
+                body += f"\n{lin:>3}  {'  '.join(map(str,inst))}\l"
 
             footer = ''
             inst = b.get_inst(-1)
             if inst and "cbranch" in inst[0]:
                 footer = f"|{{<t>T|<f>F}}"
 
-            graph.node(str(i),f"{{<h>{header}|<m>{body}{footer}}}")
+            graph.node(str(i),f"{{{header}|<m>{body}{footer}}}")
 
         # Connect blocks
         for _,b in blocks:
@@ -465,14 +465,14 @@ class uCCFG(object):
                 t_label,f_label = inst[2:]
                 for s in b.succ:
                     if s.get_inst(0)[0] in t_label:
-                        graph.edge(f"{b.ID}:t {C}",f"{s.ID}:h {C}")
+                        graph.edge(f"{b.ID}:t",f"{s.ID}")
                     elif s.get_inst(0)[0] in f_label:
-                        graph.edge(f"{b.ID}:f {C}",f"{s.ID}:h {C}")
+                        graph.edge(f"{b.ID}:f",f"{s.ID}")
                     else:
-                        graph.edge(f"{b.ID}:m {C}",f"{s.ID}:h {C}")
+                        graph.edge(f"{b.ID}:m",f"{s.ID}")
             else:
                 for s in b.succ: 
-                    graph.edge(f"{b.ID}:m {C}",f"{s.ID}:h {C}")
+                    graph.edge(f"{b.ID}:m",f"{s.ID}",tailport='s')
 
         # Show CFG
         graph.view()
