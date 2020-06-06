@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 04/06/2020.
+Last Modified: 06/06/2020.
 '''
 
 import re
@@ -42,10 +42,10 @@ class Optimizer(object):
             print("\n")
 
         # Testing.
-        self.optimize(quiet=quiet, 
-                      dead=dead,
-                      prop=prop, 
-                      single=single)
+        return self.optimize(quiet=quiet, 
+                             dead=dead,
+                             prop=prop, 
+                             single=single)
 
     def optimize(self, quiet, dead, prop, single):
         ''' This method will run iterativelly all optimizations.
@@ -82,14 +82,16 @@ class Optimizer(object):
 
             if prop: self.constant_propagation()
             self.cfg.clear_sets()
+            
+            self.cfg.clean_cfg()
 
             new_code = self.cfg.retrieve_ir()
             if single:
                 self.cfg.print_blocks()
                 self.cfg.view()
                 input() # wait key
-
-        # self.cfg.clean_cfg()
+                
+        # TODO: change root if empty?
         self.clean_allocations()
         new_code = self.cfg.retrieve_ir()
 
@@ -122,8 +124,10 @@ class Optimizer(object):
         # Short circuit CFG
         for b in blocks:
             is_root = (self.cfg.first_block == b)
+            has_pred_succ = (len(b.pred)>0 and len(b.succ)>0)
             # First Case: Collapse Blocks
-            if not (is_root or b.gen or b.kill):
+            # TODO: problems?
+            if has_pred_succ and not (is_root or b.gen or b.kill):
                 b.collapse()        
 
             single_edge = (len(b.pred)==1) and (len(b.pred[0].succ)==1)
@@ -131,8 +135,7 @@ class Optimizer(object):
             # Second Case: Collapse Edges
             if single_edge and not root_child:
                 self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])
-
-
+        
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
                   'le', 'lt', 'ge', 'gt', 'eq', 'ne',
@@ -173,7 +176,7 @@ class Optimizer(object):
                 # Binary operation: fold.
                 if op in binary:
                     left,right = inst[1:3]
-                    # both_exist = all(x in const for x in (left,right))
+
                     # NOTE: if doesnt exists, return NAC and, therefore, False
                     valid = all(const.get(x,'NAC') != 'NAC' for x in (left,right))
                     
@@ -187,17 +190,17 @@ class Optimizer(object):
                 # Memory operation: replace with literal
                 elif op in memory:
                     src = inst[1]
-                    if src in const and const[src] != 'NAC':
+                    if const.get(src,'NAC') != 'NAC' and ty[1] != '*':
                         # Update inst
                         inst = ('literal_'+ty, const[src], inst[2])
                         b.instructions[num] = inst
-                        op = inst[0].split('_')[0]
+                        op = 'literal'
                         
                 # Branch: check jump optimization and branch elimination.
                 elif op == 'cbranch':
                     if const.get(inst[1],'NAC') != 'NAC':
                         # Test and replace.
-                        live,dead = inst[2:] if inst[1] else inst[:1:-1]
+                        live,dead = inst[2:] if const[inst[1]] else inst[:1:-1]
                         op = 'jump'
                         inst = (op, live)
                         b.instructions[num] = inst
@@ -206,7 +209,6 @@ class Optimizer(object):
                                 print(f"Removing Edge {b.ID}->{s.ID}")
                                 b.succ.remove(s)
                                 s.pred.remove(b)
-                        # TODO: update blocks (pred of other block, succ of this block)
                 
                 # Update const dictionary within block
                 target = inst[-1]
@@ -261,8 +263,11 @@ class Optimizer(object):
                 if 'alloc' in inst[0]: 
                     allc_map[inst[-1]] = (b,lin)
                     allocs.add(inst[-1])
+                elif 'global' in inst[0]:
+                    allc_map[inst[1]] = (b,lin)
+                    allocs.add(inst[1])
                 else:
-                    temps.update(set(re.findall(r'%\d+', str(inst))))
+                    temps.update(set(re.findall(r'%\d+|@.str.\d+', str(inst))))
         
         # Kill any allocated but unused temps
         to_kill = allocs - temps

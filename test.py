@@ -39,7 +39,7 @@ parser.add_argument('-q','--quiet', action='store_true',
 parser.add_argument('--dead', action='store_true', 
                     help='Run deadcode elimination optimization.')
 parser.add_argument('--prop', action='store_true', 
-                    help='Run constan propagation optimization.')
+                    help='Run constant propagation optimization.')
 parser.add_argument('--single', action='store_true', 
                     help='Run one iteration at a time.')
 group = parser.add_mutually_exclusive_group()
@@ -75,66 +75,61 @@ if __name__ == '__main__':
     dfa = DFA(generator, cfg)
     opt = Optimizer(generator,cfg=cfg,dfa=dfa)
     
-    while True:
-        if args.lexer:
-            while True: 
-                try:
-                    tokenizer.reset_line_num()
-                    tokenizer.test(input("Filename or expression for Lexer: "))
-                except EOFError:
-                    break
-        elif args.parser:
-            while True:
-                try:
-                    parser.test(input("Filename or expression for Parser: "))
-                except EOFError:
-                    break
-        elif args.semantic:
-            while True:
-                try:
-                    semantic.test(input("Filename or expression for Semantic Check: "), True)
-                except EOFError:
-                    break
-        elif args.generator:
-            while True:
-                try:
-                    generator.test(input("Filename or expression for IR Generation: "), False)
-                except EOFError:
-                    break
-        elif args.interpreter:
-            while True:
-                try:
-                    interpreter.test(input("Filename or expression to run: "), True)
-                except EOFError:
-                    break
-        elif args.basicblocks:
-            while True:
-                try:
-                    cfg.test(input("Filename or expression to separate: "), True)
-                except EOFError:
-                    break
-        elif args.dataflow:
-            while True:
-                try:
-                    dfa.test(input("Filename or expression to analyze: "), True)
-                except EOFError:
-                    break
-        elif args.optimization:
-            while True:
-                try:
-                    code = opt.test(input("Filename or expression to optimize and run: "), False)
-                    interpreter.run(code)
-                except EOFError:
-                    break
-        elif args.file:
-            # quick testing input file
-            if args.file:
-                if not sum([args.dead,args.prop]):
-                    args.dead,args.prop = True,True
-                opt.test(args.file, args.quiet, args.dead, args.prop, args.single)
-                exit(1)
-        else:
-            print("No valid option selected.")
-            break
-
-
+    if args.lexer:
+        while True: 
+            try:
+                tokenizer.reset_line_num()
+                tokenizer.test(input("Filename or expression for Lexer: "))
+            except EOFError:
+                break
+    elif args.parser:
+        while True:
+            try:
+                parser.test(input("Filename or expression for Parser: "))
+            except EOFError:
+                break
+    elif args.semantic:
+        while True:
+            try:
+                semantic.test(input("Filename or expression for Semantic Check: "), args.quiet)
+            except EOFError:
+                break
+    elif args.generator:
+        while True:
+            try:
+                generator.test(input("Filename or expression for IR Generation: "), args.quiet)
+            except EOFError:
+                break
+    elif args.interpreter:
+        while True:
+            try:
+                interpreter.test(input("Filename or expression to run: "), args.quiet)
+            except EOFError:
+                break
+    elif args.basicblocks:
+        while True:
+            try:
+                cfg.test(input("Filename or expression to separate: "), args.quiet)
+            except EOFError:
+                break
+    elif args.dataflow:
+        while True:
+            try:
+                dfa.test(input("Filename or expression to analyze: "), args.quiet)
+            except EOFError:
+                break
+    elif args.optimization:
+        while True:
+            try:
+                code = opt.test(input("Filename or expression to optimize and run: "), args.quiet, args.dead, args.prop, args.single)
+                interpreter.run(code)
+            except EOFError:
+                break
+    elif args.file:
+        # quick testing input file
+        if not sum([args.dead,args.prop]):
+            args.dead,args.prop = True,True
+        code = opt.test(args.file, args.quiet, args.dead, args.prop, args.single)
+        interpreter.run(code)
+    else:
+        print("No valid option selected.")

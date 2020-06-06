@@ -14,11 +14,11 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 03/06/2020.
+Last Modified: 06/06/2020.
 '''
 
 import os
-os.environ["PATH"] += os.pathsep + 'C:\Program Files (x86)/Graphviz2.38/bin'
+#os.environ["PATH"] += os.pathsep + 'C:\Program Files (x86)/Graphviz2.38/bin'
 from collections import OrderedDict
 from graphviz import Digraph
 from os.path import exists
@@ -132,11 +132,11 @@ class Block(object):
         if re.match(r'\d+',new_label[0]):
             lin,inst = pred.last_statement()
             inst = list(inst)
-            if old_label in inst[2]:
-                inst[2] = f'%{new_label}'
+            if old_label in inst[1]:
+                inst[1] = f'%{new_label}'
                 pred.instructions[lin] = tuple(inst)
-            elif old_label in inst[3]:
-                inst[3] = f'%{new_label}'
+            elif old_label in inst[2]:
+                inst[2] = f'%{new_label}'
                 pred.instructions[lin] = tuple(inst)
 
         self.delete()
@@ -414,7 +414,9 @@ class uCCFG(object):
         dead = set(all_ids)-set(reachable)
         if dead: print(f"\nRemoving deadblocks: {dead}\n")
         for idx in dead:
-            block = self.index[idx]
+            try: block = self.index[idx]
+            except: continue
+            
             block.delete()
 
     # NOTE: I think the only case where this will be called is when

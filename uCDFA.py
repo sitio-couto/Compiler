@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 03/06/2020.
+Last Modified: 06/06/2020.
 '''
 
 from collections import OrderedDict
@@ -143,7 +143,7 @@ class uCDFA(object):
             # All successors to the 'changed' set.
             if b.out_set != old_out:
                 changed.update(b.succ)
-                
+        
         return dfs
 
     def rd_gen_kill(self, dfs):
