@@ -101,7 +101,7 @@ class uCDFA(object):
         
         # Testing.
         print("Reaching Definitions:\n")
-        self.reaching_definitions(self.cfg)
+        self.reaching_definitions()
         print(self)
         
         self.cfg.clear_sets() # Wipes every block set
