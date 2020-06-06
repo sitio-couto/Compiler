@@ -65,10 +65,13 @@ class Block(object):
 
     def get_inst(self, idx):
         insts = list(self.instructions.values())
-        try:
-            return insts[idx]
-        except:
-            return None
+        try: return insts[idx]
+        except: return None
+
+    def get_line(self, idx):
+        lines = list(self.instructions.keys())
+        try: return lines[idx]
+        except: return None
 
     def remove_inst(self, line):
         try:
@@ -381,11 +384,14 @@ class uCCFG(object):
     # the last inst from pred is a jump and the first from succ is a
     # label, however, if that's not the case, this method is wrong.
     def collapse_edge(self, pred, succ):
+        last_inst = pred.get_inst(-1)
+        first_inst = pred.get_inst(0)
+        
         print(f"Collapsing Edge {pred.ID}->{succ.ID}")
-        last_inst = max(pred.instructions.keys())
-        first_inst = min(succ.instructions.keys())
-        pred.remove_inst(last_inst)
-        succ.remove_inst(first_inst)
+        if 'jump' in last_inst[0]:
+            pred.remove_inst(pred.get_line(-1))
+        if re.match(r'\d+',first_inst[0]):
+            succ.remove_inst(succ.get_line(0))
         pred.concat_block(succ)
 
     ### Exhibition Control ###
