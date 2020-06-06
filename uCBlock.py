@@ -18,7 +18,7 @@ Last Modified: 06/06/2020.
 '''
 
 import os
-#os.environ["PATH"] += os.pathsep + 'C:\Program Files (x86)/Graphviz2.38/bin'
+os.environ["PATH"] += os.pathsep + 'C:\Program Files (x86)/Graphviz2.38/bin'
 from collections import OrderedDict
 from graphviz import Digraph
 from os.path import exists
