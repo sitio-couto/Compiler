@@ -393,12 +393,14 @@ class uCCFG(object):
     # label, however, if that's not the case, this method is wrong.
     def collapse_edge(self, pred, succ):
         last_inst = pred.get_inst(-1)
-        first_inst = pred.get_inst(0)
+        first_inst = succ.get_inst(0)
         
         print(f"Collapsing Edge {pred.ID}->{succ.ID}")
         if 'jump' in last_inst[0]:
+            print(f"Removing {pred.get_line(-1)} : {last_inst}")
             pred.remove_inst(pred.get_line(-1))
         if re.match(r'\d+',first_inst[0]):
+            print(f"Removing {pred.get_line(0)} : {first_inst}")
             succ.remove_inst(succ.get_line(0))
         pred.concat_block(succ)
 
