@@ -106,6 +106,14 @@ class Block(object):
             s.pred.append(self)
         del Block.meta.index[block.ID]
 
+    def collapse(self):
+        print(f"Collapsing Block {self.ID}")
+        pred = self.pred[0]
+        succ = self.succ[0]
+        self.delete()
+        pred.succ.append(succ)
+        succ.pred.append(pred)
+
     def delete(self):
         for s in self.succ:
             s.pred.remove(self)

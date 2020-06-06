@@ -120,11 +120,17 @@ class Optimizer(object):
 
         # Short circuit CFG
         for b in blocks:
-            # First Case: Relax Edges
+            is_root = (self.cfg.first_block == b)
+            # First Case: Collapse Blocks
+            if not (is_root or b.gen or b.kill):
+                b.collapse()        
+
             single_edge = (len(b.pred)==1) and (len(b.pred[0].succ)==1)
-            not_root = (self.cfg.first_block not in b.pred)
-            if single_edge and not_root:
-                self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])                
+            root_child = (self.cfg.first_block in b.pred)
+            # Second Case: Collapse Edges
+            if single_edge and not root_child:
+                self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])
+
 
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
