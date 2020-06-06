@@ -91,14 +91,15 @@ class Optimizer(object):
 
         # self.cfg.clean_cfg()
         self.clean_allocations()
+        new_code = self.cfg.retrieve_ir()
 
+        print(f"Raw Size: {initial_size}")
+        print(f"Opt Size: {len(new_code)}")
         if not quiet:
-            print(f"Raw Size: {initial_size}")
-            print(f"Opt Size: {len(new_code)}")
             self.cfg.print_code()
-            # self.cfg.view()
+            self.cfg.view()
 
-        return self.cfg.retrieve_ir()
+        return new_code
 
     def deadcode_elimination(self):
         # Run dataflow analysis preparing block sets
@@ -141,7 +142,6 @@ class Optimizer(object):
         
         # Run dataflow analysis preparing block sets
         blocks = self.dfa.reaching_definitions()
-        self.cfg.print_sets()
 
         # Pass through all blocks.
         for b in blocks:
@@ -202,7 +202,7 @@ class Optimizer(object):
                         inst = (op, live)
                         b.instructions[num] = inst
                         for s in b.succ:
-                            if s.get_inst(0)[0] in dead:       
+                            if s.first_inst()[0] in dead:       
                                 print(f"Removing Edge {b.ID}->{s.ID}")
                                 b.succ.remove(s)
                                 s.pred.remove(b)

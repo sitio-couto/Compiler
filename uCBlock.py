@@ -68,6 +68,21 @@ class Block(object):
         try: return insts[idx]
         except: return None
 
+    def first_inst(self):
+        insts = list(self.instructions.values())
+        try: return insts[0]
+        except: return None
+
+    def last_inst(self):
+        insts = list(self.instructions.values())
+        try: return insts[-1]
+        except: return None
+
+    def last_statement(self):
+        insts = list(self.instructions.items())
+        try: return insts[-1]
+        except: return None
+
     def get_line(self, idx):
         lines = list(self.instructions.keys())
         try: return lines[idx]
@@ -110,6 +125,20 @@ class Block(object):
         print(f"Collapsing Block {self.ID}")
         pred = self.pred[0]
         succ = self.succ[0]
+        old_label = self.first_inst()[0]
+        new_label = succ.first_inst()[0]
+
+        # Fix labels
+        if re.match(r'\d+',new_label[0]):
+            lin,inst = pred.last_statement()
+            inst = list(inst)
+            if old_label in inst[2]:
+                inst[2] = f'%{new_label}'
+                pred.instructions[lin] = tuple(inst)
+            elif old_label in inst[3]:
+                inst[3] = f'%{new_label}'
+                pred.instructions[lin] = tuple(inst)
+
         self.delete()
         pred.succ.append(succ)
         succ.pred.append(pred)
@@ -307,7 +336,7 @@ class uCCFG(object):
                 Blocks - List of unconnected Blocks 
         '''
         # Create the program entry block
-        entry = blocks[0].get_inst(0)[0]
+        entry = blocks[0].first_inst()[0]
         if 'global' in entry:
             globs = blocks.pop(0)    # Separe globals block
         else:
@@ -318,7 +347,7 @@ class uCCFG(object):
         
         # Group blocks by functions
         for b in blocks:
-            inst = b.get_inst(0)[0]
+            inst = b.first_inst()[0]
             if inst=='define': # Reset every time a define is found
                 if aux: funcs.append(aux)
                 aux = [b]
@@ -342,8 +371,8 @@ class uCCFG(object):
         # Define blocks edges (jumps and labels)
         for i,b in enumerate(blocks):
             jumps[b] = [] # Make some ops easier
-            first = b.get_inst(0)
-            last = b.get_inst(-1)
+            first = b.first_inst()
+            last = b.last_inst()
 
             # Save blocks that can be jumped to
             if self.is_target(first[0]):
@@ -392,8 +421,8 @@ class uCCFG(object):
     # the last inst from pred is a jump and the first from succ is a
     # label, however, if that's not the case, this method is wrong.
     def collapse_edge(self, pred, succ):
-        last_inst = pred.get_inst(-1)
-        first_inst = succ.get_inst(0)
+        last_inst = pred.last_inst()
+        first_inst = succ.first_inst()
         
         print(f"Collapsing Edge {pred.ID}->{succ.ID}")
         if 'jump' in last_inst[0]:
@@ -456,7 +485,7 @@ class uCCFG(object):
         C = "[constraint=false]"
         blocks = self.index.items()
         graph = Digraph('Digraph',comment='Control Flow Graph')
-        graph.attr(size='10',fontname="helvetica",nodesep="1",overlap="False")
+        graph.attr(size='10',fontname="helvetica",nodesep="1")
         graph.attr('node', shape='record')
 
         # Create blocks
@@ -468,7 +497,7 @@ class uCCFG(object):
                 body += f"\n{lin:>3}  {'  '.join(map(str,inst))}\l"
 
             footer = ''
-            inst = b.get_inst(-1)
+            inst = b.last_inst()
             if inst and "cbranch" in inst[0]:
                 footer = f"|{{<t>T|<f>F}}"
 
@@ -476,19 +505,17 @@ class uCCFG(object):
 
         # Connect blocks
         for _,b in blocks:
-            inst = b.get_inst(-1)
+            inst = b.last_inst()
             if inst and "cbranch" in inst[0]:
                 t_label,f_label = inst[2:]
                 for s in b.succ:
-                    if s.get_inst(0)[0] in t_label:
-                        graph.edge(f"{b.ID}:t",f"{s.ID}")
-                    elif s.get_inst(0)[0] in f_label:
+                    if s.first_inst()[0] in t_label:
+                        graph.edge(f"{b.ID}:t",f"{s.ID}",)
+                    elif s.first_inst()[0] in f_label:
                         graph.edge(f"{b.ID}:f",f"{s.ID}")
-                    else:
-                        graph.edge(f"{b.ID}:m",f"{s.ID}")
             else:
                 for s in b.succ: 
-                    graph.edge(f"{b.ID}:m",f"{s.ID}",tailport='s')
+                    graph.edge(f"{b.ID}:m:s",f"{s.ID}")
 
         # Show CFG
         graph.view()
