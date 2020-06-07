@@ -502,7 +502,6 @@ class uCCFG(object):
 
     def view(self):
         '''Uses graphviz to print the prgram's CFG'''
-        C = "[constraint=false]"
         blocks = self.index.items()
         graph = Digraph('Digraph',comment='Control Flow Graph')
         graph.attr(size='10',fontname="helvetica",nodesep="1")

@@ -25,11 +25,25 @@ def print_error(msg, x, y):
 print('\n', f'Working Directory: {workdir}','\n')
 
 class TestOpt(unittest.TestCase):
-
-    inputs = [
-        ('tests/opt_in/e1.uc',100),
-        ('tests/opt_in/e2.uc',38),
-        ('tests/opt_in/e3.uc',9)]
+    
+    inputs = {
+        't00':('tests/IR_in/test.uc',1000),
+        't01':('tests/IR_in/test01.uc',1000),
+        't02':('tests/IR_in/test02.uc',1000),
+        't03':('tests/IR_in/test03.uc',1000),
+        't04':('tests/IR_in/test04.uc',1000),
+        't05':('tests/IR_in/test05.uc',1000),
+        't06':('tests/IR_in/test06.uc',1000),
+        't07':('tests/IR_in/test07.uc',1000),
+        't08':('tests/IR_in/test08.uc',1000),
+        't09':('tests/IR_in/test09.uc',1000),
+        't10':('tests/IR_in/test10.uc',1000),
+        't11':('tests/IR_in/test11.uc',1000),
+        't12':('tests/IR_in/test12.uc',1000),
+        't13':('tests/IR_in/test13.uc',1000),
+        'e1':('tests/opt_in/e1.uc',100),
+        'e2':('tests/opt_in/e2.uc',38),
+        'e3':('tests/opt_in/e3.uc',9)}
 
     def runNcmp(self, id):
         filename,goal = self.inputs[id]
@@ -81,14 +95,58 @@ class TestOpt(unittest.TestCase):
         elif not C:
             assert False, f"FALSE - Not enough optimzations (got {len(opt)}, needs {len(raw)})\n"
 
+    #### NOTE: Some tests are commented because they require input.
+
     def test_t0(self):
-        self.runNcmp(0)
+        self.runNcmp('t00')
 
     def test_t1(self):
-        self.runNcmp(1)
+        self.runNcmp('t01')
 
     def test_t2(self):
-        self.runNcmp(2)
+        self.runNcmp('t02')
+    
+    def test_t3(self):
+        self.runNcmp('t03')
+
+    def test_t4(self):
+        self.runNcmp('t04')
+
+    def test_t5(self):
+        self.runNcmp('t05')
+    
+    def test_t6(self):
+        self.runNcmp('t06')
+
+    # def test_t7(self):
+    #     self.runNcmp('t07')
+
+    def test_t8(self):
+        self.runNcmp('t08')
+    
+    def test_t9(self):
+        self.runNcmp('t09')
+
+    def test_t10(self):
+        self.runNcmp('t10')
+
+    def test_t11(self):
+        self.runNcmp('t11')
+    
+    # def test_t12(self):
+    #     self.runNcmp('t12')
+
+    # def test_t13(self):
+    #     self.runNcmp('t13')
+
+    def test_e1(self):
+        self.runNcmp('e1')
+
+    def test_e2(self):
+        self.runNcmp('e2')
+
+    def test_e3(self):
+        self.runNcmp('e3')
 
 if __name__ == '__main__':
     unittest.main()    

@@ -103,8 +103,8 @@ class uCDFA(object):
 
         # Store Pointer is a special case (is a use of both temps)
         str_ptr = lambda x: bool(re.match(r'store\w+\*', x[0]))
-        is_use = lambda x: [x[1],x[2]] if str_ptr(x) else get_vars(x, use_map)
-        is_def = lambda x: [] if str_ptr(x) else get_vars(x, def_map)
+        is_use  = lambda x: [x[1],x[2]] if str_ptr(x) else get_vars(x, use_map)
+        is_def  = lambda x: [] if str_ptr(x) else get_vars(x, def_map)
 
         # Find use/def sets for each instruction
         for b in blocks:
