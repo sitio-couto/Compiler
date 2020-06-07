@@ -126,7 +126,7 @@ class Optimizer(object):
             is_root = (self.cfg.first_block == b)
             has_pred_succ = (len(b.pred)>0 and len(b.succ)>0)
             # First Case: Collapse Blocks
-            # TODO: problems - test01 of IR_in, test05 of IR_in.
+            # TODO: problems - test01 of IR_in, simple3 of complete_codes
             # TODO: double edge and no true branch: test07 of IR_in (bubble)
             if has_pred_succ and not (is_root or b.gen or b.kill):
                 b.collapse()        
@@ -138,7 +138,7 @@ class Optimizer(object):
                 self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])
         
         # TODO: remove "param" when "call" is removed (test08 of IR_in)
-        # TODO: eliminate branch and comparison when both compared values are the same, to avoid double edge.
+        # TODO: eliminate branch and comparison when both compared values are the same, to avoid double edge (bubble).
         
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
