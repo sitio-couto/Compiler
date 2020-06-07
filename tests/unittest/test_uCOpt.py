@@ -41,9 +41,19 @@ class TestOpt(unittest.TestCase):
         't11':('tests/IR_in/test11.uc',1000),
         't12':('tests/IR_in/test12.uc',1000),
         't13':('tests/IR_in/test13.uc',1000),
-        'e1':('tests/opt_in/e1.uc',100),
-        'e2':('tests/opt_in/e2.uc',38),
-        'e3':('tests/opt_in/e3.uc',9)}
+        'e1': ('tests/opt_in/e1.uc',100),
+        'e2': ('tests/opt_in/e2.uc',38),
+        'e3': ('tests/opt_in/e3.uc',9),
+        'c01':('tests/complete_codes/armstrong.uc',1000),
+        'c02':('tests/complete_codes/fatorial.uc',1000),
+        'c03':('tests/complete_codes/gcd.uc',1000),
+        'c04':('tests/complete_codes/primes.uc',1000),
+        'c05':('tests/complete_codes/simple1.uc',1000),
+        'c06':('tests/complete_codes/simple2.uc',1000),
+        'c07':('tests/complete_codes/simple3.uc',1000),
+        'c08':('tests/complete_codes/simple4.uc',1000),
+        'c09':('tests/complete_codes/simple6.uc',1000),
+        'c10':('tests/complete_codes/PTR_simple5.uc',1000)}
 
     def runNcmp(self, id):
         filename,goal = self.inputs[id]
@@ -138,6 +148,36 @@ class TestOpt(unittest.TestCase):
 
     # def test_t13(self):
     #     self.runNcmp('t13')
+
+    # def test_c1(self):
+    #     self.runNcmp('c01')
+    
+    def test_c2(self):
+        self.runNcmp('c02')
+    
+    # def test_c3(self):
+    #     self.runNcmp('c03')
+    
+    # def test_c4(self):
+    #     self.runNcmp('c04')
+    
+    def test_c5(self):
+        self.runNcmp('c05')
+    
+    def test_c6(self):
+        self.runNcmp('c06')
+    
+    def test_c7(self):
+        self.runNcmp('c07')
+    
+    def test_c8(self):
+        self.runNcmp('c08')
+    
+    # def test_c9(self):
+    #     self.runNcmp('c09')
+    
+    def test_c10(self):
+        self.runNcmp('c10')
 
     def test_e1(self):
         self.runNcmp('e1')

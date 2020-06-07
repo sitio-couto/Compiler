@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 06/06/2020.
+Last Modified: 07/06/2020.
 '''
 
 import re
@@ -126,7 +126,6 @@ class Optimizer(object):
 
         # Short circuit CFG
         for b in blocks:
-            # TODO: double edge and no true branch: test07 of IR_in (bubble)
             
             #### COLLAPSE BLOCK SCENARIOS ####
             
@@ -165,7 +164,6 @@ class Optimizer(object):
                 continue
         
         # TODO: remove "param" when "call" is removed (test08 of IR_in)
-        # TODO: eliminate branch and comparison when both compared values are the same, to avoid double edge (bubble).
         
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',

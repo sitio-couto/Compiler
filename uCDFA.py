@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 06/06/2020.
+Last Modified: 07/06/2020.
 '''
 
 from collections import OrderedDict
@@ -85,7 +85,7 @@ class uCDFA(object):
             # Binary Operations
             ('add','sub','mul','div','mod'):[3], 
             # Cast Operations
-            ('fptosi','sitofp'):[1], 
+            ('fptosi','sitofp'):[2], 
             # Relational/Equality/Logical 
             ('lt','le','ge','gt','eq','ne','and','or','not'):[3],
             # Functions
