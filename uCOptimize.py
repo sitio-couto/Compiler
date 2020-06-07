@@ -156,6 +156,7 @@ class Optimizer(object):
                 b.collapse_edge()
                 continue
 
+            # NOTE: I might be tripping here. Not sure if it actually happens
             # Second Case: Single Unecessary NOjump-label Edge (IR_in/test07.uc)
             single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
             label = b.succ and is_label(b.succ[0].first_inst()[0])

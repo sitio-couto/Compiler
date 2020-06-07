@@ -61,7 +61,7 @@ class uCDFA(object):
         # Create use/def tables
         defs = dict([(num,set()) for num in range(1,self.cfg.lineID+1)])
         uses = dict([(num,set()) for num in range(1,self.cfg.lineID+1)])
-
+        
         # Maps which instruction USES which register (according to tuple position)
         use_map = {
             # Variables & Values
@@ -97,12 +97,14 @@ class uCDFA(object):
             for keys,vals in inst_map.items():
                 local_def = inst[0].split('_')[0]
                 if local_def in keys:
-                    if len(inst) <= max(vals): return [] # for optional registers (return,)
-                    else: return [inst[i] for i in vals]
+                    try:    return [inst[i] for i in vals]
+                    except: return []
             return []
 
-        is_use = lambda x: get_vars(x, use_map)
-        is_def = lambda x: get_vars(x, def_map)
+        # Store Pointer is a special case (is a use of both temps)
+        str_ptr = lambda x: bool(re.match(r'store\w+\*', x[0]))
+        is_use = lambda x: [x[1],x[2]] if str_ptr(x) else get_vars(x, use_map)
+        is_def = lambda x: [] if str_ptr(x) else get_vars(x, def_map)
 
         # Find use/def sets for each instruction
         for b in blocks:
