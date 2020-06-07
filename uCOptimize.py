@@ -93,6 +93,7 @@ class Optimizer(object):
                 
         # TODO: change root if empty? Just for view.
         self.clean_allocations()
+        self.cfg.check_cfg()
         new_code = self.cfg.retrieve_ir()
 
         print(f"Raw Size: {initial_size}")
@@ -135,31 +136,32 @@ class Optimizer(object):
             jump = b.last_inst() and ('jump'==b.last_inst()[0])
             two_insts = (len(b.instructions)==2)
             if single_path and label and jump and two_insts:
-                b.collapse_block()   
+                b.collapse_block()
+                continue   
 
             # Second Case: single path label only block (IR_in/test07.uc)
             single_path = (len(b.pred)==1 and len(b.succ)==1)
             label_only  = (len(b.instructions)==1) and is_label(b.first_inst()[0])
             if single_path and label_only:
-                b.collapse_block()        
+                b.collapse_block()       
+                continue 
 
-            #### COLLAPSE EDGES SCENARIOS ####
+            # #### COLLAPSE EDGES SCENARIOS ####
 
-            self.cfg.check_cfg()
             # First Case: Single Unecessary jump-label Edge (IR_in/test01.uc)
             single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
             jump = b.last_inst() and ('jump'==b.last_inst()[0])
             label = b.succ and b.succ[0].first_inst() and is_label(b.succ[0].first_inst()[0])
             if single_edge and jump and label:
                 b.collapse_edge()
+                continue
 
             # Second Case: Single Unecessary NOjump-label Edge (IR_in/test07.uc)
             single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
             label = b.succ and is_label(b.succ[0].first_inst()[0])
-            # if b.ID==7: print(f"{b.ID} {len(b.pred)} {[x.ID for x in b.pred]}")
-            # if b.ID==7:
             if single_edge and label:
                 b.collapse_edge()
+                continue
         
         # TODO: remove "param" when "call" is removed (test08 of IR_in)
         # TODO: eliminate branch and comparison when both compared values are the same, to avoid double edge (bubble).
