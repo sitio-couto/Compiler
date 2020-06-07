@@ -303,4 +303,3 @@ class Optimizer(object):
         for allc in to_kill:
             b,lin = allc_map[allc]
             b.remove_inst(lin)
-

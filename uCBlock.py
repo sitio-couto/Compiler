@@ -440,6 +440,7 @@ class uCCFG(object):
             block.delete()
 
     def check_cfg(self):
+        ''' Sanity check for debugging. '''
         preds = []
         succs = []
         for b in self.index.values():
@@ -461,7 +462,7 @@ class uCCFG(object):
         list(map(print,self.retrieve_ir()))
 
     def print_blocks(self):
-        '''Prints the CGF aspect of the block and the instruction wise 
+        '''Prints the CFG aspect of the block and the instruction wise 
            genkill sets: Predecessors, instructions and successors
         '''
         dfs = self.dfs_sort()
@@ -479,27 +480,6 @@ class uCCFG(object):
             txt += b.show_sets()
         print(txt)
 
-    def view_old(self):
-        '''Uses graphviz to print the prgram's CFG'''
-        blocks = self.index.items()
-        graph = Digraph(comment='Control Flow Graph')
-        graph.attr('node', shape='box',fontname="helvetica")
-
-        # Create blocks
-        for i,b in blocks: 
-            txt = ''
-            for lin,inst in b.instructions.items():
-                txt += f"{lin:3}  {'  '.join(map(str,inst))}\l"
-            graph.node(str(i),txt)
-
-        # Connect blocks
-        for i,b in blocks:
-            for p in b.pred: graph.edge(str(p.ID),str(b.ID))
-
-        # Show CFG
-        graph.view()
-
-
     def view(self):
         '''Uses graphviz to print the prgram's CFG'''
         blocks = self.index.items()
@@ -508,7 +488,6 @@ class uCCFG(object):
         graph.attr('node', shape='record')
 
         # Create blocks
-        # TODO: create separate block for "define"
         for i,b in blocks: 
             header = f"Block ID: {i:>3}"
 
