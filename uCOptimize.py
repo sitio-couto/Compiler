@@ -13,8 +13,6 @@ Last Modified: 07/06/2020.
 '''
 
 import re
-from uCBlock import uCCFG
-from uCDFA import uCDFA
 from os.path import exists
 
 class uCIROptimizer(object):

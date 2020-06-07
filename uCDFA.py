@@ -12,7 +12,6 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 07/06/2020.
 '''
 
-from collections import OrderedDict
 from os.path import exists
 import re
 

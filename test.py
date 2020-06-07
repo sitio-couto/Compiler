@@ -24,7 +24,7 @@ import argparse
 
 # NOTE: Running tests
 # to test some optimization do the following:
-# python test.py -f inputfile/path.uc [--dead|--prop|--fold|--single|--quiet]
+# python test.py -f inputfile/path.uc [--dead|--prop|--single|--quiet]
 # if no opt is defined it will run all of then
 # The remaining test options can be used by running:
 # python test.py -x (where x is the desired test type)
