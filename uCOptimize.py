@@ -284,24 +284,31 @@ class Optimizer(object):
     # all optimizations are done
     def clean_allocations(self):
         '''Eliminates any unused temporary allocations'''
-        allc_map = dict()
-        allocs = set()
-        temps = set()
-        
+        functions = []
+        program = list(self.cfg.index.values())
+        for func in self.cfg.first_block.succ:
+            functions.append(self.cfg.dfs_sort(root=func)) 
+        functions.append(program)
+
         # Fetch allocated temps and used temps
-        for b in self.cfg.index.values():
-            for lin,inst in b.instructions.items():
-                if 'alloc' in inst[0]: 
-                    allc_map[inst[-1]] = (b,lin)
-                    allocs.add(inst[-1])
-                elif 'global' in inst[0]:
-                    allc_map[inst[1]] = (b,lin)
-                    allocs.add(inst[1])
-                else:
-                    temps.update(set(re.findall(r'%\d+|@.str.\d+|@[a-zA-Z_][0-9a-zA-Z_]*', str(inst))))
+        for blocks in functions:
+            allc_map = dict()
+            allocs = set()
+            temps = set()
+
+            for b in blocks:
+                for lin,inst in b.instructions.items():
+                    if 'alloc' in inst[0]: 
+                        allc_map[inst[-1]] = (b,lin)
+                        allocs.add(inst[-1])
+                    elif 'global' in inst[0]:
+                        allc_map[inst[1]] = (b,lin)
+                        allocs.add(inst[1])
+                    else:
+                        temps.update(set(re.findall(r'%\d+|@.str.\d+|@[a-zA-Z_][0-9a-zA-Z_]*', str(inst))))
         
-        # Kill any allocated but unused temps
-        to_kill = allocs - temps
-        for allc in to_kill:
-            b,lin = allc_map[allc]
-            b.remove_inst(lin)
+            # Kill any allocated but unused temps
+            to_kill = allocs - temps
+            for allc in to_kill:
+                b,lin = allc_map[allc]
+                b.remove_inst(lin)

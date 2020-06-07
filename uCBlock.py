@@ -289,10 +289,10 @@ class uCCFG(object):
         code = list(map(lambda x: x[1], code))
         return code
 
-    def dfs_sort(self):
+    def dfs_sort(self, root=None):
         ''''Topology sort blocks starting from global node.'''
         # If in root, prepare variables
-        node = self.first_block
+        if not root: root=self.first_block
         visits=[]
 
         # Run DFS search
@@ -304,7 +304,7 @@ class uCCFG(object):
                     visits = dfs(next_node, visits)
             return visits
 
-        return dfs(node, visits)
+        return dfs(root, visits)
 
     ##### Building the CFG ####
     
