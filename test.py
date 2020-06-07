@@ -17,7 +17,7 @@ from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCCFG as CFG
 from uCDFA import uCDFA as DFA
-from uCOptimize import Optimizer
+from uCOptimize import uCIROptimizer as Optimizer
 from os.path import exists
 from sys import argv
 import argparse
@@ -72,8 +72,8 @@ if __name__ == '__main__':
     # Interpret or optimize IR.
     interpreter = Interpreter(generator)
     cfg = CFG(generator)
-    dfa = DFA(generator, cfg)
-    opt = Optimizer(generator,cfg=cfg,dfa=dfa)
+    dfa = DFA(cfg)
+    opt = Optimizer(dfa)
     
     if args.lexer:
         while True: 
@@ -121,15 +121,15 @@ if __name__ == '__main__':
     elif args.optimization:
         while True:
             try:
-                code = opt.test(input("Filename or expression to optimize and run: "), args.quiet, args.dead, args.prop, args.single)
-                interpreter.run(code)
+                opt.test(input("Filename or expression to optimize and run: "), args.quiet, args.dead, args.prop, args.single)
+                interpreter.run(opt.code)
             except EOFError:
                 break
     elif args.file:
         # quick testing input file
         if not sum([args.dead,args.prop]):
             args.dead,args.prop = True,True
-        code = opt.test(args.file, args.quiet, args.dead, args.prop, args.single)
-        interpreter.run(code)
+        opt.test(args.file, args.quiet, args.dead, args.prop, args.single)
+        interpreter.run(opt.code)
     else:
         print("No valid option selected.")

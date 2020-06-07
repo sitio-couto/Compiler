@@ -17,11 +17,12 @@ from uCBlock import uCCFG
 from uCDFA import uCDFA
 from os.path import exists
 
-class Optimizer(object):
-    def __init__(self, generator, cfg=None, dfa=None):
-        self.generator = generator
-        self.cfg = uCCFG(generator) if not cfg else cfg
-        self.dfa = uCDFA(generator, self.cfg) if not dfa else dfa
+class uCIROptimizer(object):
+    def __init__(self, dfa):
+        self.dfa = dfa
+        self.cfg = dfa.cfg
+        self.generator = dfa.cfg.generator
+        self.code = []
     
     def test(self, data, quiet=False, dead=True, prop=True, single=False):
         # Generating code
@@ -42,11 +43,20 @@ class Optimizer(object):
             print("\n")
 
         # Testing.
-        return self.optimize(quiet=quiet, 
-                             dead=dead,
-                             prop=prop, 
-                             single=single)
-
+        self.optimize(quiet=quiet, 
+                      dead=dead,
+                      prop=prop, 
+                      single=single)
+    
+    def show(self, cfg, buf=None):
+        if cfg:
+            self.cfg.view(f=buf.name)
+        else:
+            _str = ''
+            for _code in self.code:
+                _str += f"{_code}\n"
+            buf.write(_str)
+    
     def optimize(self, quiet, dead, prop, single):
         ''' This method will run iterativelly all optimizations.
             When executed, it assumes the generator has already 
@@ -71,7 +81,7 @@ class Optimizer(object):
             self.cfg.print_blocks()
             self.dfa.reaching_definitions()
             self.cfg.print_sets()
-            self.cfg.view()
+            self.show()
             input()
 
         while new_code != current_code:
@@ -88,21 +98,21 @@ class Optimizer(object):
             new_code = self.cfg.retrieve_ir()
             if single:
                 self.cfg.print_blocks()
-                self.cfg.view()
+                self.show()
                 input() # wait key
                 
         # TODO: change root if empty? Just for view.
         self.clean_allocations()
-        self.cfg.check_cfg()
+        # self.cfg.check_cfg()
         new_code = self.cfg.retrieve_ir()
 
-        print(f"Raw Size: {initial_size}")
-        print(f"Opt Size: {len(new_code)}")
         if not quiet:
+            print(f"Raw Size: {initial_size}")
+            print(f"Opt Size: {len(new_code)}")
             self.cfg.print_code()
-            self.cfg.view()
+            self.show(True)
 
-        return new_code
+        self.code = new_code
 
     def deadcode_elimination(self):
         # Preparations for Deadcode elimination routine

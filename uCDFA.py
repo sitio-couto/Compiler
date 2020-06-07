@@ -17,9 +17,9 @@ from os.path import exists
 import re
 
 class uCDFA(object):
-    def __init__(self, generator, block_constructor):
-        self.generator = generator
+    def __init__(self, block_constructor):
         self.cfg = block_constructor
+        self.generator = self.cfg.generator
         
     def test(self, data, quiet=False):
         self.generator.front_end.parser.lexer.reset_line_num()

@@ -10,5 +10,6 @@ tests/IR_in/*.in
 tests/unittest/test.*
 test.out
 notes.txt
-Digraph.gv
-Digraph.gv.pdf
+*.opt
+*.pdf
+*.gv

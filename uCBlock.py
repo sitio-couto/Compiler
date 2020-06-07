@@ -491,10 +491,11 @@ class uCCFG(object):
             txt += b.show_sets()
         print(txt)
 
-    def view(self):
-        '''Uses graphviz to print the prgram's CFG'''
+    def view(self, f=None):
+        '''Uses graphviz to print the program's CFG'''
         blocks = self.index.items()
-        graph = Digraph('Digraph',comment='Control Flow Graph')
+        name = 'uc_cfg.gv' if not f else f
+        graph = Digraph('Digraph',comment='Control Flow Graph', filename=name)
         graph.attr(size='10',fontname="helvetica",nodesep="1")
         graph.attr('node', shape='record')
 

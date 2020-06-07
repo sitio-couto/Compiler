@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 19/05/2020.
+Last Modified: 07/06/2020.
 '''
 
 import re
@@ -179,6 +179,15 @@ class uCIRGenerate(ast.NodeVisitor):
     def print_code(self):
         for inst in self.code:
             print(inst)
+    
+    def show(self, buf=None):
+        if not buf:
+            self.print_code()
+        else:
+            _str = ''
+            for _code in self.code:
+                _str += f"{_code}\n"
+            buf.write(_str)
 
     def visit_Program(self, node):
         # Define volatile vars scope.
