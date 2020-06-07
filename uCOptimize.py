@@ -121,21 +121,40 @@ class Optimizer(object):
                     continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
 
+        is_label = lambda str: bool(re.match(r'\d+',str))
+
         # Short circuit CFG
         for b in blocks:
-            is_root = (self.cfg.first_block == b)
-            has_pred_succ = (len(b.pred)>0 and len(b.succ)>0)
-            # First Case: Collapse Blocks
-            # TODO: problems - test01 of IR_in, simple3 of complete_codes
             # TODO: double edge and no true branch: test07 of IR_in (bubble)
-            if has_pred_succ and not (is_root or b.gen or b.kill):
-                b.collapse()        
+            
+            #### COLLAPSE BLOCK SCENARIOS ####
+            
+            # First Case: single path label-jump block (IR_in/test01.uc)
+            single_path = (len(b.pred)==1 and len(b.succ)==1)
+            label_jump = is_label(b.first_inst()[0]) and ('jump'==b.last_inst()[0])
+            two_insts = (len(b.instructions)==2)
+            if single_path and label_jump and two_insts:
+                b.collapse_block()   
 
-            single_edge = (len(b.pred)==1) and (len(b.pred[0].succ)==1)
-            root_child = (self.cfg.first_block in b.pred)
-            # Second Case: Collapse Edges
-            if single_edge and not root_child:
-                self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])
+            # Second Case: single path label only block (IR_in/test07.uc)
+            single_path = (len(b.pred)==1 and len(b.succ)==1)
+            label_only  = (len(b.instructions)==1) and is_label(b.first_inst()[0])
+            if single_path and label_only:
+                b.collapse_block()        
+
+            #### COLLAPSE EDGES SCENARIOS ####
+
+            # First Case: Single Unecessary jump-label Edge (IR_in/test01.uc)
+            single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
+            jump_label = ('jump'==b.last_inst()[0]) and is_label(b.succ[0].first_inst()[0])
+            if single_edge and jump_label:
+                b.collapse_edge()
+
+            # Second Case: Single Unecessary NOjump-label Edge (IR_in/test07.uc)
+            single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
+            label = b.succ and is_label(b.succ[0].first_inst()[0])
+            if single_edge and label:
+                b.collapse_edge()
         
         # TODO: remove "param" when "call" is removed (test08 of IR_in)
         # TODO: eliminate branch and comparison when both compared values are the same, to avoid double edge (bubble).

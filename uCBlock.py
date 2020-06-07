@@ -121,30 +121,45 @@ class Block(object):
             s.pred.append(self)
         del Block.meta.index[block.ID]
 
-    def collapse(self):
-        print(f"Collapsing Block {self.ID}")
+    def collapse_block(self):
+        '''Collapse a block with a single predecessor/successor'''
         pred = self.pred[0]
         succ = self.succ[0]
         old_label = self.first_inst()[0]
         new_label = succ.first_inst()[0]
+        lin,inst = pred.last_statement()
 
-        # Fix labels
-        if re.match(r'\d+',new_label[0]):
-            lin,inst = pred.last_statement()
+        # Fix labels in branching instructions
+        if inst[0] in ['cbranch','jump']:
+            print(f"Collapsing Block {self.ID}")
             inst = list(inst)
-            if old_label in inst[1]:
-                inst[1] = f'%{new_label}'
-                pred.instructions[lin] = tuple(inst)
-            elif old_label in inst[2]:
-                inst[2] = f'%{new_label}'
-                pred.instructions[lin] = tuple(inst)
-            elif old_label in inst[3]:
-                inst[3] = f'%{new_label}'
-                pred.instructions[lin] = tuple(inst)
+            for i,var in enumerate(inst):
+                if old_label in var:
+                   inst[i] = f"%{new_label}"
+                   pred.instructions[lin] = tuple(inst)
 
         self.delete()
         pred.succ.append(succ)
         succ.pred.append(pred)
+
+    def collapse_edge(self):
+        '''Collapse unecessary edge among consecutive blocks'''
+        succ = self.succ[0]
+        last_inst = self.last_inst()
+        first_inst = succ.first_inst()
+        
+        print(f"Collapsing Edge {self.ID}->{succ.ID}")
+        
+        # If first block ends in jump, remove it
+        if last_inst[0] in ['jump','cbranch']:
+            print(f"Removing {self.get_line(-1)} : {last_inst}")
+            self.remove_inst(self.get_line(-1))
+        # If following block starts in label, remove it
+        if re.match(r'\d+',first_inst[0]):
+            print(f"Removing {self.get_line(0)} : {first_inst}")
+            succ.remove_inst(succ.get_line(0))
+        
+        self.concat_block(succ)
 
     def delete(self):
         for s in self.succ:
@@ -421,24 +436,18 @@ class uCCFG(object):
         for idx in dead:
             try: block = self.index[idx]
             except: continue
-            
             block.delete()
 
-    # NOTE: I think the only case where this will be called is when
-    # the last inst from pred is a jump and the first from succ is a
-    # label, however, if that's not the case, this method is wrong.
-    def collapse_edge(self, pred, succ):
-        last_inst = pred.last_inst()
-        first_inst = succ.first_inst()
-        
-        print(f"Collapsing Edge {pred.ID}->{succ.ID}")
-        if 'jump' in last_inst[0]:
-            print(f"Removing {pred.get_line(-1)} : {last_inst}")
-            pred.remove_inst(pred.get_line(-1))
-        if re.match(r'\d+',first_inst[0]):
-            print(f"Removing {pred.get_line(0)} : {first_inst}")
-            succ.remove_inst(succ.get_line(0))
-        pred.concat_block(succ)
+        # NOTE: blocks which dont terminate in jumps have wrong
+        # predecessors for some reason
+        # Removing fake predecessors
+        for b in self.index.values():
+            fake = []
+            for i,p in enumerate(b.pred):
+                print("FAAAAAALLLLLLLLSSSSSEEEEEEE")
+                if b not in p.succ: fake.append(p)
+            for f in fake: b.pred.remove(f)
+
 
     ### Exhibition Control ###
 
