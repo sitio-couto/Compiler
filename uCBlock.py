@@ -227,7 +227,7 @@ class Block(object):
 
         return txt
 
-class uCCFG(object):
+class uCIRCFG(object):
     def __init__(self, generator):
         # Metavariables (retains CFG info)
         self.blockID = 0 # Count blocks ids

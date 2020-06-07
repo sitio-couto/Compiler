@@ -29,8 +29,8 @@ from uCParser import uCParser
 from uCSemantic import uCSemanticCheck
 from uCGenerate import uCIRGenerate
 from uCInterpreter import uCIRInterpreter
-from uCBlock import uCCFG
-from uCDFA import uCDFA
+from uCBlock import uCIRCFG
+from uCDFA import uCIRDFA
 from uCOptimize import uCIROptimizer
 
 """
@@ -168,7 +168,7 @@ class Compiler:
         self.gen.visit(self.ast)
         self.gencode = self.gen.code
         
-        self.cfg = uCCFG(self.gen)
+        self.cfg = uCIRCFG(self.gen)
         self.cfg.build_cfg(self.gencode)
         if not susy and ir_file is not None:
             if cfg:
@@ -177,7 +177,7 @@ class Compiler:
                 self.gen.show(buf=ir_file)
 
     def _opt(self, susy, opt_file, cfg, debug):
-        self.dfa = uCDFA(self.cfg)
+        self.dfa = uCIRDFA(self.cfg)
         self.opt = uCIROptimizer(self.dfa)
         self.opt.optimize(not debug, True, True, False)
         self.optcode = self.opt.code

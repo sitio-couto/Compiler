@@ -15,8 +15,8 @@ from uCParser import uCParser as Parser
 from uCSemantic import uCSemanticCheck as Semantic
 from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
-from uCBlock import uCCFG as CFG
-from uCDFA import uCDFA as DFA
+from uCBlock import uCIRCFG as CFG
+from uCDFA import uCIRDFA as DFA
 from uCOptimize import uCIROptimizer as Optimizer
 from os.path import exists
 from sys import argv

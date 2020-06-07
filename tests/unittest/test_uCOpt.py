@@ -13,8 +13,8 @@ from uCParser import uCParser as Parser
 from uCSemantic import uCSemanticCheck as Semantic
 from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
-from uCBlock import uCCFG as CFG
-from uCDFA import uCDFA as DFA
+from uCBlock import uCIRCFG as CFG
+from uCDFA import uCIRDFA as DFA
 from uCOptimize import uCIROptimizer as Optimizer
 from os.path import exists
 from sys import argv
@@ -41,7 +41,6 @@ class TestOpt(unittest.TestCase):
         'i11':('tests/IR_in/test11.uc',1000),
         'i12':('tests/IR_in/test12.uc',1000),
         'i13':('tests/IR_in/test13.uc',1000),
-        'e1': ('tests/opt_in/e1.uc',100),
         'c01':('tests/complete_codes/armstrong.uc',1000),
         'c02':('tests/complete_codes/fatorial.uc',1000),
         'c03':('tests/complete_codes/gcd.uc',1000),
@@ -52,6 +51,7 @@ class TestOpt(unittest.TestCase):
         'c08':('tests/complete_codes/simple4.uc',1000),
         'c09':('tests/complete_codes/simple6.uc',1000),
         'c10':('tests/complete_codes/PTR_simple5.uc',1000),
+        't0': ('tests/opt_in/t0.uc',100),
         't1': ('tests/opt_in/t1.uc',1000),
         't2': ('tests/opt_in/t2.uc',1000),
         't3': ('tests/opt_in/t3.uc',1000),
@@ -185,8 +185,8 @@ class TestOpt(unittest.TestCase):
     def test_c10(self):
         self.runNcmp('c10')
 
-    # def test_e1(self):
-    #     self.runNcmp('e1')
+    def test_t0(self):
+        self.runNcmp('t0')
     
     def test_t1(self):
         self.runNcmp('t1')

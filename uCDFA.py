@@ -15,7 +15,7 @@ Last Modified: 07/06/2020.
 from os.path import exists
 import re
 
-class uCDFA(object):
+class uCIRDFA(object):
     def __init__(self, block_constructor):
         self.cfg = block_constructor
         self.generator = self.cfg.generator

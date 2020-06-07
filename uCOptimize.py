@@ -12,8 +12,8 @@ University of Campinas - UNICAMP - 2020
 Last Modified: 07/06/2020.
 '''
 
-import re
 from os.path import exists
+import re
 
 class uCIROptimizer(object):
     def __init__(self, dfa):
@@ -48,7 +48,10 @@ class uCIROptimizer(object):
     
     def show(self, cfg, buf=None):
         if cfg:
-            self.cfg.view(f=buf.name)
+            if buf:
+                self.cfg.view(f=buf.name)
+            else:
+                self.cfg.view()
         else:
             _str = ''
             for _code in self.code:

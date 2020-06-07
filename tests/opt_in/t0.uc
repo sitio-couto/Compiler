@@ -8,3 +8,8 @@ int checkPrime(int n) {
     }
     return isPrime;
 }
+
+int main(){
+	assert checkPrime(6299) == 1;
+	return 0;
+}
