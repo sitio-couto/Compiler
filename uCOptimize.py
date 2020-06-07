@@ -138,6 +138,7 @@ class Optimizer(object):
                 self.cfg.collapse_edge(b.pred[0], b.pred[0].succ[0])
         
         # TODO: remove "param" when "call" is removed (test08 of IR_in)
+        # TODO: eliminate branch and comparison when both compared values are the same, to avoid double edge.
         
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',
