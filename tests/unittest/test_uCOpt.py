@@ -15,7 +15,7 @@ from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCCFG as CFG
 from uCDFA import uCDFA as DFA
-from uCOptimize import Optimizer
+from uCOptimize import uCIROptimizer as Optimizer
 from os.path import exists
 from sys import argv
 
@@ -72,8 +72,8 @@ class TestOpt(unittest.TestCase):
         generator = Generator(semantic)
         interpreter = Interpreter(generator)
         cfg = CFG(generator)
-        dfa = DFA(generator, cfg)
-        opt = Optimizer(generator,cfg=cfg,dfa=dfa)
+        dfa = DFA(cfg)
+        opt = Optimizer(dfa)
         opt.test(filename, True, True, True, False)
 
         raw = generator.code

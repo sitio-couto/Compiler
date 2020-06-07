@@ -142,7 +142,7 @@ class Block(object):
 
         # Fix labels in branching instructions
         if inst[0] in ['cbranch','jump']:
-            print(f"Collapsing Block {self.ID}")
+            #print(f"Collapsing Block {self.ID}")
             inst = list(inst)
             for i,var in enumerate(inst):
                 if old_label in var:
@@ -159,15 +159,15 @@ class Block(object):
         last_inst = self.last_inst()
         first_inst = succ.first_inst()
         
-        print(f"Collapsing Edge {self.ID}->{succ.ID}")
+        #print(f"Collapsing Edge {self.ID}->{succ.ID}")
         
         # If first block ends in jump, remove it
         if last_inst[0] in ['jump','cbranch']:
-            print(f"Removing {self.get_line(-1)} : {last_inst}")
+            #print(f"Removing {self.get_line(-1)} : {last_inst}")
             self.remove_inst(self.get_line(-1))
         # If following block starts in label, remove it
         if re.match(r'\d+',first_inst[0]):
-            print(f"Removing {self.get_line(0)} : {first_inst}")
+            #print(f"Removing {self.get_line(0)} : {first_inst}")
             succ.remove_inst(succ.get_line(0))
         
         self.concat_block(succ)
@@ -444,7 +444,7 @@ class uCCFG(object):
         all_ids = list(range(1, 1 + self.blockID))
         reachable = [b.ID for b in self.dfs_sort()]
         dead = set(all_ids)-set(reachable)
-        if dead: print(f"\nRemoving deadblocks: {dead}\n")
+        #if dead: print(f"\nRemoving deadblocks: {dead}\n")
         for idx in dead:
             try: block = self.index[idx]
             except: continue

@@ -129,7 +129,7 @@ class uCIROptimizer(object):
                 var_def = b.inst_kill[n]
                 # Check if there's a definition and if it's alive
                 if var_def and not var_def <= alive:
-                    print(f"Removing {n} : {b.instructions[n]}")
+                    #print(f"Removing {n} : {b.instructions[n]}")
                     late_kill += b.remove_inst(n)
                     continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
@@ -247,7 +247,7 @@ class uCIROptimizer(object):
                         b.instructions[num] = inst
                         for s in b.succ:
                             if s.first_inst()[0] in dead:       
-                                print(f"Removing Edge {b.ID}->{s.ID}")
+                                #print(f"Removing Edge {b.ID}->{s.ID}")
                                 b.succ.remove(s)
                                 s.pred.remove(b)
                 
