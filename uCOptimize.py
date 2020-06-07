@@ -131,9 +131,10 @@ class Optimizer(object):
             
             # First Case: single path label-jump block (IR_in/test01.uc)
             single_path = (len(b.pred)==1 and len(b.succ)==1)
-            label_jump = is_label(b.first_inst()[0]) and ('jump'==b.last_inst()[0])
+            label = b.first_inst() and is_label(b.first_inst()[0]) 
+            jump = b.last_inst() and ('jump'==b.last_inst()[0])
             two_insts = (len(b.instructions)==2)
-            if single_path and label_jump and two_insts:
+            if single_path and label and jump and two_insts:
                 b.collapse_block()   
 
             # Second Case: single path label only block (IR_in/test07.uc)
@@ -144,15 +145,19 @@ class Optimizer(object):
 
             #### COLLAPSE EDGES SCENARIOS ####
 
+            self.cfg.check_cfg()
             # First Case: Single Unecessary jump-label Edge (IR_in/test01.uc)
             single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
-            jump_label = ('jump'==b.last_inst()[0]) and is_label(b.succ[0].first_inst()[0])
-            if single_edge and jump_label:
+            jump = b.last_inst() and ('jump'==b.last_inst()[0])
+            label = b.succ and b.succ[0].first_inst() and is_label(b.succ[0].first_inst()[0])
+            if single_edge and jump and label:
                 b.collapse_edge()
 
             # Second Case: Single Unecessary NOjump-label Edge (IR_in/test07.uc)
             single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
             label = b.succ and is_label(b.succ[0].first_inst()[0])
+            # if b.ID==7: print(f"{b.ID} {len(b.pred)} {[x.ID for x in b.pred]}")
+            # if b.ID==7:
             if single_edge and label:
                 b.collapse_edge()
         

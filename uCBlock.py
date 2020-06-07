@@ -330,6 +330,7 @@ class uCCFG(object):
                 
         # Remove unreachable blocks
         self.clean_cfg()
+        self.check_cfg()
     
     def get_leaders(self, code):
         ''' Given a list with IR code instructions, find all leaders indexes.
@@ -438,16 +439,19 @@ class uCCFG(object):
             except: continue
             block.delete()
 
-        # NOTE: blocks which dont terminate in jumps have wrong
-        # predecessors for some reason
-        # Removing fake predecessors
+    def check_cfg(self):
+        preds = []
+        succs = []
         for b in self.index.values():
-            fake = []
-            for i,p in enumerate(b.pred):
-                print("FAAAAAALLLLLLLLSSSSSEEEEEEE")
-                if b not in p.succ: fake.append(p)
-            for f in fake: b.pred.remove(f)
+            for p in b.pred:
+                if b not in p.succ:
+                    preds.append((p,b))
+            for s in b.succ:
+                if b not in s.pred:
+                    succs.append((b,s))
 
+        if preds or succs:
+            assert False, "Control Flow Graph is inconsistent"
 
     ### Exhibition Control ###
 
