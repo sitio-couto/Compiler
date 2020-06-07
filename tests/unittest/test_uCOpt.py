@@ -27,23 +27,21 @@ print('\n', f'Working Directory: {workdir}','\n')
 class TestOpt(unittest.TestCase):
     
     inputs = {
-        't00':('tests/IR_in/test.uc',1000),
-        't01':('tests/IR_in/test01.uc',1000),
-        't02':('tests/IR_in/test02.uc',1000),
-        't03':('tests/IR_in/test03.uc',1000),
-        't04':('tests/IR_in/test04.uc',1000),
-        't05':('tests/IR_in/test05.uc',1000),
-        't06':('tests/IR_in/test06.uc',1000),
-        't07':('tests/IR_in/test07.uc',1000),
-        't08':('tests/IR_in/test08.uc',1000),
-        't09':('tests/IR_in/test09.uc',1000),
-        't10':('tests/IR_in/test10.uc',1000),
-        't11':('tests/IR_in/test11.uc',1000),
-        't12':('tests/IR_in/test12.uc',1000),
-        't13':('tests/IR_in/test13.uc',1000),
+        'i00':('tests/IR_in/test.uc',1000),
+        'i01':('tests/IR_in/test01.uc',1000),
+        'i02':('tests/IR_in/test02.uc',1000),
+        'i03':('tests/IR_in/test03.uc',1000),
+        'i04':('tests/IR_in/test04.uc',1000),
+        'i05':('tests/IR_in/test05.uc',1000),
+        'i06':('tests/IR_in/test06.uc',1000),
+        'i07':('tests/IR_in/test07.uc',1000),
+        'i08':('tests/IR_in/test08.uc',1000),
+        'i09':('tests/IR_in/test09.uc',1000),
+        'i10':('tests/IR_in/test10.uc',1000),
+        'i11':('tests/IR_in/test11.uc',1000),
+        'i12':('tests/IR_in/test12.uc',1000),
+        'i13':('tests/IR_in/test13.uc',1000),
         'e1': ('tests/opt_in/e1.uc',100),
-        'e2': ('tests/opt_in/e2.uc',38),
-        'e3': ('tests/opt_in/e3.uc',9),
         'c01':('tests/complete_codes/armstrong.uc',1000),
         'c02':('tests/complete_codes/fatorial.uc',1000),
         'c03':('tests/complete_codes/gcd.uc',1000),
@@ -53,7 +51,15 @@ class TestOpt(unittest.TestCase):
         'c07':('tests/complete_codes/simple3.uc',1000),
         'c08':('tests/complete_codes/simple4.uc',1000),
         'c09':('tests/complete_codes/simple6.uc',1000),
-        'c10':('tests/complete_codes/PTR_simple5.uc',1000)}
+        'c10':('tests/complete_codes/PTR_simple5.uc',1000),
+        't1': ('tests/opt_in/t1.uc',1000),
+        't2': ('tests/opt_in/t2.uc',1000),
+        't3': ('tests/opt_in/t3.uc',1000),
+        't4': ('tests/opt_in/t4.uc',1000),
+        't5': ('tests/opt_in/t5.uc',1000),
+        't6': ('tests/opt_in/t6.uc',1000),
+        't7': ('tests/opt_in/t7.uc',1000),
+        't8': ('tests/opt_in/t8.uc',1000)}
 
     def runNcmp(self, id):
         filename,goal = self.inputs[id]
@@ -107,47 +113,47 @@ class TestOpt(unittest.TestCase):
 
     #### NOTE: Some tests are commented because they require input.
 
-    def test_t0(self):
-        self.runNcmp('t00')
+    def test_i0(self):
+        self.runNcmp('i00')
 
-    def test_t1(self):
-        self.runNcmp('t01')
+    def test_i1(self):
+        self.runNcmp('i01')
 
-    def test_t2(self):
-        self.runNcmp('t02')
+    def test_i2(self):
+        self.runNcmp('i02')
     
-    def test_t3(self):
-        self.runNcmp('t03')
+    def test_i3(self):
+        self.runNcmp('i03')
 
-    def test_t4(self):
-        self.runNcmp('t04')
+    def test_i4(self):
+        self.runNcmp('i04')
 
-    def test_t5(self):
-        self.runNcmp('t05')
+    def test_i5(self):
+        self.runNcmp('i05')
     
-    def test_t6(self):
-        self.runNcmp('t06')
+    def test_i6(self):
+        self.runNcmp('i06')
 
-    # def test_t7(self):
-    #     self.runNcmp('t07')
+    # def test_i7(self):
+    #     self.runNcmp('i07')
 
-    def test_t8(self):
-        self.runNcmp('t08')
+    def test_i8(self):
+        self.runNcmp('i08')
     
-    def test_t9(self):
-        self.runNcmp('t09')
+    def test_i9(self):
+        self.runNcmp('i09')
 
-    def test_t10(self):
-        self.runNcmp('t10')
+    def test_i10(self):
+        self.runNcmp('i10')
 
-    def test_t11(self):
-        self.runNcmp('t11')
+    def test_i11(self):
+        self.runNcmp('i11')
     
-    # def test_t12(self):
-    #     self.runNcmp('t12')
+    # def test_i12(self):
+    #     self.runNcmp('i12')
 
-    # def test_t13(self):
-    #     self.runNcmp('t13')
+    # def test_i13(self):
+    #     self.runNcmp('i13')
 
     # def test_c1(self):
     #     self.runNcmp('c01')
@@ -179,14 +185,32 @@ class TestOpt(unittest.TestCase):
     def test_c10(self):
         self.runNcmp('c10')
 
-    def test_e1(self):
-        self.runNcmp('e1')
+    # def test_e1(self):
+    #     self.runNcmp('e1')
+    
+    def test_t1(self):
+        self.runNcmp('t1')
+    
+    def test_t2(self):
+        self.runNcmp('t2')
+    
+    def test_t3(self):
+        self.runNcmp('t3')
+    
+    def test_t4(self):
+        self.runNcmp('t4')
+    
+    def test_t5(self):
+        self.runNcmp('t5')
 
-    def test_e2(self):
-        self.runNcmp('e2')
-
-    def test_e3(self):
-        self.runNcmp('e3')
+    def test_t6(self):
+        self.runNcmp('t6')
+    
+    def test_t7(self):
+        self.runNcmp('t7')
+    
+    def test_t8(self):
+        self.runNcmp('t8')
 
 if __name__ == '__main__':
     unittest.main()    
