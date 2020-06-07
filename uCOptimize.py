@@ -105,8 +105,10 @@ class Optimizer(object):
         return new_code
 
     def deadcode_elimination(self):
-        # Run dataflow analysis preparing block sets
+        # Preparations for Deadcode elimination routine
         blocks = self.dfa.liveness_analysis()
+        is_label = lambda str: bool(re.match(r'\d+',str))
+        late_kill = []
 
         # Iterate through blocks eliminating code
         for b in blocks:
@@ -118,11 +120,13 @@ class Optimizer(object):
                 # Check if there's a definition and if it's alive
                 if var_def and not var_def <= alive:
                     print(f"Removing {n} : {b.instructions[n]}")
-                    b.remove_inst(n)
+                    late_kill += b.remove_inst(n)
                     continue
                 alive = b.inst_gen[n] | (alive - b.inst_kill[n])
-
-        is_label = lambda str: bool(re.match(r'\d+',str))
+        
+        # Kill statements which cannot be removed in runtime
+        for ID,line in late_kill: 
+            self.cfg.index[ID].remove_inst(line)
 
         # Short circuit CFG
         for b in blocks:
@@ -145,7 +149,7 @@ class Optimizer(object):
                 b.collapse_block()       
                 continue 
 
-            # #### COLLAPSE EDGES SCENARIOS ####
+            #### COLLAPSE EDGES SCENARIOS ####
 
             # First Case: Single Unecessary jump-label Edge (IR_in/test01.uc)
             single_edge = (len(b.succ)==1) and (len(b.succ[0].pred)==1)
@@ -162,8 +166,6 @@ class Optimizer(object):
             if single_edge and label:
                 b.collapse_edge()
                 continue
-        
-        # TODO: remove "param" when "call" is removed (test08 of IR_in)
         
     def constant_propagation(self):
         binary = ('add', 'sub', 'mul', 'div', 'mod',

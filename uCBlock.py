@@ -89,12 +89,23 @@ class Block(object):
         except: return None
 
     def remove_inst(self, line):
-        try:
-            del(self.instructions[line])
-            del(self.inst_gen[line])
-            del(self.inst_kill[line])
-        except KeyError:
-            print(f"Line {line} not found in block {self.ID}")
+        '''Remove instruction from block assuming it exists'''
+        # Save params to be deleted later
+        late_kill = []
+        insts = self.instructions
+        aux = list(insts.keys())
+        rollback = reversed(aux[:aux.index(line)])
+        for s in rollback:
+            if 'param' not in insts[s][0]: break
+            late_kill.append((self.ID,s))
+
+        # Delete Statement
+        del(self.instructions[line])
+        del(self.inst_gen[line])
+        del(self.inst_kill[line])
+
+        return late_kill
+            
 
     def __iter__(self):
         return iter(self.instructions.values())
