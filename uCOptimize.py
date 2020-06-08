@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/06/2020.
+Last Modified: 08/06/2020.
 '''
 
 from os.path import exists
@@ -202,13 +202,23 @@ class uCIROptimizer(object):
                 inst_block = b.meta.index[in_bl]
                 inst = inst_block.instructions[num]
                 target = inst[-1]
-                op = inst[0].split('_')[0]
+                
+                split_inst = inst[0].split('_')
+                op = split_inst[0]
                 
                 # Const dict.
                 if op == 'literal':
                     if target not in const:
                         const[target] = inst[1]
                     elif const[target] != inst[1]:
+                        const[target] = 'NAC'
+                elif op == 'global':
+                    # If the global variable is not array or pointer, and if it has init.
+                    target = inst[1]
+                    global_const = (len(split_inst) == 2 and len(inst) == 3)
+                    if global_const and target not in const:
+                        const[target] = inst[2]
+                    else:
                         const[target] = 'NAC'
                 else:
                     const[target] = 'NAC'
