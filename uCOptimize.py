@@ -40,6 +40,9 @@ class uCIROptimizer(object):
             self.generator.print_code()
             print("\n")
 
+        # Build CFG.
+        self.cfg.build_cfg(self.generator.code)
+        
         # Testing.
         self.optimize(quiet=quiet, 
                       dead=dead,
@@ -66,8 +69,6 @@ class uCIROptimizer(object):
             Return:
              - list of tuples: Optimized IR code
         '''
-        # Build CFG.
-        self.cfg.build_cfg(self.generator.code)
         current_code = self.generator.code.copy()
         initial_size = len(current_code)
         new_code = None
