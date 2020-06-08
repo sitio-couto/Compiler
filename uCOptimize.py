@@ -41,6 +41,8 @@ class uCIROptimizer(object):
             print("\n")
 
         # Build CFG.
+        if self.cfg.first_block:
+            self.cfg.delete_cfg()
         self.cfg.build_cfg(self.generator.code)
         
         # Testing.
