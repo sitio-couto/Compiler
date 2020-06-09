@@ -12,7 +12,7 @@
 # ---------------------------------------------------------------------------------
 
 '''
-Second Project: Interpreter for uCIR intermediate code based on uC.
+Second and Third Projects: Interpreter for uCIR intermediate code based on uC.
 uCIR: check SecondProject.ipynb in 'Notebooks' submodule.
 
 Subject:
@@ -24,13 +24,11 @@ Modified by:
 Modifications from source:
     Changed class name;
     Added generator and test method;
-    Flushed prints;
-    Added mod operation;
-    Fixed div operations.
+    Compatibility change for labels.
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/05/2020.
+Last Modified: 07/06/2020.
 '''
 
 import sys
@@ -146,7 +144,7 @@ class uCIRInterpreter(object):
                 op = ircode[self.pc]
             except IndexError:
                 break
-            if not op[0].isdigit():
+            if len(op) > 1:  # that is, not label
                 opcode, modifier = self._extract_operation(op[0])
                 if opcode.startswith('global'):
                     self.globals[op[1]] = self.offset
@@ -181,7 +179,7 @@ class uCIRInterpreter(object):
             except IndexError:
                 break
             self.pc += 1
-            if not op[0].isdigit():
+            if len(op) > 1 or op[0] == 'return_void':
                 opcode, modifier = self._extract_operation(op[0])
                 if hasattr(self, "run_" + opcode):
                     if not modifier:
@@ -200,19 +198,21 @@ class uCIRInterpreter(object):
         _lpc = self.pc
         while True:
             try:
-                _opcode = self.code[_lpc][0]
+                _op = self.code[_lpc]
+                _opcode = _op[0]
                 _lpc += 1
                 if _opcode == 'define':
                     break
-                elif _opcode.isdigit():
-                    # labels don't go to memory, just in the dictionary
+                elif len(_op) == 1 and _opcode != 'return_void':
+                    # labels don't go to memory, just store the pc on dictionary
+                    # labels appears as name:, so we need to extract just the name
                     self.vars['%' + _opcode] = _lpc
             except IndexError:
                 break
 
     def _alloc_reg(self, target):
         # Alloc space in memory and save the offset in the dictionary
-        # for new vars or tempraries, only.
+        # for new vars or temporaries, only.
         if target not in self.vars:
             self.vars[target] = self.offset
             self.offset += 1
@@ -242,8 +242,8 @@ class uCIRInterpreter(object):
     def _load_multiple_values(self, size, varname, target):
         self.vars[target] = self.offset
         self.offset += size
-        self._store_multiple_values(size, target, varname) 
-        
+        self._store_multiple_values(size, target, varname)
+
     def _push(self):
         # save the addresses of the vars from caller & their last offset
         self.stack.append(self.vars)
@@ -283,7 +283,7 @@ class uCIRInterpreter(object):
         else:
             # We reach the end of main function, so return to system
             # with the code returned by main in the return register.
-            print(flush=True) 
+            print(flush=True)
             if target is None:
                 # void main () was defined, so exit with value 0
                 sys.exit(0)
@@ -440,6 +440,9 @@ class uCIRInterpreter(object):
     run_print_char = run_print_int
     run_print_bool = run_print_int
 
+    def run_print_void(self):
+        print(end="\n", flush=True)
+
     def run_read_int(self, source):
         global inputline
         self._get_input()
@@ -466,7 +469,7 @@ class uCIRInterpreter(object):
             except:
                 v2 = v1
         except:
-            print("Illegal input value.",flush=True)
+            print("Illegal input value.", flush=True)
         self._alloc_reg(source)
         self._store_value(source, v2)
 
@@ -525,6 +528,10 @@ class uCIRInterpreter(object):
         self._alloc_reg(target)
         M[self.vars[target]] = M[self.vars[left]] * M[self.vars[right]]
 
+    def run_mod_int(self, left, right, target):
+        self._alloc_reg(target)
+        M[self.vars[target]] = M[self.vars[left]] % M[self.vars[right]]
+
     def run_div_int(self, left, right, target):
         self._alloc_reg(target)
         M[self.vars[target]] = M[self.vars[left]] // M[self.vars[right]]
@@ -532,16 +539,11 @@ class uCIRInterpreter(object):
     def run_div_float(self, left, right, target):
         self._alloc_reg(target)
         M[self.vars[target]] = M[self.vars[left]] / M[self.vars[right]]
-        
-    def run_mod_int(self, left, right, target):
-        self._alloc_reg(target)
-        M[self.vars[target]] = M[self.vars[left]] % M[self.vars[right]]
-            
+
     # Floating point ops (same as int)
     run_add_float = run_add_int
     run_sub_float = run_sub_int
     run_mul_float = run_mul_int
-    run_mod_float = run_mod_int
 
     # Integer comparisons
     def run_lt_int(self, left, right, target):

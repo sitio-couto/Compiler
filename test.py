@@ -15,8 +15,43 @@ from uCParser import uCParser as Parser
 from uCSemantic import uCSemanticCheck as Semantic
 from uCGenerate import uCIRGenerate as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
+from uCBlock import uCIRCFG as CFG
+from uCDFA import uCIRDFA as DFA
+from uCOptimize import uCIROptimizer as Optimizer
 from os.path import exists
 from sys import argv
+import argparse
+
+# NOTE: Running tests
+# to test some optimization do the following:
+# python test.py -f inputfile/path.uc [--dead|--prop|--single|--quiet]
+# if no opt is defined it will run all of then
+# The remaining test options can be used by running:
+# python test.py -x (where x is the desired test type)
+
+parser = argparse.ArgumentParser(
+    description='''Test specific sections of our compiler's pipeline.'''
+    )
+parser.add_argument('-f','--file', type=str, 
+                    help='Path of the uC code input file.')
+parser.add_argument('-q','--quiet', action='store_true', 
+                    help='No prints or graphs, only output file.')
+parser.add_argument('--dead', action='store_true', 
+                    help='Run deadcode elimination optimization.')
+parser.add_argument('--prop', action='store_true', 
+                    help='Run constant propagation optimization.')
+parser.add_argument('--single', action='store_true', 
+                    help='Run one iteration at a time.')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('-l','--lexer', action='store_true')
+group.add_argument('-p','--parser', action='store_true')
+group.add_argument('-s','--semantic', action='store_true')
+group.add_argument('-g','--generator', action='store_true')
+group.add_argument('-i','--interpreter', action='store_true')
+group.add_argument('-b','--basicblocks', action='store_true')
+group.add_argument('-d','--dataflow', action='store_true')
+group.add_argument('-o','--optimization', action='store_true')
+args = parser.parse_args()
 
 def print_error(msg, x, y):
     print("Lexical error: %s at %d:%d" % (msg, x, y))
@@ -30,54 +65,71 @@ if __name__ == '__main__':
     # Building parser
     parser = Parser(tokenizer)
     parser.build()
-    
+
     semantic = Semantic(parser)
     generator = Generator(semantic)
-    interpreter = Interpreter(generator)
     
-    while True:
+    # Interpret or optimize IR.
+    interpreter = Interpreter(generator)
+    cfg = CFG(generator)
+    dfa = DFA(cfg)
+    opt = Optimizer(dfa)
+    
+    if args.lexer:
+        while True: 
+            try:
+                tokenizer.reset_line_num()
+                tokenizer.test(input("Filename or expression for Lexer: "))
+            except EOFError:
+                break
+    elif args.parser:
+        while True:
+            try:
+                parser.test(input("Filename or expression for Parser: "))
+            except EOFError:
+                break
+    elif args.semantic:
+        while True:
+            try:
+                semantic.test(input("Filename or expression for Semantic Check: "), args.quiet)
+            except EOFError:
+                break
+    elif args.generator:
+        while True:
+            try:
+                generator.test(input("Filename or expression for IR Generation: "), args.quiet)
+            except EOFError:
+                break
+    elif args.interpreter:
+        while True:
+            try:
+                interpreter.test(input("Filename or expression to run: "), args.quiet)
+            except EOFError:
+                break
+    elif args.basicblocks:
+        while True:
+            try:
+                cfg.test(input("Filename or expression to separate: "), args.quiet)
+            except EOFError:
+                break
+    elif args.dataflow:
+        while True:
+            try:
+                dfa.test(input("Filename or expression to analyze: "), args.quiet)
+            except EOFError:
+                break
+    elif args.optimization:
+        while True:
+            try:
+                opt.test(input("Filename or expression to optimize and run: "), args.quiet, args.dead, args.prop, args.single)
+                interpreter.run(opt.code)
+            except EOFError:
+                break
+    elif args.file:
         # quick testing input file
-        if len(argv) > 1 :
-            for i in range(1,len(argv)):
-                generator.test(argv[i], False)
-            exit(1)
-
-        print("\nSend 'l' for lexer test, 'p' for parser test, 's' for semantic test, 'g' for IR Generation test and 'i' for interpreter test ('q' to quit)")
-        mode = input("Mode: ")
-
-        if mode == 'l':
-            while True: 
-                try:
-                    tokenizer.reset_line_num()
-                    tokenizer.test(input("Filename or expression for Lexer: "))
-                except EOFError:
-                    break
-        elif mode == 'p':
-            while True:
-                try:
-                    parser.test(input("Filename or expression for Parser: "))
-                except EOFError:
-                    break
-        elif mode == 's':
-            while True:
-                try:
-                    semantic.test(input("Filename or expression for Semantic Check: "), True)
-                except EOFError:
-                    break
-        elif mode == 'g':
-            while True:
-                try:
-                    generator.test(input("Filename or expression for IR Generation: "), False)
-                except EOFError:
-                    break
-        elif mode == 'i':
-            while True:
-                try:
-                    interpreter.test(input("Filename or expression to run: "), True)
-                except EOFError:
-                    break
-        elif mode == 'q':
-            break
-        else:
-            print('Invalid mode! Try again.')
-
+        if not sum([args.dead,args.prop]):
+            args.dead,args.prop = True,True
+        opt.test(args.file, args.quiet, args.dead, args.prop, args.single)
+        interpreter.run(opt.code)
+    else:
+        print("No valid option selected.")
