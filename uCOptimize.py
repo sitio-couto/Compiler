@@ -83,8 +83,6 @@ class uCIROptimizer(object):
         #   linesIDs in the new CFG.
         if single:
             self.cfg.print_blocks()
-            self.dfa.reaching_definitions()
-            self.cfg.print_sets()
             self.show()
             input()
 
@@ -92,16 +90,17 @@ class uCIROptimizer(object):
             current_code = new_code
 
             if dead: self.deadcode_elimination()
+            if single: self.cfg.print_sets()
             self.cfg.clear_sets()
 
             if prop: self.constant_propagation()
+            if single: self.cfg.print_sets()
             self.cfg.clear_sets()
             
             self.cfg.clean_cfg()
 
             new_code = self.cfg.retrieve_ir()
             if single:
-                self.cfg.print_blocks()
                 self.show()
                 input() # wait key
                 
