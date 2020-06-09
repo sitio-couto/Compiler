@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 08/06/2020.
+Last Modified: 09/06/2020.
 '''
 
 from os.path import exists
@@ -162,17 +162,15 @@ class uCIRDFA(object):
             for num,inst in b.instructions.items():
                 split_inst = inst[0].split('_')
                 call_return = (split_inst[0] == 'call') and (len(inst) == 3)
-                global_def  = (split_inst[0] == 'global') and (len(inst) == 3) and (len(split_inst) == 2)
                 local_def   = (split_inst[0] in def_types)
                 
-                if global_def or local_def or call_return:
-                    target = inst[1] if global_def else inst[-1]
+                if local_def or call_return:
                     
                     # Update DEFS.
-                    if not defs.get(target, None):
-                        defs[target] = set([(b.ID,num)])
+                    if not defs.get(inst[-1], None):
+                        defs[inst[-1]] = set([(b.ID,num)])
                     else:
-                        defs[target].update([(b.ID,num)])
+                        defs[inst[-1]].update([(b.ID,num)])
         
         # Gen/Kill definitions
         for b in dfs:
@@ -181,13 +179,10 @@ class uCIRDFA(object):
             for num,inst in b.instructions.items():
                 split_inst = inst[0].split('_')
                 call_return = (split_inst[0] == 'call') and (len(inst) == 3)
-                global_def  = (split_inst[0] == 'global') and (len(inst) == 3) and (len(split_inst) == 2)
                 local_def   = (split_inst[0] in def_types)
                 
-                if global_def or local_def or call_return:
-                    target = inst[1] if global_def else inst[-1]
-                    
-                    curr_kill = defs[target] - set([(b.ID,num)])
+                if local_def or call_return:
+                    curr_kill = defs[inst[-1]] - set([(b.ID,num)])
                     curr_gen  = set([(b.ID,num)]) | (b.gen - curr_kill)
                     b.kill.update(curr_kill)
                     b.gen.update(curr_gen)
