@@ -10,3 +10,6 @@ tests/IR_in/*.in
 tests/unittest/test.*
 test.out
 notes.txt
+*.opt
+*.pdf
+*.gv
