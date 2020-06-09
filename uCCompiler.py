@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/06/2020.
+Last Modified: 09/06/2020.
 '''
 
 #!/usr/bin/env python3
@@ -203,8 +203,8 @@ class Compiler:
                 sys.stderr.write("{} error(s) encountered.".format(errors_reported()))
             else:
                 if opt:
-                    self.speedup = len(self.gencode) / len(self.optcode)
-                    sys.stderr.write("speedup = %.2f\n" % self.speedup)
+                    self.speedup = len(self.gencode) / len(self.optcode)                    
+                    sys.stderr.write("original = %d, optimized = %d, speedup = %.2f\n" % (len(self.gencode), len(self.optcode), self.speedup))
                 if run_ir and not cfg:
                     self.vm = uCIRInterpreter(self.gen)
                     if opt:
