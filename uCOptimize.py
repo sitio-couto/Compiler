@@ -114,7 +114,7 @@ class uCIROptimizer(object):
             print(f"Raw Size: {initial_size}")
             print(f"Opt Size: {len(new_code)}")
             self.cfg.print_code()
-            self.show(True)
+            self.show()
 
         self.code = new_code
 
