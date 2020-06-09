@@ -182,7 +182,7 @@ class Compiler:
         self.opt.optimize(not debug, True, True, False)
         self.optcode = self.opt.code
         if not susy and opt_file is not None:
-            self.opt.show(cfg, buf=opt_file)
+            self.opt.show(buf=opt_file)
 
     def _do_compile(self, susy, ast_file, ir_file, opt_file, cfg, opt, debug):
         """ Compiles the code to the given file object. """

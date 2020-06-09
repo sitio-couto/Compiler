@@ -51,8 +51,8 @@ class uCIROptimizer(object):
                       prop=prop, 
                       single=single)
     
-    def show(self, cfg, buf=None):
-        if cfg:
+    def show(self, buf=None):
+        if self.cfg:
             if buf:
                 self.cfg.view(f=buf.name)
             else:
