@@ -91,12 +91,12 @@ class ScopeStack():
             text += '\n'
         return text
 
-class uCIRGenerate(ast.NodeVisitor):
+class uCIRGenerator(ast.NodeVisitor):
     '''
     Node visitor class that creates 3-address encoded instruction sequences.
     '''
     def __init__(self, front_end=None):
-        super(uCIRGenerate, self).__init__()
+        super(uCIRGenerator, self).__init__()
 
         # Adding variables tables
         self.scopes = ScopeStack()

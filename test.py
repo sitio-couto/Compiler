@@ -13,11 +13,12 @@ University of Campinas - UNICAMP - 2020
 from uCLexer import uCLexer as Lexer
 from uCParser import uCParser as Parser
 from uCSemantic import uCSemanticCheck as Semantic
-from uCGenerate import uCIRGenerate as Generator
+from uCGenerate import uCIRGenerator as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCIRCFG as CFG
 from uCDFA import uCIRDFA as DFA
 from uCOptimize import uCIROptimizer as Optimizer
+from uCTranslate import uCIRTranslator as Translator
 from os.path import exists
 from sys import argv
 import argparse
@@ -51,6 +52,7 @@ group.add_argument('-i','--interpreter', action='store_true')
 group.add_argument('-b','--basicblocks', action='store_true')
 group.add_argument('-d','--dataflow', action='store_true')
 group.add_argument('-o','--optimization', action='store_true')
+group.add_argument('-c','--compilation', action='store_true')
 args = parser.parse_args()
 
 def print_error(msg, x, y):
@@ -74,6 +76,7 @@ if __name__ == '__main__':
     cfg = CFG(generator)
     dfa = DFA(cfg)
     opt = Optimizer(dfa)
+    llvm = Translator(opt)
     
     if args.lexer:
         while True: 
@@ -123,6 +126,12 @@ if __name__ == '__main__':
             try:
                 opt.test(input("Filename or expression to optimize and run: "), args.quiet, args.dead, args.prop, args.single)
                 interpreter.run(opt.code)
+            except EOFError:
+                break
+    elif args.compilation:
+        while True:
+            try:
+                llvm.test(input("Filename or expression to compile: "), args.quiet, args.dead, args.prop, args.single)
             except EOFError:
                 break
     elif args.file:

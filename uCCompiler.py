@@ -27,7 +27,7 @@ from contextlib import contextmanager
 from uCLexer import uCLexer
 from uCParser import uCParser
 from uCSemantic import uCSemanticCheck
-from uCGenerate import uCIRGenerate
+from uCGenerate import uCIRGenerator
 from uCInterpreter import uCIRInterpreter
 from uCBlock import uCIRCFG
 from uCDFA import uCIRDFA
@@ -164,7 +164,7 @@ class Compiler:
 
     def _codegen(self, susy, ir_file, cfg):
         """ Generate uCIR Code for the decorated AST. """
-        self.gen = uCIRGenerate(self.sema)
+        self.gen = uCIRGenerator(self.sema)
         self.gen.visit(self.ast)
         self.gencode = self.gen.code
         

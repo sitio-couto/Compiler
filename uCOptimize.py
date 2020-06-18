@@ -20,11 +20,26 @@ class uCIROptimizer(object):
         self.dfa = dfa
         self.cfg = dfa.cfg
         self.generator = dfa.cfg.generator
+        self.front_end = self.generator.front_end
         self.code = []
     
+    def generate(self, data):
+        self.generator.generate(data)
+        
+        # Build CFG.
+        if self.cfg.first_block:
+            self.cfg.delete_cfg()
+        self.cfg.build_cfg(self.generator.code)
+        
+        # Testing.
+        self.optimize(quiet=quiet, 
+                      dead=dead,
+                      prop=prop, 
+                      single=single)
+        
     def test(self, data, quiet=False, dead=True, prop=True, single=False):
         # Generating code
-        self.generator.front_end.parser.lexer.reset_line_num()
+        self.front_end.parser.lexer.reset_line_num()
         
         # Scan and parse
         if exists(data):
@@ -62,6 +77,9 @@ class uCIROptimizer(object):
             for _code in self.code:
                 _str += self.generator.format_instruction(code)+'\n'
             buf.write(_str)
+    
+    def print_code(self):
+        self.cfg.print_code()
     
     def optimize(self, quiet, dead, prop, single):
         ''' This method will run iterativelly all optimizations.
