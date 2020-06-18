@@ -60,7 +60,7 @@ class uCIROptimizer(object):
         else:
             _str = ''
             for _code in self.code:
-                _str += f"{_code}\n"
+                _str += self.generator.format_instruction(code)+'\n'
             buf.write(_str)
     
     def optimize(self, quiet, dead, prop, single):
@@ -312,7 +312,11 @@ class uCIROptimizer(object):
                         allc_map[inst[1]] = (b,lin)
                         allocs.add(inst[1])
                     else:
-                        temps.update(set(re.findall(r'%[0-9a-zA-Z_]*|@.str.\d+|@[a-zA-Z_][0-9a-zA-Z_]*', str(inst))))
+                        string = r'@.str.\d+'
+                        array = r'@.const.[a-zA-Z_][0-9a-zA-Z_]*.\d+'
+                        temp = r'%[0-9a-zA-Z_]*'
+                        glob = r'@[a-zA-Z_][0-9a-zA-Z_]*'
+                        temps.update(set(re.findall(r'%s|%s|%s|%s' % (temp,glob,string,array), str(inst))))
         
             # Kill any allocated but unused temps
             to_kill = allocs - temps

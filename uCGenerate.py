@@ -112,7 +112,7 @@ class uCIRGenerate(ast.NodeVisitor):
         # Version dictionary for temporaries
         self.fname = 'global'
         self.versions = {}
-        self.str_counter = 0
+        self.cnst_counter = 0
 
         # Dictionaries for operations
         self.bin_ops = {'+':'add', '-':'sub', '*':'mul', '/':'div', '%':'mod'}
@@ -129,9 +129,15 @@ class uCIRGenerate(ast.NodeVisitor):
 
     def new_str(self):
         ''' Create a new string constant on the global scope. '''
-        name = f"@.str.{self.str_counter}" 
-        self.str_counter += 1
+        name = f"@.str.{self.cnst_counter}" 
+        self.cnst_counter += 1
         return name
+    
+    def new_const(self, name):
+        ''' Create a new array constant on the global scope. '''
+        const = f"@.const_" + name + f".{self.cnst_counter}" 
+        self.cnst_counter += 1
+        return const
 
     def new_temp(self):
         ''' Create a new temporary variable of a given scope (function name). '''
@@ -140,13 +146,6 @@ class uCIRGenerate(ast.NodeVisitor):
         name = f"%{self.versions[self.fname]}" 
         self.versions[self.fname] += 1
         return name
-
-    def write_file(self, code, out_file):
-        out = ''
-        for inst in code: out += self.format_instruction(inst)+'\n'
-        f = open(out_file, 'w')
-        f.write(out)
-        f.close()
 
     def generate(self, data):
         ast = self.front_end.parser.parse(data, False)
@@ -214,8 +213,15 @@ class uCIRGenerate(ast.NodeVisitor):
         else:
             _str = ''
             for _code in self.code:
-                _str += f"{_code}\n"
+                _str += self.format_instruction(code)+'\n'
             buf.write(_str)
+
+    def write_file(self, code, out_file):
+        out = ''
+        for inst in code: out += self.format_instruction(inst)+'\n'
+        f = open(out_file, 'w')
+        f.write(out)
+        f.close()
 
     def visit_Program(self, node):
         # Define volatile vars scope.
@@ -519,7 +525,7 @@ class uCIRGenerate(ast.NodeVisitor):
             if arr_decl and init_type:
                 init = self.get_expr(node.init, ty=node.type, name=ty)
                 
-                name = self.new_str()
+                name = self.new_const(node.name.name)
                 inst = ('global_' + ty, name, init)
                 self.constants[name] = inst
                             
@@ -691,20 +697,20 @@ class uCIRGenerate(ast.NodeVisitor):
         inst = ('define_'+ty, '@'+name, params_list)
         self.code.append(inst)
         
-        # Visit function declaration (FuncDecl)
-        self.alloc_phase = True
-        self.visit(node.decl.type)
-
         # Get return temporary variable
         if ty != 'void':
             self.ret['value'] = self.new_temp()
             inst = ('alloc_'+ty, self.ret['value'])
             self.code.append(inst)
-        
+
         # Get return label, if needed.
         self.ret['label'] = self.new_temp()
         label = (self.ret['label'][1:],)
-                
+        
+        # Visit function declaration (FuncDecl)
+        self.alloc_phase = True
+        self.visit(node.decl.type)
+        
         # Visit body
         if node.body:
             
