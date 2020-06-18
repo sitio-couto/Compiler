@@ -244,7 +244,7 @@ class uCIRInterpreter(object):
         self.offset += size
         self._store_multiple_values(size, target, varname)
 
-    def _push(self):
+    def _push(self, locs):
         # save the addresses of the vars from caller & their last offset
         self.stack.append(self.vars)
         self.sp.append(self.offset)
@@ -253,10 +253,9 @@ class uCIRInterpreter(object):
         # and copy the parameters passed to the callee in their local vars.
         # Finally, cleanup the parameters list used to transfer these vars
         self.vars = {}
-        #idx = 0
         for idx, val in enumerate(self.params):
             # Note that arrays (size >=1) are passed by reference only.
-            self.vars['%' + str(idx+1)] = self.offset
+            self.vars[locs[idx]] = self.offset
             M[self.offset] = M[val]
             self.offset += 1
         self.params = []
@@ -356,8 +355,10 @@ class uCIRInterpreter(object):
             # alloc the labels with respective pc's
             self._alloc_labels()
         else:
-            self._push()
-
+            # extract the location names of function args
+            _locs = [el[1] for el in args]
+            self._push(_locs)
+            
     def run_elem_int(self, source, index, target):
         self._alloc_reg(target)
         _aux = self._get_address(source)
@@ -451,14 +452,6 @@ class uCIRInterpreter(object):
             print("Illegal input value.", flush=True)
             
         return v2
-    
-    def run_read_int(self, source):
-        _value = self._read_int()
-        self._store_value(source, _value)
-
-    def run_read_int_(self, source, **kwargs):
-        _value = self._read_int()
-        self._store_deref(source, _value)
 
     def _read_float(self):
         global inputline
@@ -473,6 +466,14 @@ class uCIRInterpreter(object):
         except:
             print("Illegal input value.", flush=True)
         return v2
+    
+    def run_read_int(self, source):
+        _value = self._read_int()
+        self._store_value(source, _value)
+
+    def run_read_int_(self, source, **kwargs):
+        _value = self._read_int()
+        self._store_deref(source, _value)
         
     def run_read_float(self, source):
         _value = self._read_float()

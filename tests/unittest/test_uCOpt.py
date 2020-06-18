@@ -11,7 +11,7 @@ sys.path.append(workdir)
 from uCLexer import uCLexer as Lexer
 from uCParser import uCParser as Parser
 from uCSemantic import uCSemanticCheck as Semantic
-from uCGenerate import uCIRGenerate as Generator
+from uCGenerate import uCIRGenerator as Generator
 from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCIRCFG as CFG
 from uCDFA import uCIRDFA as DFA
