@@ -199,6 +199,8 @@ class uCIRGenerate(ast.NodeVisitor):
                 return _str
         elif op == 'print_void' or op == 'return_void':
             return f"  {op}"
+        elif op.isdigit():
+             return f"{op}:"
         else:
             return f"{op}"
         
