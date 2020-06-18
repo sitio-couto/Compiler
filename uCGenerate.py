@@ -984,7 +984,7 @@ class uCIRGenerate(ast.NodeVisitor):
             node.gen_location = '@'+node.declname.name
         else:
             # Allocate on stack memory.
-            alloc_target = self.new_temp()
+            alloc_target = '%'+node.declname.name
             inst = ('alloc_' + ty, alloc_target)
             self.code.append(inst)
         

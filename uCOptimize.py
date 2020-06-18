@@ -312,7 +312,7 @@ class uCIROptimizer(object):
                         allc_map[inst[1]] = (b,lin)
                         allocs.add(inst[1])
                     else:
-                        temps.update(set(re.findall(r'%\d+|@.str.\d+|@[a-zA-Z_][0-9a-zA-Z_]*', str(inst))))
+                        temps.update(set(re.findall(r'%[0-9a-zA-Z_]*|@.str.\d+|@[a-zA-Z_][0-9a-zA-Z_]*', str(inst))))
         
             # Kill any allocated but unused temps
             to_kill = allocs - temps
