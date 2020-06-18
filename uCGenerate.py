@@ -28,7 +28,6 @@ class ScopeStack():
     def __init__(self):
         self.stack = []
         self.dims = dict()
-        self.constants = []
     
     # Add new scope (if a function definition started)
     # Every function definition is considered a new scope (new symboltable)
@@ -489,12 +488,26 @@ class uCIRGenerate(ast.NodeVisitor):
             # Visit declaration
             self.visit(node.type)
             
-            # Get decl type.
-            ty = self.build_decl_types(node.type)
+            # Check function ptr
+            dec = node.type
+            while not (isinstance(dec, ast.Type) or isinstance(dec, ast.FuncDecl)):
+                dec = dec.type
             
+            # Get decl type and name.
+            ty = self.build_decl_types(node.type)
             ty = 'global_' + ty 
             name = node.type.gen_location
-            if node.init:
+            
+            # Function Pointer.
+            if isinstance(dec, ast.FuncDecl):
+                params_list = []
+                for i, p in enumerate(dec.params.params or []):
+                    par = self.build_decl_types(p)
+                    params_list.append(par)
+                inst = (ty, name, params_list)
+            
+            # Regular variables.
+            elif node.init:
                 init = self.get_expr(node.init, ty=node.type, name=ty)
                 inst = (ty, name, init)
             else:
@@ -658,12 +671,12 @@ class uCIRGenerate(ast.NodeVisitor):
         
         var.gen_location = '@'+var.declname.name
         
-        # Add function node to global scope.
-        self.scopes.add_global(var, var)
-        
         if self.fname != 'global':
             if node.params:
                 self.visit(node.params)
+        
+        # Add function node to global scope.
+        self.scopes.add_global(var, var)
         
         node.gen_location = var.gen_location
     
@@ -685,10 +698,7 @@ class uCIRGenerate(ast.NodeVisitor):
         params_list = []
         if par.params:
             for i, p in enumerate(par.params.params or []):
-                ty = p.type
-                while not isinstance(ty, ast.Type):
-                    ty = ty.type
-                ty = self.build_reg_types(ty)
+                ty = self.build_decl_types(p)
                 new = self.new_temp()
                 params_list.append((ty, new))
         
@@ -823,10 +833,7 @@ class uCIRGenerate(ast.NodeVisitor):
         else:
             for i, par in enumerate(node.params or []):
                 # Store value in temp var "i" in newly allocated var.
-                ty = par.type
-                while not isinstance(ty, ast.Type):
-                    ty = ty.type
-                ty = self.build_reg_types(ty)
+                ty = self.build_decl_types(par)
                 inst = ('store_'+ty, f'%{i+1}', par.gen_location)
                 self.code.append(inst)
 
