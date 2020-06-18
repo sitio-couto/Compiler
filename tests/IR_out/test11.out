@@ -1,15 +1,17 @@
-('define', '@main')
-('alloc_int', '%2')
-('alloc_int', '%3')
-('alloc_int_*', '%4')
-('get_int_*', '%2', '%4')
-('load_int', '%3', '%5')
-('store_int_*', '%5', '%4')
-('load_int_*', '%4', '%6')
-('store_int', '%6', '%2')
-('literal_int', 1, '%7')
-('store_int', '%7', '%0')
-('jump', '%1')
-('1',)
-('load_int', '%0', '%8')
-('return_int', '%8')
+define_int @main 
+entry:
+  alloc_int %1 
+  alloc_int %x 
+  alloc_int %y 
+  alloc_int_* %r 
+  get_int_* %x %r 
+  load_int %y %2 
+  store_int_* %2 %r 
+  load_int_* %r %3 
+  store_int %3 %x 
+  literal_int 1 %4 
+  store_int %4 %1 
+  jump label %exit
+exit:
+  load_int %1 %5 
+  return_int %5

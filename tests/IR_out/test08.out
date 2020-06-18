@@ -1,36 +1,42 @@
-('global_int', '@n', 10)
-('define', '@foo')
-('alloc_int', '%3')
-('alloc_int', '%4')
-('store_int', '%0', '%3')
-('store_int', '%1', '%4')
-('load_int', '%3', '%6')
-('load_int', '%4', '%7')
-('add_int', '%6', '%7', '%8')
-('load_int', '@n', '%9')
-('mul_int', '%9', '%8', '%10')
-('store_int', '%10', '%2')
-('jump', '%5')
-('5',)
-('load_int', '%2', '%11')
-('return_int', '%11')
-('define', '@main')
-('alloc_int', '%2')
-('alloc_int', '%3')
-('alloc_int', '%4')
-('literal_int', 2, '%5')
-('store_int', '%5', '%2')
-('literal_int', 3, '%6')
-('store_int', '%6', '%3')
-('load_int', '%2', '%7')
-('load_int', '%3', '%8')
-('param_int', '%7')
-('param_int', '%8')
-('call', '@foo', '%9')
-('store_int', '%9', '%4')
-('literal_int', 0, '%10')
-('store_int', '%10', '%0')
-('jump', '%1')
-('1',)
-('load_int', '%0', '%11')
-('return_int', '%11')
+global_int @n 10 
+
+define_int @foo int %1, int %2
+entry:
+  alloc_int %3 
+  alloc_int %a 
+  alloc_int %b 
+  store_int %1 %a 
+  store_int %2 %b 
+  load_int %a %4 
+  load_int %b %5 
+  add_int %4 %5 %6 
+  load_int @n %7 
+  mul_int %7 %6 %8 
+  store_int %8 %3 
+  jump label %exit
+exit:
+  load_int %3 %9 
+  return_int %9
+
+define_int @main 
+entry:
+  alloc_int %1 
+  alloc_int %c 
+  alloc_int %d 
+  alloc_int %e 
+  literal_int 2 %2 
+  store_int %2 %c 
+  literal_int 3 %3 
+  store_int %3 %d 
+  load_int %c %4 
+  load_int %d %5 
+  param_int %4 
+  param_int %5 
+  call @foo %6 
+  store_int %6 %e 
+  literal_int 0 %7 
+  store_int %7 %1 
+  jump label %exit
+exit:
+  load_int %1 %8 
+  return_int %8

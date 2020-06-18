@@ -1,74 +1,81 @@
-('global_int_*', '@operation')
-('global_string', '@.str.0', ' + ')
-('global_string', '@.str.1', ' = ')
-('global_string', '@.str.2', ', ')
-('global_string', '@.str.3', ' - ')
-('global_string', '@.str.4', ' = ')
-('define', '@add')
-('alloc_int', '%3')
-('alloc_int', '%4')
-('store_int', '%0', '%3')
-('store_int', '%1', '%4')
-('load_int', '%3', '%6')
-('load_int', '%4', '%7')
-('add_int', '%6', '%7', '%8')
-('store_int', '%8', '%2')
-('jump', '%5')
-('5',)
-('load_int', '%2', '%9')
-('return_int', '%9')
-('define', '@subtract')
-('alloc_int', '%3')
-('alloc_int', '%4')
-('store_int', '%0', '%3')
-('store_int', '%1', '%4')
-('load_int', '%3', '%6')
-('load_int', '%4', '%7')
-('sub_int', '%6', '%7', '%8')
-('store_int', '%8', '%2')
-('jump', '%5')
-('5',)
-('load_int', '%2', '%9')
-('return_int', '%9')
-('define', '@main')
-('alloc_int', '%2')
-('alloc_int', '%3')
-('read_int', '%4')
-('store_int', '%4', '%2')
-('read_int', '%5')
-('store_int', '%5', '%3')
-('get_int_*', '@add', '@operation')
-('load_int', '%2', '%6')
-('print_int', '%6')
-('print_string', '@.str.0')
-('load_int', '%3', '%7')
-('print_int', '%7')
-('print_string', '@.str.1')
-('load_int', '%2', '%8')
-('load_int', '%3', '%9')
-('param_int', '%8')
-('param_int', '%9')
-('load_int_*', '@operation', '%10')
-('call', '%10', '%11')
-('print_int', '%11')
-('print_string', '@.str.2')
-('get_int_*', '@subtract', '@operation')
-('load_int', '%2', '%12')
-('print_int', '%12')
-('print_string', '@.str.3')
-('load_int', '%3', '%13')
-('print_int', '%13')
-('print_string', '@.str.4')
-('load_int', '%2', '%14')
-('load_int', '%3', '%15')
-('param_int', '%14')
-('param_int', '%15')
-('load_int_*', '@operation', '%16')
-('call', '%16', '%17')
-('print_int', '%17')
-('literal_int', 0, '%18')
-('store_int', '%18', '%0')
-('jump', '%1')
-('1',)
-('load_int', '%0', '%19')
-('return_int', '%19')
+global_int_* @operation ['int', 'int'] 
+global_string @.str.0 ' + '
+global_string @.str.1 ' = '
+global_string @.str.2 ', '
+global_string @.str.3 ' - '
+global_string @.str.4 ' = '
+
+define_int @add int %1, int %2
+entry:
+  alloc_int %3 
+  alloc_int %x 
+  alloc_int %y 
+  store_int %1 %x 
+  store_int %2 %y 
+  load_int %x %4 
+  load_int %y %5 
+  add_int %4 %5 %6 
+  store_int %6 %3 
+  jump label %exit
+exit:
+  load_int %3 %7 
+  return_int %7
+
+define_int @subtract int %1, int %2
+entry:
+  alloc_int %3 
+  alloc_int %x 
+  alloc_int %y 
+  store_int %1 %x 
+  store_int %2 %y 
+  load_int %x %4 
+  load_int %y %5 
+  sub_int %4 %5 %6 
+  store_int %6 %3 
+  jump label %exit
+exit:
+  load_int %3 %7 
+  return_int %7
+
+define_int @main 
+entry:
+  alloc_int %1 
+  alloc_int %foo 
+  alloc_int %bar 
+  read_int %foo 
+  read_int %bar 
+  get_int_* @add @operation 
+  load_int %foo %2 
+  print_int %2 
+  print_string @.str.0 
+  load_int %bar %3 
+  print_int %3 
+  print_string @.str.1 
+  load_int %foo %4 
+  load_int %bar %5 
+  param_int %4 
+  param_int %5 
+  load_int_* @operation %6 
+  call %6 %7 
+  print_int %7 
+  print_string @.str.2 
+  get_int_* @subtract @operation 
+  load_int %foo %8 
+  print_int %8 
+  print_string @.str.3 
+  load_int %bar %9 
+  print_int %9 
+  print_string @.str.4 
+  load_int %foo %10 
+  load_int %bar %11 
+  param_int %10 
+  param_int %11 
+  load_int_* @operation %12 
+  call %12 %13 
+  print_int %13 
+  literal_int 0 %14 
+  store_int %14 %1 
+  jump label %exit
+exit:
+  load_int %1 %15 
+  return_int %15

@@ -1,45 +1,48 @@
-('global_string', '@.str.0', 'assertion_fail on 7:12')
-('define', '@main')
-('alloc_int', '%2')
-('alloc_int', '%3')
-('alloc_int', '%4')
-('literal_int', 1, '%5')
-('store_int', '%5', '%2')
-('literal_int', 2, '%6')
-('store_int', '%6', '%3')
-('literal_int', 1, '%10')
-('store_int', '%10', '%4')
-('7',)
-('literal_int', 10, '%11')
-('load_int', '%4', '%12')
-('lt_int', '%12', '%11', '%13')
-('cbranch', '%13', '%8', '%9')
-('8',)
-('load_int', '%3', '%14')
-('load_int', '%4', '%15')
-('mul_int', '%14', '%15', '%16')
-('load_int', '%2', '%17')
-('add_int', '%16', '%17', '%18')
-('store_int', '%18', '%2')
-('load_int', '%4', '%19')
-('literal_int', 1, '%20')
-('add_int', '%19', '%20', '%21')
-('store_int', '%21', '%4')
-('jump', '%7')
-('9',)
-('literal_int', 91, '%22')
-('load_int', '%2', '%23')
-('eq_int', '%23', '%22', '%24')
-('cbranch', '%24', '%25', '%26')
-('25',)
-('jump', '%27')
-('26',)
-('print_string', '@.str.0')
-('jump', '%1')
-('27',)
-('literal_int', 0, '%28')
-('store_int', '%28', '%0')
-('jump', '%1')
-('1',)
-('load_int', '%0', '%29')
-('return_int', '%29')
+global_string @.str.0 'assertion_fail on 7:12'
+
+define_int @main 
+entry:
+  alloc_int %1 
+  alloc_int %i 
+  alloc_int %j 
+  alloc_int %k 
+  literal_int 1 %2 
+  store_int %2 %i 
+  literal_int 2 %3 
+  store_int %3 %j 
+  literal_int 1 %4 
+  store_int %4 %k 
+for.cond:
+  literal_int 10 %5 
+  load_int %k %6 
+  lt_int %6 %5 %7 
+  cbranch %7 label %for.body label %for.end
+for.body:
+  load_int %j %8 
+  load_int %k %9 
+  mul_int %8 %9 %10 
+  load_int %i %11 
+  add_int %10 %11 %12 
+  store_int %12 %i 
+  jump label %for.inc
+for.inc:
+  load_int %k %13 
+  literal_int 1 %14 
+  add_int %13 %14 %15 
+  store_int %15 %k 
+  jump label %for.cond
+for.end:
+  literal_int 91 %16 
+  load_int %i %17 
+  eq_int %17 %16 %18 
+  cbranch %18 label %assert.true label %assert.false
+assert.false:
+  print_string @.str.0 
+  jump label %exit
+assert.true:
+  literal_int 0 %19 
+  store_int %19 %1 
+  jump label %exit
+exit:
+  load_int %1 %20 
+  return_int %20

@@ -1,4 +1,6 @@
-('global_int_3', '@x', [1, 2, 3])
-('define', '@main')
-('1',)
-('return_void',)
+global_int_3 @x [1, 2, 3] 
+
+define_void @main
+entry:
+exit:
+  return_void

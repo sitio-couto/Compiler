@@ -1,126 +1,136 @@
-('global_string', '@.str.0', 'Enter number of elements: ')
-('global_string', '@.str.1', 'Enter ')
-('global_string', '@.str.2', ' integers: ')
-('global_string', '@.str.3', 'Sorted list in ascending order: ')
-('global_string', '@.str.4', ' ')
-('define', '@main')
-('alloc_int_100', '%2')
-('alloc_int', '%3')
-('alloc_int', '%4')
-('alloc_int', '%5')
-('alloc_int', '%6')
-('print_string', '@.str.0')
-('read_int', '%7')
-('store_int', '%7', '%3')
-('print_string', '@.str.1')
-('load_int', '%3', '%8')
-('print_int', '%8')
-('print_string', '@.str.2')
-('literal_int', 0, '%12')
-('store_int', '%12', '%4')
-('9',)
-('load_int', '%4', '%13')
-('load_int', '%3', '%14')
-('lt_int', '%13', '%14', '%15')
-('cbranch', '%15', '%10', '%11')
-('10',)
-('load_int', '%4', '%16')
-('elem_int', '%2', '%16', '%17')
-('read_int', '%18')
-('store_int_*', '%18', '%17')
-('load_int', '%4', '%19')
-('literal_int', 1, '%20')
-('add_int', '%19', '%20', '%21')
-('store_int', '%21', '%4')
-('jump', '%9')
-('11',)
-('literal_int', 0, '%25')
-('store_int', '%25', '%4')
-('22',)
-('literal_int', 1, '%26')
-('load_int', '%3', '%27')
-('sub_int', '%27', '%26', '%28')
-('load_int', '%4', '%29')
-('lt_int', '%29', '%28', '%30')
-('cbranch', '%30', '%23', '%24')
-('23',)
-('literal_int', 0, '%34')
-('store_int', '%34', '%5')
-('31',)
-('load_int', '%3', '%35')
-('load_int', '%4', '%36')
-('sub_int', '%35', '%36', '%37')
-('literal_int', 1, '%38')
-('sub_int', '%37', '%38', '%39')
-('load_int', '%5', '%40')
-('lt_int', '%40', '%39', '%41')
-('cbranch', '%41', '%32', '%33')
-('32',)
-('load_int', '%5', '%45')
-('elem_int', '%2', '%45', '%46')
-('literal_int', 1, '%47')
-('load_int', '%5', '%48')
-('add_int', '%48', '%47', '%49')
-('elem_int', '%2', '%49', '%50')
-('load_int_*', '%46', '%51')
-('load_int_*', '%50', '%52')
-('gt_int', '%51', '%52', '%53')
-('cbranch', '%53', '%42', '%43')
-('42',)
-('load_int', '%5', '%54')
-('elem_int', '%2', '%54', '%55')
-('load_int_*', '%55', '%56')
-('store_int', '%56', '%6')
-('literal_int', 1, '%57')
-('load_int', '%5', '%58')
-('add_int', '%58', '%57', '%59')
-('elem_int', '%2', '%59', '%60')
-('load_int_*', '%60', '%61')
-('load_int', '%5', '%62')
-('elem_int', '%2', '%62', '%63')
-('store_int_*', '%61', '%63')
-('load_int', '%6', '%64')
-('literal_int', 1, '%65')
-('load_int', '%5', '%66')
-('add_int', '%66', '%65', '%67')
-('elem_int', '%2', '%67', '%68')
-('store_int_*', '%64', '%68')
-('43',)
-('load_int', '%5', '%69')
-('literal_int', 1, '%70')
-('add_int', '%69', '%70', '%71')
-('store_int', '%71', '%5')
-('jump', '%31')
-('33',)
-('load_int', '%4', '%72')
-('literal_int', 1, '%73')
-('add_int', '%72', '%73', '%74')
-('store_int', '%74', '%4')
-('jump', '%22')
-('24',)
-('print_string', '@.str.3')
-('literal_int', 0, '%78')
-('store_int', '%78', '%4')
-('75',)
-('load_int', '%4', '%79')
-('load_int', '%3', '%80')
-('lt_int', '%79', '%80', '%81')
-('cbranch', '%81', '%76', '%77')
-('76',)
-('load_int', '%4', '%82')
-('elem_int', '%2', '%82', '%83')
-('load_int_*', '%83', '%84')
-('print_int', '%84')
-('print_string', '@.str.4')
-('load_int', '%4', '%85')
-('literal_int', 1, '%86')
-('add_int', '%85', '%86', '%87')
-('store_int', '%87', '%4')
-('jump', '%75')
-('77',)
-('literal_int', 0, '%88')
-('store_int', '%88', '%0')
-('jump', '%1')
-('1',)
-('load_int', '%0', '%89')
-('return_int', '%89')
+global_string @.str.0 'Enter number of elements: '
+global_string @.str.1 'Enter '
+global_string @.str.2 ' integers: '
+global_string @.str.3 'Sorted list in ascending order: '
+global_string @.str.4 ' '
+
+define_int @main 
+entry:
+  alloc_int %1 
+  alloc_int_100 %v 
+  alloc_int %n 
+  alloc_int %c 
+  alloc_int %d 
+  alloc_int %swap 
+  print_string @.str.0 
+  read_int %n 
+  print_string @.str.1 
+  load_int %n %2 
+  print_int %2 
+  print_string @.str.2 
+  literal_int 0 %3 
+  store_int %3 %c 
+for.cond:
+  load_int %c %4 
+  load_int %n %5 
+  lt_int %4 %5 %6 
+  cbranch %6 label %for.body label %for.end
+for.body:
+  load_int %c %7 
+  elem_int %v %7 %8 
+  read_int_* %8 
+  jump label %for.inc
+for.inc:
+  load_int %c %9 
+  literal_int 1 %10 
+  add_int %9 %10 %11 
+  store_int %11 %c 
+  jump label %for.cond
+for.end:
+  literal_int 0 %12 
+  store_int %12 %c 
+for.cond.1:
+  literal_int 1 %13 
+  load_int %n %14 
+  sub_int %14 %13 %15 
+  load_int %c %16 
+  lt_int %16 %15 %17 
+  cbranch %17 label %for.body.1 label %for.end.1
+for.body.1:
+  literal_int 0 %18 
+  store_int %18 %d 
+for.cond.2:
+  load_int %n %19 
+  load_int %c %20 
+  sub_int %19 %20 %21 
+  literal_int 1 %22 
+  sub_int %21 %22 %23 
+  load_int %d %24 
+  lt_int %24 %23 %25 
+  cbranch %25 label %for.body.2 label %for.end.2
+for.body.2:
+  load_int %d %26 
+  elem_int %v %26 %27 
+  literal_int 1 %28 
+  load_int %d %29 
+  add_int %29 %28 %30 
+  elem_int %v %30 %31 
+  load_int_* %27 %32 
+  load_int_* %31 %33 
+  gt_int %32 %33 %34 
+  cbranch %34 label %if.then label %if.end
+if.then:
+  load_int %d %35 
+  elem_int %v %35 %36 
+  load_int_* %36 %37 
+  store_int %37 %swap 
+  literal_int 1 %38 
+  load_int %d %39 
+  add_int %39 %38 %40 
+  elem_int %v %40 %41 
+  load_int_* %41 %42 
+  load_int %d %43 
+  elem_int %v %43 %44 
+  store_int_* %42 %44 
+  load_int %swap %45 
+  literal_int 1 %46 
+  load_int %d %47 
+  add_int %47 %46 %48 
+  elem_int %v %48 %49 
+  store_int_* %45 %49 
+  jump label %if.end
+if.end:
+  jump label %for.inc.2
+for.inc.2:
+  load_int %d %50 
+  literal_int 1 %51 
+  add_int %50 %51 %52 
+  store_int %52 %d 
+  jump label %for.cond.2
+for.end.2:
+  jump label %for.inc.1
+for.inc.1:
+  load_int %c %53 
+  literal_int 1 %54 
+  add_int %53 %54 %55 
+  store_int %55 %c 
+  jump label %for.cond.1
+for.end.1:
+  print_string @.str.3 
+  literal_int 0 %56 
+  store_int %56 %c 
+for.cond.3:
+  load_int %c %57 
+  load_int %n %58 
+  lt_int %57 %58 %59 
+  cbranch %59 label %for.body.3 label %for.end.3
+for.body.3:
+  load_int %c %60 
+  elem_int %v %60 %61 
+  load_int_* %61 %62 
+  print_int %62 
+  print_string @.str.4 
+  jump label %for.inc.3
+for.inc.3:
+  load_int %c %63 
+  literal_int 1 %64 
+  add_int %63 %64 %65 
+  store_int %65 %c 
+  jump label %for.cond.3
+for.end.3:
+  literal_int 0 %66 
+  store_int %66 %1 
+  jump label %exit
+exit:
+  load_int %1 %67 
+  return_int %67
