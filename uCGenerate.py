@@ -642,18 +642,26 @@ class uCIRGenerate(ast.NodeVisitor):
         while not isinstance(var, ast.VarDecl):
             var = var.type
         name = var.declname.name
-        ty = self.build_reg_types(var.type)
         
         # Start function
         self.fname = name
         
-        # Create opcode and append to list.
-        inst = ('define_'+ty, '@'+name)
-        self.code.append(inst)
-        
-        # Skip temp variables for params and return
+        # Skip temp variables for params, and create list.
         par = node.decl.type
-        self.versions[name] = len(par.params.params)+1 if par.params else 1
+        params_list = []
+        if par.params:
+            for i, p in enumerate(par.params.params or []):
+                ty = p.type
+                while not isinstance(ty, ast.Type):
+                    ty = ty.type
+                ty = self.build_reg_types(ty)
+                new = self.new_temp()
+                params_list.append((ty, new))
+        
+        # Create definition and append to list
+        ty = self.build_reg_types(var.type)
+        inst = ('define_'+ty, '@'+name, params_list)
+        self.code.append(inst)
         
         # Visit function declaration (FuncDecl)
         self.alloc_phase = True
@@ -828,9 +836,9 @@ class uCIRGenerate(ast.NodeVisitor):
             
         for expr in exprs:
             # Read
-            aux = self.new_temp()
+            # aux = self.new_temp()
             ty = self.build_reg_types(expr.type)
-            inst = ('read_' + ty, aux)
+            #inst = ('read_' + ty, aux)
             
             # Store
             if isinstance(expr, ast.ID):
@@ -842,8 +850,10 @@ class uCIRGenerate(ast.NodeVisitor):
             else:
                 self.visit(expr)
                 target = expr.gen_location
-            stor = ('store_' + ty, aux, target)
-            self.code += [inst, stor]
+            #stor = ('store_' + ty, aux, target)
+            inst = ('read_' + ty, target)
+            #self.code += [inst, stor]
+            self.code.append(inst)
 
     def visit_Return(self, node):
         # If there is a return expression.

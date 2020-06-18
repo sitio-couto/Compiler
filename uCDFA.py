@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 09/06/2020.
+Last Modified: 18/06/2020.
 '''
 
 from os.path import exists
@@ -73,7 +73,7 @@ class uCIRDFA(object):
             # Relational/Equality/Logical 
             ('lt','le','ge','gt','eq','ne','and','or','not'):[1,2],
             # Functions & Builtins
-            ('param','print','return','cbranch', 'call'):[1] 
+            ('param','print','return','cbranch', 'call', 'read'):[1] 
             }
 
         # Maps which instruction DEFINES which register (according to tuple position)
