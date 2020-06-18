@@ -176,9 +176,35 @@ class uCIRGenerate(ast.NodeVisitor):
         if not quiet: self.print_code()
         if out_file: self.write_file(self.code, out_file)
     
+    def format_instruction(self, t):
+        # Auxiliary method to pretty print the instructions 
+        # t is the tuple that contains one instruction
+        op = t[0]
+        if len(t) > 1:
+            if op.startswith("define"):
+                return f"\n{op} {t[1]} " + ', '.join(list(' '.join(el) for el in t[2]))
+            else:
+                _str = "" if op.startswith('global') else "  "
+                if op == 'jump':
+                    _str += f"{op} label {t[1]}"
+                elif op == 'cbranch':
+                    _str += f"{op} {t[1]} label {t[2]} label {t[3]}"
+                elif op == 'global_string':
+                    _str += f"{op} {t[1]} \'{t[2]}\'"
+                elif op.startswith('return'):
+                    _str += f"{op} {t[1]}"
+                else:
+                    for _el in t:
+                        _str += f"{_el} "
+                return _str
+        elif op == 'print_void' or op == 'return_void':
+            return f"  {op}"
+        else:
+            return f"{op}"
+        
     def print_code(self):
-        for inst in self.code:
-            print(inst)
+        formatted = map(self.format_instruction, self.code)
+        print(*list(formatted), sep='\n')
     
     def show(self, buf=None):
         if not buf:

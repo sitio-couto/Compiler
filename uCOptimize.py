@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 09/06/2020.
+Last Modified: 18/06/2020.
 '''
 
 from os.path import exists
@@ -74,13 +74,6 @@ class uCIROptimizer(object):
         current_code = self.generator.code.copy()
         initial_size = len(current_code)
         new_code = None
-        # TODO: Carefully think what needs to be done in the CFG
-        # before running a consecutive optimization. As I see, 
-        # it doesn't seem to need any special care in between 
-        # optimizations, as long as each method ensures the 
-        # cohesion of it's changes in the CFG:
-        # - deadcode removes some lines, so there will non consecutive 
-        #   linesIDs in the new CFG.
         if single:
             self.cfg.print_blocks()
             self.show()
@@ -104,7 +97,6 @@ class uCIROptimizer(object):
                 self.show()
                 input() # wait key
                 
-        # TODO: change root if empty? Just for view.
         self.clean_allocations()
         # self.cfg.check_cfg()
         new_code = self.cfg.retrieve_ir()

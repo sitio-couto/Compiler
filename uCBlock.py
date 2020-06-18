@@ -471,7 +471,8 @@ class uCIRCFG(object):
     def print_code(self):
         '''Shows the current state of the IR code.'''
         print("Current Code:")
-        list(map(print,self.retrieve_ir()))
+        formatted = map(self.generator.format_instruction, self.retrieve_ir())
+        print(*list(formatted), sep='\n')
 
     def print_blocks(self):
         '''Prints the CFG aspect of the block and the instruction wise 
