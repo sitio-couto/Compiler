@@ -23,7 +23,6 @@ print('\n', f'Working Directory: {workdir}','\n')
 class TestAST(unittest.TestCase):
 
     inputs = [
-        'tests/IR_in/test.uc',
         'tests/IR_in/test01.uc',
         'tests/IR_in/test02.uc',
         'tests/IR_in/test03.uc',
@@ -39,7 +38,6 @@ class TestAST(unittest.TestCase):
         'tests/IR_in/test13.uc']
     
     outputs = [
-        'tests/IR_in/test.in',
         'tests/IR_in/test01.in',
         'tests/IR_in/test02.in',
         'tests/IR_in/test03.in',
@@ -55,7 +53,6 @@ class TestAST(unittest.TestCase):
         'tests/IR_in/test13.in']
 
     targets = [
-        'tests/IR_out/test.out',
         'tests/IR_out/test01.out',
         'tests/IR_out/test02.out',
         'tests/IR_out/test03.out',

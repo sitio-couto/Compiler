@@ -143,7 +143,7 @@ class uCIRGenerate(ast.NodeVisitor):
 
     def write_file(self, code, out_file):
         out = ''
-        for inst in code: out += str(inst)+'\n'
+        for inst in code: out += self.format_instruction(inst)+'\n'
         f = open(out_file, 'w')
         f.write(out)
         f.close()
@@ -863,12 +863,8 @@ class uCIRGenerate(ast.NodeVisitor):
             exprs = [node.expr]
             
         for expr in exprs:
-            # Read
-            # aux = self.new_temp()
             ty = self.build_reg_types(expr.type)
-            #inst = ('read_' + ty, aux)
             
-            # Store
             if isinstance(expr, ast.ID):
                 target = self.scopes.fetch_temp(expr)
             elif isinstance(expr, ast.ArrayRef):
@@ -878,9 +874,7 @@ class uCIRGenerate(ast.NodeVisitor):
             else:
                 self.visit(expr)
                 target = expr.gen_location
-            #stor = ('store_' + ty, aux, target)
             inst = ('read_' + ty, target)
-            #self.code += [inst, stor]
             self.code.append(inst)
 
     def visit_Return(self, node):
@@ -1122,7 +1116,6 @@ class uCIRGenerate(ast.NodeVisitor):
     ## TYPE-RELATED FUNCTIONS ##
 
     def build_decl_types(self, node):
-        sizes = []
         ptr = 0
         name = ''
         ty = node
@@ -1130,16 +1123,10 @@ class uCIRGenerate(ast.NodeVisitor):
         # Identify modifiers.
         while not isinstance(ty, ast.VarDecl):
             if isinstance(ty, ast.ArrayDecl):
-                sizes.append(ty.dims.value)
+                name += f'_{ty.dims.value}'  
             elif isinstance(ty, ast.PtrDecl):
                 ptr += 1
             ty = ty.type
-        
-        # Processes sizes
-        for i in range(len(sizes)-1)[::-1]:
-            sizes[i] *= sizes[i+1]
-        for size in sizes:
-            name += f'_{size}'  
         
         # Ptrs
         if ptr > 0:
