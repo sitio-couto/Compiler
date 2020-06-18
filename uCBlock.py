@@ -353,7 +353,7 @@ class uCIRCFG(object):
         leaders = set([0])
         for i in range(len(code)):
             prev = code[i-1][0]
-            curr = code[i][0]
+            curr = code[i][0].split('_')[0]
             if self.is_target(curr) or self.is_branch(prev):
                 leaders = leaders.union([i])
         
@@ -380,7 +380,7 @@ class uCIRCFG(object):
         # Group blocks by functions
         for b in blocks:
             inst = b.first_inst()[0]
-            if inst=='define': # Reset every time a define is found
+            if inst.split('_')[0] =='define': # Reset every time a define is found
                 if aux: funcs.append(aux)
                 aux = [b]
             else:
@@ -407,9 +407,10 @@ class uCIRCFG(object):
             last = b.last_inst()
 
             # Save blocks that can be jumped to
-            if self.is_target(first[0]):
+            tar = first[0].split('_')[0]
+            if self.is_target(tar):
                 # Either a define or a label
-                if first[0]=='define':
+                if tar=='define':
                     globs.add_succ(b) # Link header to function
                     b.add_pred(globs)
                 else:

@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/06/2020.
+Last Modified: 18/06/2020.
 '''
 
 import re
@@ -136,7 +136,7 @@ class uCIRGenerate(ast.NodeVisitor):
     def new_temp(self):
         ''' Create a new temporary variable of a given scope (function name). '''
         if self.fname not in self.versions:
-            self.versions[self.fname] = 0
+            self.versions[self.fname] = 1
         name = f"%{self.versions[self.fname]}" 
         self.versions[self.fname] += 1
         return name
@@ -642,24 +642,28 @@ class uCIRGenerate(ast.NodeVisitor):
         while not isinstance(var, ast.VarDecl):
             var = var.type
         name = var.declname.name
-        
-        # Create opcode and append to list.
-        inst = ('define', '@'+name)
-        self.code.append(inst)
+        ty = self.build_reg_types(var.type)
         
         # Start function
         self.fname = name
         
+        # Create opcode and append to list.
+        inst = ('define_'+ty, '@'+name)
+        self.code.append(inst)
+        
         # Skip temp variables for params and return
         par = node.decl.type
-        self.versions[name] = len(par.params.params) if par.params else 0
-
-        # Get return temporary variable
-        self.ret['value'] = self.new_temp()
-                
+        self.versions[name] = len(par.params.params)+1 if par.params else 1
+        
         # Visit function declaration (FuncDecl)
         self.alloc_phase = True
         self.visit(node.decl.type)
+
+        # Get return temporary variable
+        self.ret['value'] = self.new_temp()
+        if ty != 'void':
+            inst = ('alloc_'+ty, self.ret['value'])
+            self.code.append(inst)
         
         # Get return label, if needed.
         self.ret['label'] = self.new_temp()
@@ -679,13 +683,14 @@ class uCIRGenerate(ast.NodeVisitor):
                     if isinstance(stmt, ast.For) and isinstance(stmt.init, ast.DeclList):
                         self.visit(stmt.init)
             
-            # Initiate decls and visit body.
+            # Initiate params, decls and visit body.
             self.alloc_phase = False
+            if par.params:
+                self.visit(par.params)
+                
             self.visit(node.body)
         
-        # Return label and return
-        ty = self.build_reg_types(var.type)
-        
+        # Return label and return        
         # Void = no return, only label and return_void inst.
         if ty == 'void':
             ret_inst = ('return_void',)
@@ -768,18 +773,20 @@ class uCIRGenerate(ast.NodeVisitor):
                 node.gen_location.append(expr.value)
     
     def visit_ParamList(self, node):
-        for par in node.params:
-            # Visit parameter (allocate vars)
-            self.visit(par)
+        if self.alloc_phase:
+            for par in node.params:
+                # Visit parameter (allocate vars)
+                self.visit(par)
         
-        for i, par in enumerate(node.params or []):
-            # Store value in temp var "i" in newly allocated var.
-            ty = par.type
-            while not isinstance(ty, ast.Type):
-                ty = ty.type
-            ty = self.build_reg_types(ty)
-            inst = ('store_'+ty, f'%{i}', par.gen_location)
-            self.code.append(inst)
+        else:
+            for i, par in enumerate(node.params or []):
+                # Store value in temp var "i" in newly allocated var.
+                ty = par.type
+                while not isinstance(ty, ast.Type):
+                    ty = ty.type
+                ty = self.build_reg_types(ty)
+                inst = ('store_'+ty, f'%{i+1}', par.gen_location)
+                self.code.append(inst)
 
     def visit_Print(self, node):
         # Visit the expression
