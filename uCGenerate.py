@@ -182,7 +182,7 @@ class uCIRGenerate(ast.NodeVisitor):
         op = t[0]
         if len(t) > 1:
             if op.startswith("define"):
-                return f"\n{op} {t[1]} " + ', '.join(list(' '.join(el) for el in t[2]))
+                return f"\n{op} {t[1]} " + ', '.join(list(' '.join(el) for el in t[2]))+'\nentry:'
             else:
                 _str = "" if op.startswith('global') else "  "
                 if op == 'jump':
@@ -257,7 +257,7 @@ class uCIRGenerate(ast.NodeVisitor):
         if self.fname == 'global':
             node.gen_location = '@'+var.declname.name
         else:
-            alloc_target = self.new_temp()
+            alloc_target = '%'+var.declname.name
             inst = ('alloc_' + ty, alloc_target)
             self.code.append(inst)
             node.gen_location = alloc_target
@@ -696,8 +696,8 @@ class uCIRGenerate(ast.NodeVisitor):
         self.visit(node.decl.type)
 
         # Get return temporary variable
-        self.ret['value'] = self.new_temp()
         if ty != 'void':
+            self.ret['value'] = self.new_temp()
             inst = ('alloc_'+ty, self.ret['value'])
             self.code.append(inst)
         
