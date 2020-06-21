@@ -131,7 +131,7 @@ if __name__ == '__main__':
     elif args.compilation:
         while True:
             try:
-                llvm.test(input("Filename or expression to compile: "), args.quiet, args.dead, args.prop, args.single)
+                llvm.test(input("Filename or expression to compile and run: "), args.quiet)
             except EOFError:
                 break
     elif args.file:
