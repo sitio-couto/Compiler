@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 18/06/2020.
+Last Modified: 22/06/2020.
 '''
 
 from os.path import exists
@@ -32,10 +32,10 @@ class uCIROptimizer(object):
         self.cfg.build_cfg(self.generator.code)
         
         # Testing.
-        self.optimize(quiet=quiet, 
-                      dead=dead,
-                      prop=prop, 
-                      single=single)
+        self.optimize(quiet=True, 
+                      dead=True,
+                      prop=True, 
+                      single=False)
         
     def test(self, data, quiet=False, dead=True, prop=True, single=False):
         # Generating code
