@@ -242,15 +242,23 @@ class uCIRTranslator(object):
     
     def build_store(self, _, src, target):
         src = self.loc[src]
-        loc = self.loc.get(src, None)
+        loc = self.loc.get(target, None)
         if loc:
             self.builder.store(src, loc)
         else:
             self.loc[target] = src
             
-    # TODO: complete with modifiers
+    # TODO: complete with array
+    # TODO: pointer correct?
     def build_store_(self, _, src, target, **kwargs):
-        pass
+        src = self.loc[src]
+        target = self.loc.get(target, None)
+        if isinstance(target.type.pointee, ir.ArrayType):
+            size = 1
+            for dim in kwargs.values(): size *= int(dim)
+            continue #someday
+        else:
+            self.builder.store(src, target.pointee)
     
     def build_literal(self, ty, value, target):
         ty = self.types[ty]
@@ -267,12 +275,15 @@ class uCIRTranslator(object):
         loc = self.builder.gep(src, [base, idx])
         self.loc[target] = loc
     
-    # TODO: ptrs
+    # TODO: correct?
     def build_get(self, _, src, target):
-        pass
+        # This function is never called.
+        assert False, "Get instruction without *!"
     
     def build_get_(self, _, src, target, **kwargs):
-        pass
+        src = self.loc[src]
+        loc = self.builder.load(src.pointee, target)
+        self.loc[target] = loc
     
     # Function Operations
     # TODO: complete with define.
