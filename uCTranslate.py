@@ -9,145 +9,186 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 18/06/2020.
+Last Modified: 22/06/2020.
 '''
 
-from llvmlite import ir, binding
-from ctypes import CFUNCTYPE, c_int
-from os.path import exists
-
 class uCIRTranslator(object):
-    # This class accepts 2 generator classes: uCIRGenerate or uCIROptimizer.
-    ### Init Functions ###
-    def __init__(self, generator):
-        self.generator = generator
-        
-        self.binding = binding
-        self.binding.initialize()
-        self.binding.initialize_native_target()
-        self.binding.initialize_native_asmprinter()
-        
-        self.module = ir.Module(name=__file__)
-        self.module.triple = self.binding.get_default_triple()
-        
-        self._create_execution_engine()
-        
-        # declare external functions
-        self._declare_printf_function()
-        self._declare_scanf_function()
-        
-        self.create_optimizator()
-
-    def _create_execution_engine(self):
-        """
-        Create an ExecutionEngine suitable for JIT code generation on
-        the host CPU.  The engine is reusable for an arbitrary number of
-        modules.
-        """
-        target = self.binding.Target.from_default_triple()
-        target_machine = target.create_target_machine()
-        # And an execution engine with an empty backing module
-        backing_mod = binding.parse_assembly("")
-        engine = binding.create_mcjit_compiler(backing_mod, target_machine)
-        self.engine = engine
-
-    def _declare_printf_function(self):
-        voidptr_ty = ir.IntType(8).as_pointer()
-        printf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
-        printf = ir.Function(self.module, printf_ty, name="printf")
-        self.printf = printf
-
-    def _declare_scanf_function(self):
-        voidptr_ty = ir.IntType(8).as_pointer()
-        scanf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
-        scanf = ir.Function(self.module, scanf_ty, name="scanf")
-        self.scanf = scanf
-        
-    def create_optimizator(self):
-        self.pm = binding.create_module_pass_manager()
-        pmb = binding.create_pass_manager_builder()
-        pmb.opt_level = 3  # -O3
-        pmb.populate(self.pm)
+    def __init__(self, builder):
+        self.builder = builder
+        self.module  = None
+        self.regs    = dict()
+        self.types   = dict()
+        self.init_types()
     
-    ### Utility Functions ###
-    def test(self, data, quiet=False):
-        # Generating code
-        self.generator.front_end.parser.lexer.reset_line_num()
+    def init_types(self):
+        int_t   = ir.IntType(32)
+        float_t = ir.FloatType()
+        char_t  = ir.IntType(8)
+        void_t  = ir.VoidType()
+        str_t   = ir.PointerType(char_t)
         
-        # Scan and parse
-        if exists(data):
-            with open(data, 'r') as content_file :
-                data = content_file.read()
+        self.types.add('int', int_t)
+        self.types.add('float', float_t)
+        self.types.add('char', char_t)
+        self.types.add('void', void_t)
         
-        # Generate IR.
-        self.generator.code = []
-        self.generator.generate(data)
-        
-        if not quiet:
-            self.generator.print_code()
-            print("\n")
-        
-        # Reset translator.
-        self.module = ir.Module(name=__file__)
-        self.module.triple = self.binding.get_default_triple()
-        
-        # Translate self.generator.code
-        
-        # Execute IR
-        self.execute_ir()
-        
-        if not quiet:
-            self.view()
+        self.types.add('int_*', int_t.as_pointer())
+        self.types.add('float_*', float_t.as_pointer())
+        self.types.add('char_*', char_t.as_pointer())
+        self.types.add('void_*', void_t.as_pointer())
+        self.types.add('string', str_t.as_pointer())
+        return
+
+    def translate(self, module, code):
+        ''' Main translation function. '''
+        self.module = module
+        pass
     
-    def show(self, cfg, buf=None):
-        if cfg:
-            self.view(buf)
-        elif buf:
-            self.save_ir(buf)
+    ### Auxiliary functions ###
+    def _extract_operation(self, source):
+        _modifier = {}
+        _type = None
+        _aux = source.split('_')
+        _opcode = _aux[0]
+        if _opcode not in {'fptosi', 'sitofp', 'jump', 'cbranch', 'define', 'call'}:
+            _type = _aux[1]
+            for i, _val in enumerate(_aux[2:]):
+                if _val.isdigit():
+                    _modifier['dim' + str(i)] = _val
+                elif _val == '*':
+                    _modifier['ptr' + str(i)] = _val
+                    
+        return (_opcode, _type, _modifier)
+
+    ### Instruction building functions ###
+    # Binary Operations
+    def build_add(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fadd(left, right)
         else:
-            self.print_ir()
+            loc = self.builder.add(left, right)
+        self.regs[target] = loc
+
+    def build_sub(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fsub(left, right)
+        else:
+            loc = self.builder.sub(left, right)
+        self.regs[target] = loc
+
+    def build_mul(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fmul(left, right)
+        else:
+            loc = self.builder.mul(left, right)
+        self.regs[target] = loc
+
+    def build_div(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fdiv(left, right)
+        else:
+            loc = self.builder.sdiv(left, right)
+        self.regs[target] = loc
+
+    def build_mod(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.frem(left, right)
+        else:
+            loc = self.builder.srem(left, right)
+        self.regs[target] = loc
     
-    def view(self, filename=None):
-        for fn in self.module.functions:
-            dot = self.binding.get_function_cfg(fn)
-            llvm.view_dot_graph(dot, filename = filename)
+    # Relational Operations
+    def build_gt(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fcmp('>', left, right)
+        else:
+            loc = self.builder.icmp('>', left, right)
+        self.regs[target] = loc
     
-    def print_ir(self):
-        print(self.module)
-        
-    def save_ir(self, filename):
-        with open(filename, 'w') as output_file:
-            output_file.write(str(self.module))
+    def build_ge(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fcmp('>=', left, right)
+        else:
+            loc = self.builder.icmp('>=', left, right)
+        self.regs[target] = loc
     
-    ### IR Compilation/Execution Functions ###
-    def _compile_ir(self, opt):
-        """
-        Compile the LLVM IR string with the given engine.
-        The compiled module object is returned.
-        """
-        # Create a LLVM module object from the IR
-        self.builder.ret_void()
-        llvm_ir = str(self.module)
-        mod = self.binding.parse_assembly(llvm_ir)
-        mod.verify()
-        # Optimize IR
-        if opt: self.pm.run(mod)
-        # Now add the module and make sure it is ready for execution
-        self.engine.add_module(mod)
-        self.engine.finalize_object()
-        self.engine.run_static_constructors()
-        return mod
+    def build_eq(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fcmp('==', left, right)
+        else:
+            loc = self.builder.icmp('==', left, right)
+        self.regs[target] = loc
     
-    def execute_ir(self, opt):
-        mod = self._compile_ir(opt)
-        # Obtain a pointer to the compiled 'main' - it's the address of its JITed code in memory.
-        main_ptr = self.engine.get_pointer_to_function(mod.get_function('main'))
-        # To convert an address to an actual callable thing we have to use
-        # CFUNCTYPE, and specify the arguments & return type.
-        main_function = CFUNCTYPE(c_int)(main_ptr)
-        # Now 'main_function' is an actual callable we can invoke
-        res = main_function()
-        print(res)
-        
-    ### IR Building Functions ###
-    # TODO
+    def build_le(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fcmp('<=', left, right)
+        else:
+            loc = self.builder.icmp('<=', left, right)
+        self.regs[target] = loc
+    
+    def build_le(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fcmp('<', left, right)
+        else:
+            loc = self.builder.icmp('<', left, right)
+        self.regs[target] = loc
+    
+    def build_ne(self, ty, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        if ty == 'float':
+            loc = self.builder.fcmp('!=', left, right)
+        else:
+            loc = self.builder.icmp('!=', left, right)
+        self.regs[target] = loc
+    
+    # TODO: correct?
+    def build_and(self, _, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        loc = self.builder.and_(left, right)
+        self.regs[target] = loc
+    
+    def build_or(self, _, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        loc = self.builder.or_(left, right)
+        self.regs[target] = loc
+    
+    def build_not(self, _, left, right, target):
+        left,right = self.regs[left],self.regs[right]
+        loc = self.builder.neg(left, right)
+        self.regs[target] = loc
+
+    # Cast operations
+    def build_fptosi(self, _, value, target):
+        value = self.regs[value]
+        loc = self.builder.fptosi(value, self.types['int'])
+        self.regs[target] = loc
+
+    def build_sitofp(self, _, value, target):
+        value = self.regs[value]
+        loc = self.builder.sitofp(value, self.types['float'])
+        self.regs[target] = loc
+    
+    # Branch Operations
+    #TODO: terminators (block operations). Probably incorrect atm.
+    def build_jump(self, _, target):
+        target = self.regs[target]
+        self.builder.branch(target)
+    
+    def build_cbranch(self, _, test, true, false):
+        test = self.regs[test]
+        true, false = self.regs[true], self.regs[false]
+        self.builder.cbranch(test, true, false)
+    
+    # Memory Operations
+    # Function Operations
+    # Builtins

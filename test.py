@@ -18,7 +18,7 @@ from uCInterpreter import uCIRInterpreter as Interpreter
 from uCBlock import uCIRCFG as CFG
 from uCDFA import uCIRDFA as DFA
 from uCOptimize import uCIROptimizer as Optimizer
-from uCTranslate import uCIRTranslator as Translator
+from uCBuild import uCIRBuilder as Builder
 from os.path import exists
 from sys import argv
 import argparse
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     cfg = CFG(generator)
     dfa = DFA(cfg)
     opt = Optimizer(dfa)
-    llvm = Translator(opt)
+    llvm = Builder(opt)
     
     if args.lexer:
         while True: 
@@ -131,14 +131,11 @@ if __name__ == '__main__':
     elif args.compilation:
         while True:
             try:
-                llvm.test(input("Filename or expression to compile and run: "), args.quiet)
+                llvm.test(input("Filename or expression to compile and run: "), args.quiet, True)
             except EOFError:
                 break
     elif args.file:
         # quick testing input file
-        if not sum([args.dead,args.prop]):
-            args.dead,args.prop = True,True
-        opt.test(args.file, args.quiet, args.dead, args.prop, args.single)
-        interpreter.run(opt.code)
+        llvm.test(args.file, args.quiet, True)
     else:
         print("No valid option selected.")
