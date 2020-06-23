@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 18/06/2020.
+Last Modified: 23/06/2020.
 '''
 
 import re
@@ -581,6 +581,7 @@ class uCIRGenerator(ast.NodeVisitor):
         
         # Create loop label
         label = self.new_temp()
+        inst = ('jump', label)
         
         # Create true/false labels
         if node.cond:
@@ -593,7 +594,7 @@ class uCIRGenerator(ast.NodeVisitor):
         if node.init:
             self.visit(node.init)
         
-        self.code.append((label[1:],))
+        self.code += [inst, (label[1:],)]
         
         if node.cond:
             # Visit the condition
@@ -1003,7 +1004,8 @@ class uCIRGenerator(ast.NodeVisitor):
     def visit_While(self, node):
         # Create loop label
         label = self.new_temp()
-        self.code.append((label[1:],))
+        inst = ('jump', label)
+        self.code += [inst, (label[1:],)]
         
         # Create two new temporary variable names for true/false labels
         target_true = self.new_temp()
