@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 22/06/2020.
+Last Modified: 23/06/2020.
 '''
 
 from llvmlite import ir
@@ -25,7 +25,7 @@ class uCIRTranslator(object):
     
     def init_types(self):
         int_t   = ir.IntType(32)
-        float_t = ir.FloatType()
+        float_t = ir.DoubleType()
         char_t  = ir.IntType(8)
         void_t  = ir.VoidType()
         str_t   = ir.PointerType(char_t)
@@ -182,8 +182,7 @@ class uCIRTranslator(object):
         self.loc[target] = loc
     
     # Branch Operations
-    # TODO: Probably incorrect atm.
-    # TODO: terminators (block operations).
+    # TODO: terminators (block operations)?.
     def build_jump(self, _, target):
         target = self.loc[target]
         self.builder.branch(target)
@@ -194,41 +193,82 @@ class uCIRTranslator(object):
         self.builder.cbranch(test, true, false)
     
     # Memory Operations
-    # TODO: add global, store, elem, get 
-    # TODO: complete with modifiers
+    # TODO: add global
     def build_alloc(self, ty, target):
         ty = self.types[ty]
-        loc = self.builder.alloca(ty, size=1, name=target)
+        loc = self.builder.alloca(ty, name=target[1:])
         self.loc[target] = loc
     
-    # TODO: complete with modifiers    
+    def build_alloc_(self, ty, target, **kwargs):
+        ty = self.types[ty]
+        
+        # Modifier
+        for mod in reverse(list(kwargs.values())):
+            ty = ir.ArrayType(ty, int(mod)) if mod.isdigit() else ir.PointerType(ty)
+                
+        loc = self.builder.alloca(ty, name=target[1:])
+        self.loc[target] = loc
+    
     def build_load(self, _, src, target):
+        src = self.loc[src]
+        if isinstance(src, ir.Constant):
+            self.loc[target] = src
+        else:
+            loc = self.builder.load(src)
+            self.loc[target] = loc
+    
+    def build_load_(self, _, src, target, **kwargs):
         src = self.loc[src]
         loc = self.builder.load(src)
         self.loc[target] = loc
     
-    # TODO: correct?
+    def build_store(self, _, src, target):
+        src = self.loc[src]
+        loc = self.loc.get(src, None)
+        if loc:
+            self.builder.store(src, loc)
+        else:
+            self.loc[target] = src
+            
+    # TODO: complete with modifiers
+    def build_store_(self, _, src, target, **kwargs):
+        pass
+    
     def build_literal(self, ty, value, target):
         ty = self.types[ty]
         val = ir.Constant(ty, value)
-        self.loc[target] = val
+        loc = self.loc.get(target, None)
+        if loc:
+            self.builder.store(val, loc)
+        else:
+            self.loc[target] = val
+    
+    def build_elem(self, _, src, idx, target):
+        src, idx = self.loc[src], self.loc[idx]
+        base = ir.Constant(self.types['int'], 0)
+        loc = self.builder.gep(src, [base, idx])
+        self.loc[target] = loc
+    
+    # TODO: ptrs
+    def build_get(self, _, src, target):
+        pass
+    
+    def build_get_(self, _, src, target, **kwargs):
+        pass
     
     # Function Operations
     # TODO: complete with define.
     def build_param(self, _, src):
-        src = self.loc[src]
-        self.args.append(src)
+        self.args.append(self.loc[src])
     
-    # TODO: probably incorrect/incomplete atm.
     # TODO: add void return
     def build_call(self, _, fn, target):
-        fn = self.module.get_global(fn)
+        fn = self.module.get_global(fn[1:])
         loc = self.builder.call(fn, self.args)
         self.loc[target] = loc
         self.args = []
     
-    # TODO: probably incorrect/incomplete atm.
-    # TODO: add block operations and save return value somewhere.
+    # TODO: add block operations and save return value somewhere?.
     def build_return(self, ty, value):
         if ty == 'void':
             self.builder.ret_void()
