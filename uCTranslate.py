@@ -45,7 +45,8 @@ class uCIRTranslator(object):
     def translate(self, module, code):
         ''' Main translation function. '''
         self.module = module
-        pass
+        
+        return
     
     ### Auxiliary functions ###
     def _extract_operation(self, source):
@@ -62,6 +63,23 @@ class uCIRTranslator(object):
                     _modifier['ptr' + str(i)] = _val
                     
         return (_opcode, _type, _modifier)
+    
+    def new_function(self, inst):
+        ty = inst[0].split('_')[1]
+        
+        # Get args
+        arg_types = list(map(lambda x: x[0], inst[2]))
+        arg_types = [self.types[arg] for arg in arg_types]
+        
+        # Prototype
+        func_type = ir.FunctionType(self.types[ty], arg_types)
+        
+        # Function
+        fn = ir.Function(self.module, func_type, name=inst[1][1:])
+        
+        # Parameter locations
+        for i, temp in enumerate(list(map(lambda x: x[1], inst[2]))):
+            self.loc[temp] = fn.args[i]
 
     ### Instruction building functions ###
     # Binary Operations
@@ -261,11 +279,13 @@ class uCIRTranslator(object):
     def build_param(self, _, src):
         self.args.append(self.loc[src])
     
-    # TODO: add void return
     def build_call(self, _, fn, target):
         fn = self.module.get_global(fn[1:])
         loc = self.builder.call(fn, self.args)
-        self.loc[target] = loc
+        
+        # Check Void
+        if not isinstance(fn.type.pointee.return_type, ir.VoidType):
+            self.loc[target] = loc
         self.args = []
     
     # TODO: add block operations and save return value somewhere?.
