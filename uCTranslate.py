@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/06/2020.
+Last Modified: 25/06/2020.
 '''
 
 from llvmlite import ir
@@ -46,6 +46,20 @@ class uCIRTranslator(object):
         ''' Main translation function. '''
         self.module = module
         
+        # TODO: initialization
+        
+        for inst in code:
+            opcode, ty, mods = self._extract_operation(inst[0])
+            if opcode == 'define':
+                self.new_function(inst)
+            elif hasattr(self, "build_" + opcode):
+                if not mods:
+                    getattr(self, "build_" + opcode)(ty, *inst[1:])
+                else:
+                    getattr(self, "build_" + opcode + '_')(ty, *inst[1:], **mods)
+            else:
+                print("Warning: No build_" + opcode + "() method", flush=True)
+
         return
     
     ### Auxiliary functions ###
@@ -150,7 +164,6 @@ class uCIRTranslator(object):
     def build_ne(self, ty, left, right, target):
         self.compare('!=', ty, left, right, target)
     
-    # TODO: correct?
     def build_and(self, _, left, right, target):
         left,right = self.loc[left],self.loc[right]
         loc = self.builder.and_(left, right)
@@ -234,7 +247,7 @@ class uCIRTranslator(object):
         if isinstance(target.type.pointee, ir.ArrayType):
             size = 1
             for dim in kwargs.values(): size *= int(dim)
-            continue #someday
+            # TODO: someday
         else:
             self.builder.store(src, target.pointee)
     
@@ -264,11 +277,10 @@ class uCIRTranslator(object):
         self.builder.load(src.pointee, target)
     
     # Function Operations
-    # TODO: complete with define.
     def build_param(self, _, src):
         self.args.append(self.loc[src])
     
-    def build_call(self, _, fn, target):
+    def build_call(self, _, fn, target=None):
         fn = self.module.get_global(fn[1:])
         loc = self.builder.call(fn, self.args)
         
@@ -277,8 +289,8 @@ class uCIRTranslator(object):
             self.loc[target] = loc
         self.args = []
     
-    # TODO: add block operations and save return value somewhere?.
-    def build_return(self, ty, value):
+    # TODO: add block operations?.
+    def build_return(self, ty, value=None):
         if ty == 'void':
             self.builder.ret_void()
         else:

@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 22/06/2020.
+Last Modified: 25/06/2020.
 '''
 
 from os.path import exists
@@ -132,12 +132,13 @@ class uCIRBuilder(object):
         The compiled module object is returned.
         """
         # Create a LLVM module object from the IR
-        self.builder.ret_void()
         llvm_ir = str(self.module)
         mod = self.binding.parse_assembly(llvm_ir)
         mod.verify()
+
         # Optimize IR
         if opt: self.pm.run(mod)
+
         # Now add the module and make sure it is ready for execution
         self.engine.add_module(mod)
         self.engine.finalize_object()
