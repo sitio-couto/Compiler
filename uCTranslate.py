@@ -39,7 +39,7 @@ class uCIRTranslator(object):
         self.types['float_*'] = float_t.as_pointer()
         self.types['char_*']  = char_t.as_pointer()
         self.types['void_*']  = char_t.as_pointer()
-        self.types['string']  = str_t.as_pointer()
+        self.types['string']  = str_t
         return
 
     def translate(self, module, code):
@@ -124,53 +124,31 @@ class uCIRTranslator(object):
         self.loc[target] = loc
     
     # Relational Operations
-    def build_gt(self, ty, left, right, target):
+    def compare(self, op, ty, left, right, target):
         left,right = self.loc[left],self.loc[right]
         if ty == 'float':
-            loc = self.builder.fcmp('>', left, right)
+            loc = self.builder.fcmp(op, left, right)
         else:
-            loc = self.builder.icmp('>', left, right)
+            loc = self.builder.icmp(op, left, right)
         self.loc[target] = loc
+        
+    def build_gt(self, ty, left, right, target):
+        self.compare('>', ty, left, right, target)
     
     def build_ge(self, ty, left, right, target):
-        left,right = self.loc[left],self.loc[right]
-        if ty == 'float':
-            loc = self.builder.fcmp('>=', left, right)
-        else:
-            loc = self.builder.icmp('>=', left, right)
-        self.loc[target] = loc
+        self.compare('>=', ty, left, right, target)
     
     def build_eq(self, ty, left, right, target):
-        left,right = self.loc[left],self.loc[right]
-        if ty == 'float':
-            loc = self.builder.fcmp('==', left, right)
-        else:
-            loc = self.builder.icmp('==', left, right)
-        self.loc[target] = loc
+        self.compare('==', ty, left, right, target)
     
     def build_le(self, ty, left, right, target):
-        left,right = self.loc[left],self.loc[right]
-        if ty == 'float':
-            loc = self.builder.fcmp('<=', left, right)
-        else:
-            loc = self.builder.icmp('<=', left, right)
-        self.loc[target] = loc
+        self.compare('<=', ty, left, right, target)
     
-    def build_le(self, ty, left, right, target):
-        left,right = self.loc[left],self.loc[right]
-        if ty == 'float':
-            loc = self.builder.fcmp('<', left, right)
-        else:
-            loc = self.builder.icmp('<', left, right)
-        self.loc[target] = loc
+    def build_lt(self, ty, left, right, target):
+        self.compare('<', ty, left, right, target)
     
     def build_ne(self, ty, left, right, target):
-        left,right = self.loc[left],self.loc[right]
-        if ty == 'float':
-            loc = self.builder.fcmp('!=', left, right)
-        else:
-            loc = self.builder.icmp('!=', left, right)
-        self.loc[target] = loc
+        self.compare('!=', ty, left, right, target)
     
     # TODO: correct?
     def build_and(self, _, left, right, target):
@@ -282,8 +260,8 @@ class uCIRTranslator(object):
     
     def build_get_(self, _, src, target, **kwargs):
         src = self.loc[src]
-        loc = self.builder.load(src.pointee, target)
-        self.loc[target] = loc
+        target = self.loc[target]
+        self.builder.load(src.pointee, target)
     
     # Function Operations
     # TODO: complete with define.
