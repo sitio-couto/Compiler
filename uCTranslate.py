@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 25/06/2020.
+Last Modified: 28/06/2020.
 '''
 
 from llvmlite import ir
@@ -77,6 +77,34 @@ class uCIRTranslator(object):
                     _modifier['ptr' + str(i)] = _val
                     
         return (_opcode, _type, _modifier)
+    
+    def _global_constant(self, builder_or_module, name, value, linkage='internal'):
+        # Get or create a (LLVM module-)global constant with *name* or *value*.
+        if isinstance(builder_or_module, ir.Module):
+            mod = builder_or_module
+        else:
+            mod = builder_or_module.module
+        data = ir.GlobalVariable(mod, value.type, name=name)
+        data.linkage = linkage
+        data.global_constant = True
+        data.initializer = value
+        data.align = 1
+        return data
+    
+    def make_bytearray(buf):
+        # Make a byte array constant from *buf*.
+        b = bytearray(buf)
+        n = len(b)
+        return ir.Constant(ir.ArrayType(ir.IntType(8), n), b)
+    
+    def _cio(self, fname, format, *target):
+        # Make global constant for string format
+        mod = self.builder.module
+        fmt_bytes = self.make_bytearray((format + '\00').encode('ascii'))
+        global_fmt = self._global_constant(mod, mod.get_unique_name('.fmt'), fmt_bytes)
+        fn = mod.get_global(fname)
+        ptr_fmt = self.builder.bitcast(global_fmt, ir.IntType(8).as_pointer())
+        return self.builder.call(fn, [ptr_fmt] + list(target))
     
     def new_function(self, inst):
         ty = inst[0].split('_')[1]
@@ -298,4 +326,18 @@ class uCIRTranslator(object):
             self.builder.ret(value)
             
     # Builtins
-    # TODO: read/print - scanf/printf?
+    # TODO: read/scanf?
+    def build_print(self, ty, target=None):
+        if target:
+            # get the object assigned to target
+            target = self.loc[target]
+            if ty == 'int':
+                self._cio('printf', '%d', target)
+            elif ty == 'float':
+                self._cio('printf', '%.2f', target)
+            elif ty == 'char':
+                self._cio('printf', '%c', target)
+            elif ty == 'string':
+                self._cio('printf', '%s', target)
+        else:
+            self._cio('printf', '\n')
