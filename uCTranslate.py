@@ -326,18 +326,21 @@ class uCIRTranslator(object):
             self.builder.ret(value)
             
     # Builtins
-    # TODO: read/scanf?
     def build_print(self, ty, target=None):
+        types = ['int':'%d', 'float':'%.2f', 'char':'%c', 'string':'%s']
         if target:
             # get the object assigned to target
             target = self.loc[target]
-            if ty == 'int':
-                self._cio('printf', '%d', target)
-            elif ty == 'float':
-                self._cio('printf', '%.2f', target)
-            elif ty == 'char':
-                self._cio('printf', '%c', target)
-            elif ty == 'string':
-                self._cio('printf', '%s', target)
+            self._cio('printf', types[ty], target)
         else:
             self._cio('printf', '\n')
+            
+    # TODO: correct?
+    def build_read(self, ty, target):
+        types = ['int':'%d', 'float':'%.2f', 'char':'%c', 'string':'%s']
+        target = self.loc[target]        # TODO: correct?
+        target = self._cio('scanf', types[ty], target)
+        self.loc[target] = target        # TODO: correct?
+    
+    # TODO: correct?
+    build_read_ = build_read
