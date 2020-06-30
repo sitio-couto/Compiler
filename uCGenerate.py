@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 23/06/2020.
+Last Modified: 30/06/2020.
 '''
 
 import re
@@ -656,12 +656,13 @@ class uCIRGenerator(ast.NodeVisitor):
             name = '@' + node.name.name
         
         # Create opcode and append to list.
-        if ty.name[0].name != 'void':
+        ty = self.build_reg_types(ty)
+        if ty != 'void':
             node.gen_location = self.new_temp()
-            inst = ('call', name, node.gen_location)
+            inst = ('call_' + ty, name, node.gen_location)
         else:
             node.gen_location = None
-            inst = ('call', name)
+            inst = ('call_void', name)
     
         self.code.append(inst)
 

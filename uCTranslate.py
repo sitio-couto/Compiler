@@ -71,7 +71,7 @@ class uCIRTranslator(object):
         _type = None
         _aux = source.split('_')
         _opcode = _aux[0]
-        if _opcode not in {'fptosi', 'sitofp', 'jump', 'cbranch', 'define', 'call'}:
+        if _opcode not in {'fptosi', 'sitofp', 'jump', 'cbranch', 'define'}:
             _type = _aux[1]
             for i, _val in enumerate(_aux[2:]):
                 if _val.isdigit():
@@ -341,7 +341,6 @@ class uCIRTranslator(object):
         loc = self.builder.call(fn, self.args)
         
         # Check Void
-        # TODO: change call to have type in code generation.
         if not ty == 'void':
             self.loc[target] = loc
         self.args = []
@@ -356,7 +355,7 @@ class uCIRTranslator(object):
             
     # Builtins
     def build_print(self, ty, target=None):
-        types = ['int':'%d', 'float':'%.2f', 'char':'%c', 'string':'%s']
+        types = {'int':'%d', 'float':'%.2f', 'char':'%c', 'string':'%s'}
         if target:
             # get the object assigned to target
             target = self.loc[target]
@@ -365,7 +364,7 @@ class uCIRTranslator(object):
             self._cio('printf', '\n')
             
     def build_read(self, ty, target):
-        types = ['int':'%d', 'float':'%lf', 'char':'%c', 'string':'%s']
+        types = {'int':'%d', 'float':'%lf', 'char':'%c', 'string':'%s'}
         target = self.loc[target]
         self._cio('scanf', types[ty], target)
     
