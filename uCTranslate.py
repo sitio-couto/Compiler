@@ -27,6 +27,7 @@ class uCIRTranslator(object):
         int_t   = ir.IntType(32)
         float_t = ir.DoubleType()
         char_t  = ir.IntType(8)
+        bool_t  = ir.IntType(1)
         void_t  = ir.VoidType()
         str_t   = ir.PointerType(char_t)
         
@@ -34,6 +35,7 @@ class uCIRTranslator(object):
         self.types['float']  = float_t
         self.types['char']   = char_t
         self.types['void']   = void_t
+        self.types['bool']   = bool_t
         self.types['int_64'] = ir.IntType(64)
         
         self.types['int_*']   = int_t.as_pointer()
@@ -282,16 +284,19 @@ class uCIRTranslator(object):
             if ty == 'float': size *= 8
             elif ty == 'int': dize *= self.types['int'].width//8
             
-            # Memcpy and cast to char pointer
+            # Getting needed types.
             char_ptr = self.types['char_*']
             i64 = self.types['int_64']
+            false = ir.Constant(self.types['bool'], False)
+            
+            # Memcpy and cast to char pointer
             cp = self.module.declare_intrinsic('llvm_memcpy', [char_ptr, char_ptr, i64])
             src = self.builder.bitcast(src, char_ptr)
             target = self.builder.bitcast(target, char_ptr)
             self.builder.call(cp, [target, src, ir.Constant(i64, size), false])
         else:
             temp = self.builder.load(target)
-            self.builder.store(src, temp)
+            self.builder.store(src, temp) # TODO: can break in some cases.
     
     def build_literal(self, ty, value, target):
         ty = self.types[ty]
@@ -308,7 +313,6 @@ class uCIRTranslator(object):
         loc = self.builder.gep(src, [base, idx])
         self.loc[target] = loc
     
-    # TODO: correct?
     def build_get(self, _, src, target):
         # This function is never called.
         assert False, "Get instruction without *!"
@@ -322,15 +326,22 @@ class uCIRTranslator(object):
     def build_param(self, _, src):
         self.args.append(self.loc[src])
     
-    def build_call(self, _, fn, target=None):
+    def build_call(self, ty, name, target=None):
         try:
-            fn = self.module.get_global(fn[1:])
+            fn = self.module.get_global(name[1:])
         except KeyError:
-            return #TODO: if keyerror.
+            # Get args
+            arg_types = [arg.type for arg in self.args]
+            
+            # Prototype
+            func_type = ir.FunctionType(self.types[ty], arg_types)
+            fn = ir.Function(self.module, func_type, name=name[1:])
+
         loc = self.builder.call(fn, self.args)
         
         # Check Void
-        if not isinstance(fn.type.pointee.return_type, ir.VoidType):
+        # TODO: change call to have type
+        if not ty == 'void':
             self.loc[target] = loc
         self.args = []
     
