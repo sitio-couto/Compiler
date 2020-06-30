@@ -30,10 +30,11 @@ class uCIRTranslator(object):
         void_t  = ir.VoidType()
         str_t   = ir.PointerType(char_t)
         
-        self.types['int']   = int_t
-        self.types['float'] = float_t
-        self.types['char']  = char_t
-        self.types['void']  = void_t
+        self.types['int']    = int_t
+        self.types['float']  = float_t
+        self.types['char']   = char_t
+        self.types['void']   = void_t
+        self.types['int_64'] = ir.IntType(64)
         
         self.types['int_*']   = int_t.as_pointer()
         self.types['float_*'] = float_t.as_pointer()
@@ -267,17 +268,27 @@ class uCIRTranslator(object):
         else:
             self.loc[target] = src
             
-    # TODO: complete with array
     # TODO: pointer correct?
-    def build_store_(self, _, src, target, **kwargs):
+    def build_store_(self, ty, src, target, **kwargs):
         src = self.loc[src]
         target = self.loc.get(target, None)
         if isinstance(target.type.pointee, ir.ArrayType):
+            
+            # Get array size in bytes.
             size = 1
             for dim in kwargs.values(): size *= int(dim)
-            # TODO: someday
+            if ty == 'float': size *= 8
+            elif ty == 'int': dize *= self.types['int'].width//8
+            
+            # Memcpy and cast to char pointer
+            char_ptr = self.types['char_*']
+            i64 = self.types['int_64']
+            cp = self.module.declare_intrinsic('llvm_memcpy', [char_ptr, char_ptr, i64])
+            src = self.builder.bitcast(src, char_ptr)
+            target = self.builder.bitcast(target, char_ptr)
+            self.builder.call(cp, [target, src, ir.Constant(i64, size), false])
         else:
-            self.builder.store(src, target.pointee)
+            self.builder.store(src, target)
     
     def build_literal(self, ty, value, target):
         ty = self.types[ty]
@@ -302,7 +313,7 @@ class uCIRTranslator(object):
     def build_get_(self, _, src, target, **kwargs):
         src = self.loc[src]
         target = self.loc[target]
-        self.builder.load(src.pointee, target)
+        self.builder.load(src, target)
     
     # Function Operations
     def build_param(self, _, src):
