@@ -294,9 +294,11 @@ class uCIRTranslator(object):
             src = self.builder.bitcast(src, char_ptr)
             target = self.builder.bitcast(target, char_ptr)
             self.builder.call(cp, [target, src, ir.Constant(i64, size), false])
-        else:
+        elif isinstance(target.type.pointee, ir.PointerType):
             temp = self.builder.load(target)
-            self.builder.store(src, temp) # TODO: can break in some cases.
+            self.builder.store(src, temp)
+        else:
+            self.builder.store(src, target)
     
     def build_literal(self, ty, value, target):
         ty = self.types[ty]
