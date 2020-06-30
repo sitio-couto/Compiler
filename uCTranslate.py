@@ -294,11 +294,10 @@ class uCIRTranslator(object):
             src = self.builder.bitcast(src, char_ptr)
             target = self.builder.bitcast(target, char_ptr)
             self.builder.call(cp, [target, src, ir.Constant(i64, size), false])
-        elif isinstance(target.type.pointee, ir.PointerType):
-            temp = self.builder.load(target)
-            self.builder.store(src, temp)
         else:
-            self.builder.store(src, target)
+            double_pointer = isinstance(target.type.pointee, ir.PointerType)
+            temp = self.builder.load(target) if double_pointer else target
+            self.builder.store(src, temp)
     
     def build_literal(self, ty, value, target):
         ty = self.types[ty]
@@ -342,7 +341,7 @@ class uCIRTranslator(object):
         loc = self.builder.call(fn, self.args)
         
         # Check Void
-        # TODO: change call to have type
+        # TODO: change call to have type in code generation.
         if not ty == 'void':
             self.loc[target] = loc
         self.args = []
