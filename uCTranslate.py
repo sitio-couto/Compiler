@@ -262,7 +262,18 @@ class uCIRTranslator(object):
     
     def build_load_(self, _, src, target, **kwargs):
         src = self.loc[src]
-        loc = self.builder.load(src)
+        pointee = src.type.pointee
+        
+        # Pointers or array references.
+        if isinstance(pointee, ir.PointerType):
+            if isinstance(pointee.pointee, ir.FunctionType):
+                loc = self.builder.load(src)
+            else:
+                temp = self.builder.load(src)
+                loc = self.builder.load(temp)
+        else:
+            loc = self.builder.load(src)
+        
         self.loc[target] = loc
     
     def build_store(self, _, src, target):
@@ -282,7 +293,7 @@ class uCIRTranslator(object):
             size = 1
             for dim in kwargs.values(): size *= int(dim)
             if ty == 'float': size *= 8
-            elif ty == 'int': dize *= self.types['int'].width//8
+            elif ty == 'int': size *= self.types['int'].width//8
             
             # Getting needed types.
             char_ptr = self.types['char_*']
