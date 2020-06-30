@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 28/06/2020.
+Last Modified: 30/06/2020.
 '''
 
 from llvmlite import ir
@@ -108,17 +108,20 @@ class uCIRTranslator(object):
         return self.builder.call(fn, [ptr_fmt] + list(target))
     
     def new_function(self, inst):
-        ty = inst[0].split('_')[1]
-        
-        # Get args
-        arg_types = list(map(lambda x: x[0], inst[2]))
-        arg_types = [self.types[arg] for arg in arg_types]
-        
-        # Prototype
-        func_type = ir.FunctionType(self.types[ty], arg_types)
-        
-        # Function
-        fn = ir.Function(self.module, func_type, name=inst[1][1:])
+        try:
+            fn = self.module.get_global(inst[1][1:])
+        except KeyError:
+            ty = inst[0].split('_')[1]
+            
+            # Get args
+            arg_types = list(map(lambda x: x[0], inst[2]))
+            arg_types = [self.types[arg] for arg in arg_types]
+            
+            # Prototype
+            func_type = ir.FunctionType(self.types[ty], arg_types)
+            
+            # Function
+            fn = ir.Function(self.module, func_type, name=inst[1][1:])
         
         # Parameter locations
         for i, temp in enumerate(list(map(lambda x: x[1], inst[2]))):
@@ -268,7 +271,6 @@ class uCIRTranslator(object):
         else:
             self.loc[target] = src
             
-    # TODO: pointer correct?
     def build_store_(self, ty, src, target, **kwargs):
         src = self.loc[src]
         target = self.loc.get(target, None)
@@ -288,7 +290,8 @@ class uCIRTranslator(object):
             target = self.builder.bitcast(target, char_ptr)
             self.builder.call(cp, [target, src, ir.Constant(i64, size), false])
         else:
-            self.builder.store(src, target)
+            temp = self.builder.load(target)
+            self.builder.store(src, temp)
     
     def build_literal(self, ty, value, target):
         ty = self.types[ty]
@@ -313,14 +316,17 @@ class uCIRTranslator(object):
     def build_get_(self, _, src, target, **kwargs):
         src = self.loc[src]
         target = self.loc[target]
-        self.builder.load(src, target)
+        self.builder.store(src, target)
     
     # Function Operations
     def build_param(self, _, src):
         self.args.append(self.loc[src])
     
     def build_call(self, _, fn, target=None):
-        fn = self.module.get_global(fn[1:])
+        try:
+            fn = self.module.get_global(fn[1:])
+        except KeyError:
+            return #TODO: if keyerror.
         loc = self.builder.call(fn, self.args)
         
         # Check Void
@@ -346,12 +352,10 @@ class uCIRTranslator(object):
         else:
             self._cio('printf', '\n')
             
-    # TODO: correct?
     def build_read(self, ty, target):
-        types = ['int':'%d', 'float':'%.2f', 'char':'%c', 'string':'%s']
-        target = self.loc[target]        # TODO: correct?
-        target = self._cio('scanf', types[ty], target)
-        self.loc[target] = target        # TODO: correct?
+        types = ['int':'%d', 'float':'%lf', 'char':'%c', 'string':'%s']
+        target = self.loc[target]
+        self._cio('scanf', types[ty], target)
     
-    # TODO: correct?
-    build_read_ = build_read
+    def build_read_(self, ty, target, **kwargs):
+        self.build_read(ty, target)
