@@ -56,7 +56,7 @@ entry:
   param_int %4 
   param_int %5 
   load_int_* @operation %6 
-  call %6 %7 
+  call_int %6 %7 
   print_int %7 
   print_string @.str.2 
   get_int_* @subtract @operation 
@@ -71,7 +71,7 @@ entry:
   param_int %10 
   param_int %11 
   load_int_* @operation %12 
-  call %12 %13 
+  call_int %12 %13 
   print_int %13 
   literal_int 0 %14 
   store_int %14 %1 

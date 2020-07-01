@@ -22,7 +22,7 @@ entry:
   store_int %1 %v 
   load_int %v %2 
   param_int %2 
-  call @doubleMe %3 
+  call_int @doubleMe %3 
   store_int %3 %v 
   load_int @n %4 
   load_int @n %5 
