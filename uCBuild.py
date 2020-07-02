@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 25/06/2020.
+Last Modified: 02/07/2020.
 '''
 
 from os.path import exists
@@ -107,7 +107,7 @@ class uCIRBuilder(object):
     
     def show(self, cfg, buf=None):
         if cfg:
-            self.view(buf)
+            self.view(buf.filename)
         elif buf:
             self.save_ir(buf)
         else:
@@ -122,8 +122,7 @@ class uCIRBuilder(object):
         print(self.module)
         
     def save_ir(self, filename):
-        with open(filename, 'w') as output_file:
-            output_file.write(str(self.module))
+        output_file.write(str(self.module))
     
     ### IR Compilation/Execution Functions ###
     def _compile_ir(self, opt):
@@ -148,7 +147,7 @@ class uCIRBuilder(object):
     def execute_ir(self, opt):
         mod = self._compile_ir(opt)
         # Obtain a pointer to the compiled 'main' - it's the address of its JITed code in memory.
-        main_ptr = self.engine.get_pointer_to_function(mod.get_function('main'))
+        main_ptr = self.engine.get_function_address('main')
         # To convert an address to an actual callable thing we have to use
         # CFUNCTYPE, and specify the arguments & return type.
         main_function = CFUNCTYPE(c_int)(main_ptr)
