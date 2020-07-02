@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 30/06/2020.
+Last Modified: 02/07/2020.
 '''
 
 from llvmlite import ir
@@ -320,9 +320,27 @@ class uCIRTranslator(object):
             self.loc[target] = val
     
     def build_elem(self, _, src, idx, target):
+        int_t = self.types['int']
         src, idx = self.loc[src], self.loc[idx]
-        base = ir.Constant(self.types['int'], 0)
-        loc = self.builder.gep(src, [base, idx])
+        base = ir.Constant(idx.type, 0)
+        
+        # Matrix
+        if isinstance(src.type.pointee.element, ir.ArrayType):
+            n = src.type.pointee.element.count
+            if isinstance(idx, ir.Constant):
+                i = ir.Constant(int_t, idx.constant // n)
+                j = ir.Constant(int_t, idx.constant % n)
+            else:
+                n = ir.Constant(int_t, n)
+                i = self.builder.sdiv(idx, n)
+                j = self.builder.srem(idx, n)
+            
+            temp = self.builder.gep(src, [base, i])
+            loc = self.builder.gep(temp, [base, j])
+            
+        # Array
+        else:
+            loc = self.builder.gep(src, [base, idx])
         self.loc[target] = loc
     
     def build_get(self, _, src, target):
