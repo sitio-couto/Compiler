@@ -325,6 +325,7 @@ class uCIRTranslator(object):
         base = ir.Constant(idx.type, 0)
         
         # Matrix
+        # TODO: generalize to N-dimensional arrays. Currently only 1 or 2.
         if isinstance(src.type.pointee.element, ir.ArrayType):
             n = src.type.pointee.element.count
             if isinstance(idx, ir.Constant):
@@ -345,7 +346,7 @@ class uCIRTranslator(object):
     
     def build_get(self, _, src, target):
         # This function is never called.
-        assert False, "Get instruction without *!"
+        assert False, "Get instruction without '*'!"
     
     def build_get_(self, _, src, target, **kwargs):
         src = self.loc[src]
@@ -370,7 +371,7 @@ class uCIRTranslator(object):
         loc = self.builder.call(fn, self.args)
         
         # Check Void
-        if not ty == 'void':
+        if target:
             self.loc[target] = loc
         self.args = []
     
