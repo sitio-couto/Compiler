@@ -9,17 +9,18 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/07/2020.
+Last Modified: 07/07/2020.
 '''
 
 from llvmlite import ir
 
 class uCIRTranslator(object):
-    def __init__(self, builder):
-        self.builder = builder
+    def __init__(self):
+        self.builder = None
         self.module  = None
         self.loc     = dict()
         self.types   = dict()
+        self.blocks  = dict()
         self.args    = []
         self.init_types()
     
@@ -45,16 +46,21 @@ class uCIRTranslator(object):
         self.types['string']  = str_t
         return
 
-    def translate(self, module, code):
+    def translate(self, module, cfg):
         ''' Main translation function. '''
         self.module = module
         
-        # TODO: initialization
+        # TODO: visit blocks (cfg) IN IDX ORDER creating every block in function and adding to self.blocks.
+        # TODO: create function in this phase.
+        # TODO: pass through blocks, creating builder and building insts. 
+        # TODO: create all global variables and add to loc (or modify to get from loc or global in build funcs).
         
-        for inst in code:
+        for inst in cfg.retrieve_ir():
             opcode, ty, mods = self._extract_operation(inst[0])
             if opcode == 'define':
                 self.new_function(inst)
+                bb = self.func.append_basic_block(name="entry")
+                self.builder = ir.IRBuilder(bb)
             elif hasattr(self, "build_" + opcode):
                 if not mods:
                     getattr(self, "build_" + opcode)(ty, *inst[1:])
@@ -94,7 +100,7 @@ class uCIRTranslator(object):
         data.align = 1
         return data
     
-    def make_bytearray(buf):
+    def make_bytearray(self,buf):
         # Make a byte array constant from *buf*.
         b = bytearray(buf)
         n = len(b)
@@ -128,6 +134,7 @@ class uCIRTranslator(object):
         # Parameter locations
         for i, temp in enumerate(list(map(lambda x: x[1], inst[2]))):
             self.loc[temp] = fn.args[i]
+        self.func = fn
 
     ### Instruction building functions ###
     # Binary Operations
@@ -175,9 +182,9 @@ class uCIRTranslator(object):
     def compare(self, op, ty, left, right, target):
         left,right = self.loc[left],self.loc[right]
         if ty == 'float':
-            loc = self.builder.fcmp(op, left, right)
+            loc = self.builder.fcmp_signed(op, left, right)
         else:
-            loc = self.builder.icmp(op, left, right)
+            loc = self.builder.icmp_signed(op, left, right)
         self.loc[target] = loc
         
     def build_gt(self, ty, left, right, target):
@@ -225,14 +232,15 @@ class uCIRTranslator(object):
         self.loc[target] = loc
     
     # Branch Operations
-    # TODO: terminators (block operations)?.
+    # TODO: create blocks.
     def build_jump(self, _, target):
-        target = self.loc[target]
+        target = self.blocks[target[1:]]
         self.builder.branch(target)
     
+    # TODO: block operations - external.
     def build_cbranch(self, _, test, true, false):
         test = self.loc[test]
-        true, false = self.loc[true], self.loc[false]
+        true, false = self.blocks[true], self.blocks[false]
         self.builder.cbranch(test, true, false)
     
     # Memory Operations
@@ -246,7 +254,7 @@ class uCIRTranslator(object):
         ty = self.types[ty]
         
         # Modifier
-        for mod in reverse(list(kwargs.values())):
+        for mod in reversed(list(kwargs.values())):
             ty = ir.ArrayType(ty, int(mod)) if mod.isdigit() else ir.PointerType(ty)
                 
         loc = self.builder.alloca(ty, name=target[1:])
@@ -375,7 +383,6 @@ class uCIRTranslator(object):
             self.loc[target] = loc
         self.args = []
     
-    # TODO: add block operations?.
     def build_return(self, ty, value=None):
         if ty == 'void':
             self.builder.ret_void()

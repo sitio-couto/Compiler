@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 02/07/2020.
+Last Modified: 07/07/2020.
 '''
 
 from os.path import exists
@@ -18,7 +18,7 @@ from ctypes import CFUNCTYPE, c_int
 from uCTranslate import uCIRTranslator
 
 class uCIRBuilder(object):
-    # This class accepts 2 generator classes: uCIRGenerate or uCIROptimizer.
+    # This class accepts the uCIROptimizer as generator.
     ### Init Functions ###
     def __init__(self, generator):
         self.generator = generator
@@ -28,21 +28,21 @@ class uCIRBuilder(object):
         self.binding.initialize_native_target()
         self.binding.initialize_native_asmprinter()
         
-        self.module = ir.Module(name=__file__)
-        self.module.triple = self.binding.get_default_triple()
-        self.builder = ir.IRBuilder()
-        
         self._create_execution_engine()
         
+        self.create_optimizator()
+
+    def setup_translation(self):
+        self.module = ir.Module(name=__file__)
+        self.module.triple = self.binding.get_default_triple()
+        
         # Translator from uCIR to LLVM IR
-        self.translator = uCIRTranslator(self.builder)
+        self.translator = uCIRTranslator()
         
         # declare external functions
         self._declare_printf_function()
         self._declare_scanf_function()
         
-        self.create_optimizator()
-
     def _create_execution_engine(self):
         """
         Create an ExecutionEngine suitable for JIT code generation on
@@ -59,14 +59,12 @@ class uCIRBuilder(object):
     def _declare_printf_function(self):
         voidptr_ty = ir.IntType(8).as_pointer()
         printf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
-        printf = ir.Function(self.module, printf_ty, name="printf")
-        self.printf = printf
+        ir.Function(self.module, printf_ty, name="printf")
 
     def _declare_scanf_function(self):
         voidptr_ty = ir.IntType(8).as_pointer()
         scanf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
-        scanf = ir.Function(self.module, scanf_ty, name="scanf")
-        self.scanf = scanf
+        ir.Function(self.module, scanf_ty, name="scanf")
         
     def create_optimizator(self):
         self.pm = binding.create_module_pass_manager()
@@ -86,23 +84,23 @@ class uCIRBuilder(object):
         
         # Generate IR.
         self.generator.code = []
-        self.generator.generate(data)
+        self.generator.generate(data, opt=True)
         
         if not quiet:
             self.generator.print_code()
             print("\n")
         
         # Reset translator.
-        self.module = ir.Module(name=__file__)
-        self.module.triple = self.binding.get_default_triple()
+        self.setup_translation()
         
         # Translate self.generator.code
-        self.translator.translate(self.module, self.generator.code)
+        self.translator.translate(self.module, self.generator.cfg)
         
         # Execute IR
         self.execute_ir(opt)
         
         if not quiet:
+            self.show(False)
             self.view()
     
     def show(self, cfg, buf=None):
@@ -116,7 +114,7 @@ class uCIRBuilder(object):
     def view(self, filename=None):
         for fn in self.module.functions:
             dot = self.binding.get_function_cfg(fn)
-            llvm.view_dot_graph(dot, filename = filename)
+            binding.view_dot_graph(dot, filename = filename, view=True)
     
     def print_ir(self):
         print(self.module)
