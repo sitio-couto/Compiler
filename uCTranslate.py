@@ -99,7 +99,7 @@ class uCIRTranslator(object):
         line = 0
         while line < len(code)-1:
             inst = code[line]
-            A = re.match(r'call|print|assert', inst[0])
+            A = not re.match(r'cbranch|jump', inst[0])
             B = self.is_label(code[line+1])
             if A and B:
                 # print(code[line], code[line+1])
