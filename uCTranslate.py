@@ -67,8 +67,6 @@ class uCIRTranslator(object):
             else:
                 print("Warning: No build_" + opcode + "() method", flush=True)
 
-            # print(self.module)
-
         return
     
     ### Auxiliary functions ###
@@ -147,6 +145,7 @@ class uCIRTranslator(object):
                 self.blocks[i] = fn.append_basic_block(name=i)
         
         # Parameters and Globals Variables
+        self.loc = dict()
         self.loc.update(self.globals)
         for i, temp in enumerate(list(map(lambda x: x[1], inst[2]))):
             self.loc[temp] = fn.args[i]
@@ -367,6 +366,7 @@ class uCIRTranslator(object):
             self.builder.store(src, temp)
     
     def build_literal(self, ty, value, target):
+        # NOTE: Variables that were not allocated are sprouting in self.loc
         ty = self.types[ty]
         val = ir.Constant(ty, value)
         loc = self.loc.get(target, None)
