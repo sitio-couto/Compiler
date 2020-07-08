@@ -1,3 +1,7 @@
+int j;
+float i;
+char h;
+
 int i = 1;
 float f = 0.1;
 char c = 'c';
