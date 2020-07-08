@@ -24,6 +24,7 @@ class uCIRTranslator(object):
         self.blocks  = dict()
         self.globals = dict()
         self.args    = []
+        self.code    = None
         self.init_types()
     
     def init_types(self):
@@ -52,7 +53,10 @@ class uCIRTranslator(object):
         ''' Main translation function. '''
         self.module = module
 
-        for line,inst in enumerate(cfg.retrieve_ir()):
+        self.label_colapse(cfg)
+        # self.code = cfg.retrieve_ir()
+
+        for line,inst in enumerate(self.code):
             print(inst)
             opcode, ty, mods = self._extract_operation(inst[0])
             if opcode == 'label':
@@ -67,9 +71,44 @@ class uCIRTranslator(object):
             else:
                 print("Warning: No build_" + opcode + "() method", flush=True)
 
+        print(self.module)
+
         return
     
     ### Auxiliary functions ###
+    def label_colapse(self, cfg):
+        code = cfg.retrieve_ir()
+        pairs = []
+
+        # Find all consecutive labels
+        for line,inst in enumerate(code[:-1]):
+            A = self.is_label(code[line])
+            B = self.is_label(code[line+1])
+            if A and B: pairs.append([line,'%'+code[line][0],'%'+code[line+1][0]])
+
+        # Replace labels
+        for l,o,n in pairs:
+            code[l] = ('jump', n) # every block must end in a terminator instruction
+            for line,inst in enumerate(code):
+                if o in inst:
+                    aux = list(inst)
+                    aux[aux.index(o)] = n
+                    code[line] = tuple(aux)
+
+        # Add jump (terminator) after function calls
+        line = 0
+        while line < len(code)-1:
+            inst = code[line]
+            A = re.match(r'call|print|assert', inst[0])
+            B = self.is_label(code[line+1])
+            if A and B:
+                # print(code[line], code[line+1])
+                label = '%'+code[line+1][0]
+                code = code[:line+1]+[('jump',label)]+code[line+1:]
+            line += 1
+            
+        self.code = code # Set new IR
+
     def is_label(self, inst):
         if type(inst) in {tuple,list}: 
             return bool(re.match(r'^\d+$', inst[0]))
@@ -139,7 +178,7 @@ class uCIRTranslator(object):
         # Function's Basic Blocks
         self.blocks = dict()
         self.builder = ir.IRBuilder(fn.append_basic_block(name="entry"))
-        for i in map(lambda x: x[0], cfg.retrieve_ir()[line+1:]):
+        for i in map(lambda x: x[0], self.code[line+1:]):
             if 'define' in i: break # Until reaches other function
             if self.is_label(i):
                 self.blocks[i] = fn.append_basic_block(name=i)
