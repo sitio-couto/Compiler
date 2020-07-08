@@ -263,10 +263,19 @@ class uCIRTranslator(object):
     # Memory Operations
     # NOTE: the global variables might need alignment
     def build_global(self, ty, target, source=None):
-        glb = ir.GlobalVariable(self.module, self.types[ty], target[1:])
+        # Check if global variable is initialized
         if source:
-            if ty=='char': source = ord(source[1])
-            glb.initializer = ir.Constant(self.types[ty], source)
+            if ty=='char': source = ord(source[1]) # Get ascii for char
+            elif ty=='string': source = bytearray((source+'\0').encode('utf8')) # get byte array for string
+        
+        # Define types to alocate
+        if ty=="string":
+            ty = ir.ArrayType(self.types['char'], len(source))
+        else: 
+            ty = self.types[ty]
+        
+        glb = ir.GlobalVariable(self.module, ty, target[1:])
+        glb.initializer = ir.Constant(ty, source)
         self.globals[target] = glb
 
     def build_global_(self, ty, target, source=None, **kwargs):
