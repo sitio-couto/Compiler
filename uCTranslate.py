@@ -53,6 +53,7 @@ class uCIRTranslator(object):
         self.module = module
 
         for line,inst in enumerate(cfg.retrieve_ir()):
+            print(inst)
             opcode, ty, mods = self._extract_operation(inst[0])
             if opcode == 'label':
                 self.builder.position_at_start(self.blocks[inst[0]])
@@ -66,7 +67,7 @@ class uCIRTranslator(object):
             else:
                 print("Warning: No build_" + opcode + "() method", flush=True)
 
-            print(self.module)
+            # print(self.module)
 
         return
     
@@ -263,6 +264,9 @@ class uCIRTranslator(object):
     # Memory Operations
     # NOTE: the global variables might need alignment
     def build_global(self, ty, target, source=None):
+        # If is a function signature, nothing to be done
+        if type(source)==list: return
+
         # Check if global variable is initialized
         if source:
             if ty=='char': source = ord(source[1]) # Get ascii for char
