@@ -52,9 +52,6 @@ class uCIRTranslator(object):
         ''' Main translation function. '''
         self.module = module
 
-        # TODO: visit blocks (cfg) IN IDX ORDER creating every block in function and adding to self.blocks.
-        # TODO: create function in this phase.
-        
         for line,inst in enumerate(cfg.retrieve_ir()):
             opcode, ty, mods = self._extract_operation(inst[0])
             if opcode == 'label':
@@ -78,7 +75,7 @@ class uCIRTranslator(object):
         if type(inst) in {tuple,list}: 
             return bool(re.match(r'^\d+$', inst[0]))
         else: 
-            return bool(re.match(r'^\d+$', inst[0]))
+            return bool(re.match(r'^\d+$', inst))
 
     def _extract_operation(self, source):
         if self.is_label(source): return 'label',None,None
