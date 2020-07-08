@@ -21,6 +21,7 @@ class uCIRTranslator(object):
         self.loc     = dict()
         self.types   = dict()
         self.blocks  = dict()
+        self.globals = dict()
         self.args    = []
         self.init_types()
     
@@ -59,6 +60,8 @@ class uCIRTranslator(object):
             print(inst) ###############################################
             opcode, ty, mods = self._extract_operation(inst[0])
             if opcode == 'define':
+                self.loc = dict()
+                self.loc.update(self.globals)
                 self.new_function(inst)
                 bb = self.func.append_basic_block(name="entry")
                 self.builder = ir.IRBuilder(bb)
@@ -250,7 +253,7 @@ class uCIRTranslator(object):
         glb = ir.GlobalVariable(self.module, self.types[ty], target[1:])
         if ty=='char': source = ord(source[1])
         glb.initializer = ir.Constant(self.types[ty], source)
-        self.loc[target] = glb
+        self.globals[target] = glb
 
     def build_global_(self, ty, target, source, **kwargs):
         make_arr = lambda d: ir.ArrayType(make_arr(d[1:]), d[0]) if d else self.types[ty]
@@ -260,7 +263,7 @@ class uCIRTranslator(object):
         glb = ir.GlobalVariable(self.module, arr_type, target[1:])
         if ty=='char': source = bytearray((source+'\0').encode('utf8'))
         glb.initializer = ir.Constant(arr_type, source)
-        self.loc[target] = glb
+        self.globals[target] = glb
 
     def build_alloc(self, ty, target):
         ty = self.types[ty]
