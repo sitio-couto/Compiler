@@ -56,6 +56,7 @@ class uCIRTranslator(object):
         # TODO: create all global variables and add to loc (or modify to get from loc or global in build funcs).
         
         for inst in cfg.retrieve_ir():
+            print(inst) ###############################################
             opcode, ty, mods = self._extract_operation(inst[0])
             if opcode == 'define':
                 self.new_function(inst)
@@ -244,7 +245,23 @@ class uCIRTranslator(object):
         self.builder.cbranch(test, true, false)
     
     # Memory Operations
-    # TODO: add global
+    # TODO: the global variables might need alignment
+    def build_global(self, ty, target, source):
+        glb = ir.GlobalVariable(self.module, self.types[ty], target[1:])
+        if ty=='char': source = ord(source[1])
+        glb.initializer = ir.Constant(self.types[ty], source)
+        self.loc[target] = glb
+
+    def build_global_(self, ty, target, source, **kwargs):
+        make_arr = lambda d: ir.ArrayType(make_arr(d[1:]), d[0]) if d else self.types[ty]
+        dims = [int(d) for d in kwargs.values()]
+        if ty=='char': dims[-1] += 1
+        arr_type = make_arr(dims)
+        glb = ir.GlobalVariable(self.module, arr_type, target[1:])
+        if ty=='char': source = bytearray((source+'\0').encode('utf8'))
+        glb.initializer = ir.Constant(arr_type, source)
+        self.loc[target] = glb
+
     def build_alloc(self, ty, target):
         ty = self.types[ty]
         loc = self.builder.alloca(ty, name=target[1:])
