@@ -106,7 +106,7 @@ class uCIRTranslator(object):
                 label = '%'+code[line+1][0]
                 code = code[:line+1]+[('jump',label)]+code[line+1:]
             line += 1
-            
+
         self.code = code # Set new IR
 
     def is_label(self, inst):
@@ -395,7 +395,7 @@ class uCIRTranslator(object):
             false = ir.Constant(self.types['bool'], False)
             
             # Memcpy and cast to char pointer
-            cp = self.module.declare_intrinsic('llvm_memcpy', [char_ptr, char_ptr, i64])
+            cp = self.module.declare_intrinsic('llvm.memcpy', [char_ptr, char_ptr, i64])
             src = self.builder.bitcast(src, char_ptr)
             target = self.builder.bitcast(target, char_ptr)
             self.builder.call(cp, [target, src, ir.Constant(i64, size), false])
