@@ -13,6 +13,7 @@ Last Modified: 07/07/2020.
 '''
 
 from llvmlite import ir
+import re
 
 class uCIRTranslator(object):
     def __init__(self):
@@ -50,21 +51,16 @@ class uCIRTranslator(object):
     def translate(self, module, cfg):
         ''' Main translation function. '''
         self.module = module
-        
+
         # TODO: visit blocks (cfg) IN IDX ORDER creating every block in function and adding to self.blocks.
         # TODO: create function in this phase.
-        # TODO: pass through blocks, creating builder and building insts. 
-        # TODO: create all global variables and add to loc (or modify to get from loc or global in build funcs).
         
-        for inst in cfg.retrieve_ir():
-            print(inst) ###############################################
+        for line,inst in enumerate(cfg.retrieve_ir()):
             opcode, ty, mods = self._extract_operation(inst[0])
-            if opcode == 'define':
-                self.loc = dict()
-                self.loc.update(self.globals)
-                self.new_function(inst)
-                bb = self.func.append_basic_block(name="entry")
-                self.builder = ir.IRBuilder(bb)
+            if opcode == 'label':
+                self.builder.position_at_start(self.blocks[inst[0]])
+            elif opcode == 'define':
+                self.new_function(line, inst, cfg)
             elif hasattr(self, "build_" + opcode):
                 if not mods:
                     getattr(self, "build_" + opcode)(ty, *inst[1:])
@@ -73,10 +69,19 @@ class uCIRTranslator(object):
             else:
                 print("Warning: No build_" + opcode + "() method", flush=True)
 
+            print(self.module)
+
         return
     
     ### Auxiliary functions ###
+    def is_label(self, inst):
+        if type(inst) in {tuple,list}: 
+            return bool(re.match(r'^\d+$', inst[0]))
+        else: 
+            return bool(re.match(r'^\d+$', inst[0]))
+
     def _extract_operation(self, source):
+        if self.is_label(source): return 'label',None,None
         _modifier = {}
         _type = None
         _aux = source.split('_')
@@ -119,7 +124,7 @@ class uCIRTranslator(object):
         ptr_fmt = self.builder.bitcast(global_fmt, ir.IntType(8).as_pointer())
         return self.builder.call(fn, [ptr_fmt] + list(target))
     
-    def new_function(self, inst):
+    def new_function(self, line, inst, cfg):
         try:
             fn = self.module.get_global(inst[1][1:])
         except KeyError:
@@ -135,9 +140,20 @@ class uCIRTranslator(object):
             # Function
             fn = ir.Function(self.module, func_type, name=inst[1][1:])
         
-        # Parameter locations
+        # Function's Basic Blocks
+        self.blocks = dict()
+        self.builder = ir.IRBuilder(fn.append_basic_block(name="entry"))
+        for i in map(lambda x: x[0], cfg.retrieve_ir()[line+1:]):
+            if 'define' in i: break # Until reaches other function
+            if self.is_label(i):
+                self.blocks[i] = fn.append_basic_block(name=i)
+        
+        # Parameters and Globals Variables
+        self.loc.update(self.globals)
         for i, temp in enumerate(list(map(lambda x: x[1], inst[2]))):
             self.loc[temp] = fn.args[i]
+        
+        # Set New Function
         self.func = fn
 
     ### Instruction building functions ###
@@ -244,11 +260,11 @@ class uCIRTranslator(object):
     # TODO: block operations - external.
     def build_cbranch(self, _, test, true, false):
         test = self.loc[test]
-        true, false = self.blocks[true], self.blocks[false]
+        true, false = self.blocks[true[1:]], self.blocks[false[1:]]
         self.builder.cbranch(test, true, false)
     
     # Memory Operations
-    # TODO: the global variables might need alignment
+    # NOTE: the global variables might need alignment
     def build_global(self, ty, target, source):
         glb = ir.GlobalVariable(self.module, self.types[ty], target[1:])
         if ty=='char': source = ord(source[1])
