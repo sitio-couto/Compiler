@@ -136,15 +136,21 @@ class uCIRBuilder(object):
             # apply some optimization passes on module
             pmb = self.binding.create_pass_manager_builder()
             pm = self.binding.create_module_pass_manager()
+            
             pmb.opt_level = 0;
             if opt == 'ctm' or opt == 'all':
+                # Sparse conditional constant propagation and merging
+                pm.add_sccp_pass()
+                # Merges duplicate global constants together
                 pm.add_constant_merge_pass()
+                # Combine inst to form fewer, simple inst
+                # This pass also does algebraic simplification
+                pm.add_instruction_combining_pass()
             if opt == 'dce' or opt == 'all':
                 pm.add_dead_code_elimination_pass()
             if opt == 'cfg' or opt  == 'all':
+                # Performs dead code elimination and basic block merging
                 pm.add_cfg_simplification_pass()
-            pmb.populate(pm)
-            pm.run(mod)
             
         # Now add the module and make sure it is ready for execution
         self.engine.add_module(mod)
