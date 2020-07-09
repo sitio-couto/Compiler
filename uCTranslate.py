@@ -179,8 +179,10 @@ class uCIRTranslator(object):
                 self.blocks[i] = fn.append_basic_block(name=i)
         
         # Parameters and Globals Variables
+        self.globals[inst[1]] = fn
         self.loc = dict()
         self.loc.update(self.globals)
+        
         for i, temp in enumerate(list(map(lambda x: x[1], inst[2]))):
             self.loc[temp] = fn.args[i]
 
@@ -294,12 +296,12 @@ class uCIRTranslator(object):
     # Memory Operations
     # NOTE: the global variables might need alignment
     def build_global(self, ty, target, source=None):
-        # If is a function signature, nothing to be done (TODO: fn ptr)
+        # If is a function signature, nothing to be done.
         if type(source)==list: return
 
         # Check string
         if ty == 'string':
-            source = self.make_bytearray((source+'\00').encode('utf-8')) # get byte array for string
+            source = self.make_bytearray((source+'\0').encode('utf-8')) # get byte array for string
             glb = ir.GlobalVariable(self.module, source.type, target[1:])
             glb.initializer = source
             glb.global_constant = True
@@ -319,27 +321,38 @@ class uCIRTranslator(object):
         self.globals[target] = glb
 
     def build_global_(self, ty, target, source=None, **kwargs):
-
-        # Array/Pointer
-        width = 1
-        ty_str = ty
-        ty = self.types[ty]
-        for mod in reversed(list(kwargs.values())):
-            if mod.isdigit():
-                width *= int(mod)
-                ty = ir.ArrayType(ty, int(mod))
-            else:
-                ty = ir.PointerType(ty)
-        glb = ir.GlobalVariable(self.module, ty, target[1:])
+        # Check for function ptr
+        fn_sig = isinstance(source, list)
+        if fn_sig:
+            for i in source:
+                if i not in list(self.types.keys()): 
+                    fn_sig = False
         
-        # Initializer.
-        if source:
-            if ty_str=='char': source = self.make_bytearray((source+'\00').encode('utf-8'))
-            glb.initializer = ir.Constant(ty, source)
+        # Function pointer.
+        if fn_sig:
+            sig = [self.types[par] for par in source]
+            fnty = ir.FunctionType(self.types[ty], sig)
+            glb = ir.GlobalVariable(self.module, fnty.as_pointer(), target[1:])
+            glb.linkage = 'common'
+            glb.initializer = ir.Constant(fnty.as_pointer(), None)
+        
+        # Array/Pointer
+        else:
+            ty_str = ty
+            ty = self.types[ty]
+            for mod in reversed(list(kwargs.values())):
+                ty = ir.ArrayType(ty, int(mod)) if mod.isdigit() else ir.PointerType(ty)
+                
+            glb = ir.GlobalVariable(self.module, ty, target[1:])
             
-        # Global consts.
-        if target[1:].startswith('.const'):
-            glb.global_constant=True
+            # Initializer.
+            if source:
+                if ty_str=='char': source = self.make_bytearray((source+'\0').encode('utf-8'))
+                glb.initializer = ir.Constant(ty, source)
+                
+            # Global consts.
+            if target[1:].startswith('.const'): glb.global_constant=True
+                
         self.globals[target] = glb
 
     def build_alloc(self, ty, target):
@@ -465,15 +478,21 @@ class uCIRTranslator(object):
         self.args.append(self.loc[src])
     
     def build_call(self, ty, name, target=None):
-        try:
-            fn = self.module.get_global(name[1:])
-        except KeyError:
-            # Get args
-            arg_types = [arg.type for arg in self.args]
+        # Function ptr
+        if name[0] == '%':
+            fn = self.loc[name]
             
-            # Prototype
-            func_type = ir.FunctionType(self.types[ty], arg_types)
-            fn = ir.Function(self.module, func_type, name=name[1:])
+        # Function
+        else:
+            try:
+                fn = self.module.get_global(name[1:])
+            except KeyError:
+                # Get args
+                arg_types = [arg.type for arg in self.args]
+                
+                # Prototype
+                func_type = ir.FunctionType(self.types[ty], arg_types)
+                fn = ir.Function(self.module, func_type, name=name[1:])
 
         loc = self.builder.call(fn, self.args)
         
