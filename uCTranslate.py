@@ -294,33 +294,52 @@ class uCIRTranslator(object):
     # Memory Operations
     # NOTE: the global variables might need alignment
     def build_global(self, ty, target, source=None):
-        # If is a function signature, nothing to be done
+        # If is a function signature, nothing to be done (TODO: fn ptr)
         if type(source)==list: return
 
-        # Check if global variable is initialized
-        if source:
-            if ty=='char': source = ord(source[1]) # Get ascii for char
-            elif ty=='string': source = bytearray((source+'\0').encode('utf8')) # get byte array for string
-        
-        # Define types to alocate
-        if ty=="string":
-            ty = ir.ArrayType(self.types['char'], len(source))
-        else: 
+        # Check string
+        if ty == 'string':
+            source = self.make_bytearray((source+'\00').encode('utf-8')) # get byte array for string
+            glb = ir.GlobalVariable(self.module, source.type, target[1:])
+            glb.initializer = source
+            glb.global_constant = True
+            
+        # Others
+        else:
+            if source and ty=='char':
+                source = ord(source[1]) # Get ascii for char 
+                
             ty = self.types[ty]
-        
-        glb = ir.GlobalVariable(self.module, ty, target[1:])
-        glb.initializer = ir.Constant(ty, source)
+            glb = ir.GlobalVariable(self.module, ty, target[1:])
+            
+            # Initializer
+            if source:
+                glb.initializer = ir.Constant(ty, source)
+            
         self.globals[target] = glb
 
     def build_global_(self, ty, target, source=None, **kwargs):
-        make_arr = lambda d: ir.ArrayType(make_arr(d[1:]), d[0]) if d else self.types[ty]
-        dims = [int(d) for d in kwargs.values()]
-        if ty=='char': dims[-1] += 1
-        arr_type = make_arr(dims)
-        glb = ir.GlobalVariable(self.module, arr_type, target[1:])
+
+        # Array/Pointer
+        width = 1
+        ty_str = ty
+        ty = self.types[ty]
+        for mod in reversed(list(kwargs.values())):
+            if mod.isdigit():
+                width *= int(mod)
+                ty = ir.ArrayType(ty, int(mod))
+            else:
+                ty = ir.PointerType(ty)
+        glb = ir.GlobalVariable(self.module, ty, target[1:])
+        
+        # Initializer.
         if source:
-            if ty=='char': source = bytearray((source+'\0').encode('utf8'))
-            glb.initializer = ir.Constant(arr_type, source)
+            if ty_str=='char': source = self.make_bytearray((source+'\00').encode('utf-8'))
+            glb.initializer = ir.Constant(ty, source)
+            
+        # Global consts.
+        if target[1:].startswith('.const'):
+            glb.global_constant=True
         self.globals[target] = glb
 
     def build_alloc(self, ty, target):
