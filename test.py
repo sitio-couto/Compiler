@@ -43,6 +43,8 @@ parser.add_argument('--prop', action='store_true',
                     help='Run constant propagation optimization.')
 parser.add_argument('--single', action='store_true', 
                     help='Run one iteration at a time.')
+parser.add_argument('--optimize', action='store_true', 
+                    help='Use optimized code (only in full compilation).')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-l','--lexer', action='store_true')
 group.add_argument('-p','--parser', action='store_true')
@@ -76,7 +78,7 @@ if __name__ == '__main__':
     cfg = CFG(generator)
     dfa = DFA(cfg)
     opt = Optimizer(dfa)
-    llvm = Builder(opt)
+    llvm = Builder(opt) if args.optimize else Builder(generator)
     
     if args.lexer:
         while True: 

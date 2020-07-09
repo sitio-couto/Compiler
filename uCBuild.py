@@ -87,7 +87,7 @@ class uCIRBuilder(object):
         self.setup_translation()
         
         # Translate self.generator.code
-        self.translator.translate(self.module, self.generator.code)
+        self.build_ir(self.generator.code)
         
         # Execute IR
         self.execute_ir(opt)
@@ -98,8 +98,8 @@ class uCIRBuilder(object):
     
     def show(self, cfg, buf=None):
         if cfg:
-            self.view(buf.filename)
-        elif buf:
+            self.view(buf.name)
+        if buf:
             self.save_ir(buf)
         else:
             self.print_ir()
@@ -114,6 +114,10 @@ class uCIRBuilder(object):
         
     def save_ir(self, output_file):
         output_file.write(str(self.module))
+    
+    ### IR Construction ###
+    def build_ir(self, code):
+        self.translator.translate(self.module, code)
     
     ### IR Compilation/Execution Functions ###
     def _compile_ir(self, opt):
