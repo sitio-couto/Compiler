@@ -10,7 +10,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 30/06/2020.
+Last Modified: 09/07/2020.
 '''
 
 import re
@@ -732,6 +732,7 @@ class uCIRGenerator(ast.NodeVisitor):
                     self.visit(decl)
                     
             # Visiting for declaration.
+            # TODO: only works if the For is directly in function compound statement.
             if node.body.stats:
                 for stmt in node.body.stats:
                     if isinstance(stmt, ast.For) and isinstance(stmt.init, ast.DeclList):

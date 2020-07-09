@@ -295,7 +295,8 @@ class uCIRTranslator(object):
         self.builder.cbranch(test, true, false)
     
     # Memory Operations
-    # NOTE: the global variables might need alignment
+    # NOTE: The global variables might need alignment
+    # TODO: The globals.uc test does not work.
     def build_global(self, ty, target, source=None):
         # If is a function signature, nothing to be done.
         if type(source)==list: return
@@ -338,7 +339,7 @@ class uCIRTranslator(object):
             glb.initializer = ir.Constant(fnty.as_pointer(), None)
         
         # Array/Pointer
-        # TODO: global pointer not working.
+        # TODO: global pointer not working (segmentation fault).
         else:
             ty_str = ty
             ty = self.types[ty]
