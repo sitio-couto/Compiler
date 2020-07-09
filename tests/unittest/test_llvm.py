@@ -62,12 +62,12 @@ class TestOpt(unittest.TestCase):
         raw_std,raw_err = StringIO(),StringIO()
         sys.stdout = raw_std
         sys.stderr = raw_err
-        llvm.test(filename, True, False)
+        llvm.test(filename, True, None)
         
         opt_std,opt_err = StringIO(),StringIO()
         sys.stdout = opt_std
         sys.stderr = opt_err
-        llvm.test(filename, True, True)
+        llvm.test(filename, True, 'all')
 
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__

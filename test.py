@@ -131,11 +131,11 @@ if __name__ == '__main__':
     elif args.compilation:
         while True:
             try:
-                llvm.test(input("Filename or expression to compile and run: "), args.quiet, False)
+                llvm.test(input("Filename or expression to compile and run: "), args.quiet, 'all')
             except EOFError:
                 break
     elif args.file:
         # quick testing input file
-        llvm.test(args.file, args.quiet, True)
+        llvm.test(args.file, args.quiet, 'all')
     else:
         print("No valid option selected.")

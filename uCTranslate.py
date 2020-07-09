@@ -9,7 +9,7 @@ Authors:
 
 University of Campinas - UNICAMP - 2020
 
-Last Modified: 07/07/2020.
+Last Modified: 09/07/2020.
 '''
 
 from llvmlite import ir
@@ -24,7 +24,6 @@ class uCIRTranslator(object):
         self.blocks  = dict()
         self.globals = dict()
         self.args    = []
-        self.code    = None
         self.init_types()
     
     def init_types(self):
@@ -49,19 +48,20 @@ class uCIRTranslator(object):
         self.types['string']  = str_t
         return
 
-    def translate(self, module, cfg):
+    def translate(self, module, code):
         ''' Main translation function. '''
         self.module = module
 
-        self.label_colapse(cfg)
-
-        for line,inst in enumerate(self.code):
-            print(inst)
+        # Fix code.
+        code = self.label_collapse(code)
+        
+        # Pass through code.
+        for line,inst in enumerate(code):
             opcode, ty, mods = self._extract_operation(inst[0])
             if opcode == 'label':
                 self.builder.position_at_start(self.blocks[inst[0]])
             elif opcode == 'define':
-                self.new_function(line, inst, cfg)
+                self.new_function(line, inst, code)
             elif hasattr(self, "build_" + opcode):
                 if not mods:
                     getattr(self, "build_" + opcode)(ty, *inst[1:])
@@ -73,8 +73,7 @@ class uCIRTranslator(object):
         return
     
     ### Auxiliary functions ###
-    def label_colapse(self, cfg):
-        code = cfg.retrieve_ir()
+    def label_collapse(self, code):
         pairs = []
 
         # Find all consecutive labels
@@ -99,12 +98,11 @@ class uCIRTranslator(object):
             A = not re.match(r'cbranch|jump', inst[0])
             B = self.is_label(code[line+1])
             if A and B:
-                # print(code[line], code[line+1])
                 label = '%'+code[line+1][0]
                 code = code[:line+1]+[('jump',label)]+code[line+1:]
             line += 1
 
-        self.code = code # Set new IR
+        return code
 
     def is_label(self, inst):
         if type(inst) in {tuple,list}: 
@@ -156,7 +154,7 @@ class uCIRTranslator(object):
         ptr_fmt = self.builder.bitcast(global_fmt, ir.IntType(8).as_pointer())
         return self.builder.call(fn, [ptr_fmt] + list(target))
     
-    def new_function(self, line, inst, cfg):
+    def new_function(self, line, inst, code):
         try:
             fn = self.module.get_global(inst[1][1:])
         except KeyError:
@@ -175,7 +173,7 @@ class uCIRTranslator(object):
         # Function's Basic Blocks
         self.blocks = dict()
         self.builder = ir.IRBuilder(fn.append_basic_block(name="entry"))
-        for i in map(lambda x: x[0], self.code[line+1:]):
+        for i in map(lambda x: x[0], code[line+1:]):
             if 'define' in i: break # Until reaches other function
             if self.is_label(i):
                 self.blocks[i] = fn.append_basic_block(name=i)
@@ -185,9 +183,6 @@ class uCIRTranslator(object):
         self.loc.update(self.globals)
         for i, temp in enumerate(list(map(lambda x: x[1], inst[2]))):
             self.loc[temp] = fn.args[i]
-        
-        # Set New Function
-        self.func = fn
 
     ### Instruction building functions ###
     # Binary Operations
@@ -285,13 +280,13 @@ class uCIRTranslator(object):
         self.loc[target] = loc
     
     # Branch Operations
-    # TODO: create blocks.
     def build_jump(self, _, target):
+        if self.builder.block.is_terminated: return
         target = self.blocks[target[1:]]
         self.builder.branch(target)
     
-    # TODO: block operations - external.
     def build_cbranch(self, _, test, true, false):
+        if self.builder.block.is_terminated: return
         test = self.loc[test]
         true, false = self.blocks[true[1:]], self.blocks[false[1:]]
         self.builder.cbranch(test, true, false)
