@@ -1,5 +1,6 @@
 '''
 Fourth Project: Translation from uCIR to LLVM IR.
+ATTENTION: USING llvmlite v0.33
 
 Subject:
     MC921 - Construction of Compilers
@@ -317,7 +318,7 @@ class uCIRTranslator(object):
             # Initializer
             if source:
                 glb.initializer = ir.Constant(ty, source)
-            
+        
         self.globals[target] = glb
 
     def build_global_(self, ty, target, source=None, **kwargs):
@@ -337,6 +338,7 @@ class uCIRTranslator(object):
             glb.initializer = ir.Constant(fnty.as_pointer(), None)
         
         # Array/Pointer
+        # TODO: global pointer not working.
         else:
             ty_str = ty
             ty = self.types[ty]
@@ -352,7 +354,7 @@ class uCIRTranslator(object):
                 
             # Global consts.
             if target[1:].startswith('.const'): glb.global_constant=True
-                
+        
         self.globals[target] = glb
 
     def build_alloc(self, ty, target):

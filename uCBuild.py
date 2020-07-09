@@ -105,9 +105,10 @@ class uCIRBuilder(object):
             self.print_ir()
     
     def view(self, filename=None):
-        for fn in self.module.functions:
-            dot = self.binding.get_function_cfg(fn)
-            binding.view_dot_graph(dot, filename = filename, view=True)
+        for i,fn in enumerate(self.module.functions):
+            if not fn.name.startswith(('printf','scanf','llvm.memcpy')):
+                dot = self.binding.get_function_cfg(fn)
+                binding.view_dot_graph(dot, filename = filename, view=True)
     
     def print_ir(self):
         print(self.module)
