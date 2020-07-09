@@ -54,7 +54,6 @@ class uCIRTranslator(object):
         self.module = module
 
         self.label_colapse(cfg)
-        # self.code = cfg.retrieve_ir()
 
         for line,inst in enumerate(self.code):
             print(inst)
@@ -70,8 +69,6 @@ class uCIRTranslator(object):
                     getattr(self, "build_" + opcode + '_')(ty, *inst[1:], **mods)
             else:
                 print("Warning: No build_" + opcode + "() method", flush=True)
-
-        print(self.module)
 
         return
     
@@ -406,6 +403,7 @@ class uCIRTranslator(object):
     
     def build_literal(self, ty, value, target):
         # NOTE: Variables that were not allocated are sprouting in self.loc
+        if ty=='char': value = ord(value[1])
         ty = self.types[ty]
         val = ir.Constant(ty, value)
         loc = self.loc.get(target, None)
