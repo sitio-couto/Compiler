@@ -151,7 +151,10 @@ class uCIRBuilder(object):
             if opt == 'cfg' or opt  == 'all':
                 # Performs dead code elimination and basic block merging
                 pm.add_cfg_simplification_pass()
-            
+
+            pmb.populate(pm)
+            pm.run(mod)
+
         # Now add the module and make sure it is ready for execution
         self.engine.add_module(mod)
         self.engine.finalize_object()
