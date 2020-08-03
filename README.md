@@ -2,7 +2,7 @@ MC921 - Construction of Compilers
 =================================
 Compiler for the uC (a.k.a. micro C) language.
 
-The full specification of the language and each project is available in the `Notebooks` submodule.
+The full specification of the language and each project is available in the `Notebooks` submodule. The latest version of that repository can be accessed [here](https://github.com/iviarcio/mc921).
 
 Projects
 --------
@@ -27,7 +27,7 @@ Files
 - `uCType.py`     - Auxiliary script for semantic checks (Project 2).
 - `tests`         - Test files for different parts of the compiler. Includes tests for lexer (`lex_in`), parser (`parse_in`, `ast_in`), semantic check (`sem_in`), **IR generation** (`IR_in`), interpreter (`int_in`), dataflow analysis (`dfa_in`), **optimizer** (`opt_in`) and code translation (`llvm`). Also contains some common errors (`errors`), **actual programs with purpose** (`complete_codes`) and scripts for **unit testing** (`unittest`). Most important test folders are in bold.
 
-Course given by professor [Guido Araujo](https://guidoaraujo.wordpress.com/).
+Course given by professors [Guido Araujo](https://guidoaraujo.wordpress.com/) and [Marcio Pereira](https://github.com/iviarcio).
 
 [Institute of Computing](http://ic.unicamp.br/en) - [UNICAMP](http://www.unicamp.br/unicamp/) (State University of Campinas) - 2020
 
