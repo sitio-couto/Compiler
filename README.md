@@ -7,13 +7,13 @@ The full specification of the language and each project is available in the `Not
 Projects
 --------
 
-**Project 1** - Lexer (`uCLexer.py`) and parser (`uCParser.py`) with AST (`uCAST.py`) for uC language, using the PLY library. 
+**Project 1** - Lexer (`uCLexer.py`) and parser (`uCParser.py`) with AST (`uCAST.py`) for uC language, using the [PLY](https://www.dabeaz.com/ply/) library. 
 
 **Project 2** - Semantic checks (`uCSemantic.py`), uCIR generation (`uCGenerate.py`) and interpreter (`uCInterpreter`) for uC language.
 
 **Project 3** - Basic block separation (`uCBlock.py`), dataflow analysis (`uCDFA.py`) and optimizations (`uCOptimize.py`) for uCIR.
 
-**Project 4** - uCIR translation to LLVM IR (`uCTranslate.py`) and LLVM JIT compilation (`uCBuild.py`) using the llvmlite library.
+**Project 4** - uCIR translation to LLVM IR (`uCTranslate.py`) and LLVM JIT compilation (`uCBuild.py`) using the [llvmlite](https://llvmlite.readthedocs.io/en/latest/) library.
 
 Grade (for all projects): 8/8.
 
